@@ -7,8 +7,8 @@ from ps1 import *
 def main():
 
     # TODO: Insert your image file paths here:
-    img1_filename = None
-    img2_filename = None
+    img1_filename = 'ps1-1-a-1.png'
+    img2_filename = 'ps1-1-a-2.png'
 
     # # 1a
     img1 = cv2.imread(img1_filename)
@@ -34,7 +34,7 @@ def main():
     img1_green = extract_green(img1)
     assert len(img1_green.shape) == 2, "The monochrome image must be a 2D array"
     cv2.imwrite('ps1-2-b-1.png', img1_green)
-    
+
     # # 2c
     img1_red = extract_red(img1)
     assert len(img1_red.shape) == 2, "The monochrome image must be a 2D array"
@@ -50,7 +50,7 @@ def main():
     mono2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
     replaced_img = copy_paste_middle(mono1, mono2, (100, 100))
-          
+
     cv2.imwrite('ps1-3-a-1.png', replaced_img)
 
     # # 4 Arithmetic and Geometric operations
@@ -91,10 +91,14 @@ def main():
     cv2.imwrite('ps1-5-b-1.png', noisy_blue)
 
 if __name__ == "__main__":
-	HONOUR_PLEDGE = "By submitting to gradescope, you accept that you have neither received or given aid in the assignment. Please refer to https://piazza.com/class/k4x5ad7uxwb1uk?cid=17 to know about the policy about plagiarism for this class"
-	print(HONOUR_PLEDGE)
+    HONOUR_PLEDGE = "By submitting to gradescope, you accept that you have neither " \
+                    "received or given aid in the assignment. Please refer to " \
+                    "https://piazza.com/class/k4x5ad7uxwb1uk?cid=17 to know about the " \
+                    "policy about plagiarism for this class"
+    print(HONOUR_PLEDGE)
 
-	LATE_SUBMISSION_POLICY = "I have read the late assignments policy for CS6476. I understand that only my last commit before the deadline will be accepted without penalty."
-	print(LATE_SUBMISSION_POLICY)
-
+    LATE_SUBMISSION_POLICY = "I have read the late assignments policy for CS6476. " \
+                             "I understand that only my last commit before the " \
+                             "deadline will be accepted without penalty."
+    print(LATE_SUBMISSION_POLICY)
     main()
