@@ -90,7 +90,25 @@ def copy_paste_middle(src, dst, shape):
     Returns:
         numpy.array: Output monochrome image (2D array)
     """
-    raise NotImplementedError
+    temp_dst = np.copy(dst)
+
+    h_src, w_src = src.shape
+    start_px_h = int((h_src - shape[0]) / 2)
+    end_px_h = int(start_px_h + shape[0])
+    start_px_w = int((w_src - shape[1]) / 2)
+    end_px_w = int(start_px_w + shape[1])
+
+    middle_src = src[start_px_h:end_px_h, start_px_w:end_px_w]
+
+    h_dst, w_dst = temp_dst.shape
+    start_px_h = int((h_dst - shape[0]) / 2)
+    end_px_h = int(start_px_h + shape[0])
+    start_px_w = int((w_dst - shape[1]) / 2)
+    end_px_w = int(start_px_w + shape[1])
+
+    temp_dst[start_px_h:end_px_h, start_px_w:end_px_w] = middle_src
+
+    return temp_dst
 
 
 def image_stats(image):

@@ -45,7 +45,7 @@ def main():
     # # 3a
 
     # TODO: Choose the monochrome image for img1.
-    mono1 = None
+    mono1 = img1_green
 
     mono2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
