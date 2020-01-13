@@ -17,7 +17,8 @@ def extract_red(image):
     Returns:
         numpy.array: Output 2D array containing the red channel.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+    return temp_image[:, :, 2]
 
 
 def extract_green(image):
@@ -31,7 +32,8 @@ def extract_green(image):
     Returns:
         numpy.array: Output 2D array containing the green channel.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+    return temp_image[:,:,1]
 
 
 def extract_blue(image):
@@ -60,7 +62,9 @@ def swap_green_blue(image):
     Returns:
         numpy.array: Output 3D array with the green and blue channels swapped.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+    temp_image[:, :, 0], temp_image[:, :, 1] = temp_image[:, :, 1], temp_image[:, :, 0]
+    return temp_image
 
 
 def copy_paste_middle(src, dst, shape):
