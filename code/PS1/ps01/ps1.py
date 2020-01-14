@@ -130,7 +130,8 @@ def image_stats(image):
                mean (float): Input array mean / average value.
                stddev (float): Input array standard deviation.
     """
-    raise NotImplementedError
+    stats = (image.min(), image.max(), image.mean(), image.std())
+    return stats
 
 
 def center_and_normalize(image, scale):
@@ -152,7 +153,17 @@ def center_and_normalize(image, scale):
     Returns:
         numpy.array: Output 2D image.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+    temp_image = (temp_image - image.mean()) / image.std() * scale + image.mean()
+
+    print("********************************")
+    print(image_stats(image))
+    center_norm = temp_image.astype(np.uint8)
+    print(image_stats(temp_image))
+    print(image_stats(center_norm))
+    print("********************************")
+
+    return center_norm
 
 
 def shift_image_left(image, shift):
@@ -177,7 +188,13 @@ def shift_image_left(image, shift):
     Returns:
         numpy.array: Output shifted 2D image.
     """
-    raise NotImplementedError
+    temp_image = np.zeros(image.shape)
+    _, w = image.shape
+
+    temp_image[:, :w-shift] = image[:, shift:]
+    temp_image[:, w-shift:] = image[:, w-shift:]
+
+    return temp_image
 
 
 def difference_image(img1, img2):
@@ -195,7 +212,17 @@ def difference_image(img1, img2):
     Returns:
         numpy.array: Output 2D image containing the result of subtracting img2 from img1.
     """
-    raise NotImplementedError
+    temp_img1 = np.copy(img1)
+    temp_img1 = temp_img1.astype(np.float64)
+
+    temp_img2 = np.copy(img2)
+    temp_img2 = temp_img2.astype(np.float64)
+
+    diff = temp_img1 - temp_img2
+    x = diff
+    x_norm = (x - x.min()) / (x.max() - x.min()) * 255
+
+    return x_norm.astype(np.uint8)
 
 
 def add_noise(image, channel, sigma):
