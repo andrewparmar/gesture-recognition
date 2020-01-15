@@ -63,7 +63,12 @@ def swap_green_blue(image):
         numpy.array: Output 3D array with the green and blue channels swapped.
     """
     temp_image = np.copy(image)
-    temp_image[:, :, 0], temp_image[:, :, 1] = temp_image[:, :, 1], temp_image[:, :, 0]
+    blue_channel = image[:,:,0]
+    green_channel = image[:,:,1]
+    # temp_image[:, :, 0], temp_image[:, :, 1] = temp_image[:, :, 1], temp_image[:, :, 0]
+
+    temp_image[:,:,0] = green_channel
+    temp_image[:,:,1] = blue_channel
     return temp_image
 
 
@@ -130,7 +135,13 @@ def image_stats(image):
                mean (float): Input array mean / average value.
                stddev (float): Input array standard deviation.
     """
-    stats = (image.min(), image.max(), image.mean(), image.std())
+    stats = (
+        float(image.min()),
+        float(image.max()),
+        float(image.mean()),
+        float(image.std())
+    )
+
     return stats
 
 
@@ -154,7 +165,8 @@ def center_and_normalize(image, scale):
         numpy.array: Output 2D image.
     """
     temp_image = np.copy(image)
-    temp_image = (temp_image - image.mean()) / image.std() * scale + image.mean()
+    temp_image = temp_image.astype(np.float64)
+    temp_image = ((temp_image - image.mean()) / image.std()) * scale + image.mean()
 
     print("********************************")
     print(image_stats(image))
@@ -163,7 +175,7 @@ def center_and_normalize(image, scale):
     print(image_stats(center_norm))
     print("********************************")
 
-    return center_norm
+    return temp_image
 
 
 def shift_image_left(image, shift):
@@ -188,13 +200,15 @@ def shift_image_left(image, shift):
     Returns:
         numpy.array: Output shifted 2D image.
     """
-    temp_image = np.zeros(image.shape)
-    _, w = image.shape
+    temp_image = np.copy(image)
+    shifted_image = np.zeros(temp_image.shape)
+    _, w = temp_image.shape
 
-    temp_image[:, :w-shift] = image[:, shift:]
-    temp_image[:, w-shift:] = image[:, w-shift:]
+    shifted_image[:, :w-shift] = temp_image[:, shift:]
+    replicate_end = temp_image[:, [-1]*shift]
+    shifted_image[:, w-shift:] = replicate_end
 
-    return temp_image
+    return shifted_image.astype(np.uint8)
 
 
 def difference_image(img1, img2):
@@ -212,17 +226,19 @@ def difference_image(img1, img2):
     Returns:
         numpy.array: Output 2D image containing the result of subtracting img2 from img1.
     """
-    temp_img1 = np.copy(img1)
-    temp_img1 = temp_img1.astype(np.float64)
+    temp_img1 = np.copy(img1).astype(np.float64)
+    # temp_img1 = temp_img1.astype(np.float64)
 
-    temp_img2 = np.copy(img2)
-    temp_img2 = temp_img2.astype(np.float64)
+    temp_img2 = np.copy(img2).astype(np.float64)
+    # temp_img2 = temp_img2.astype(np.float64)
 
     diff = temp_img1 - temp_img2
     x = diff
-    x_norm = (x - x.min()) / (x.max() - x.min()) * 255
+    if x.min() == x.max():
+        return x
+    x_norm = ((x - x.min()) / (x.max() - x.min())) * 255
 
-    return x_norm.astype(np.uint8)
+    return x_norm
 
 
 def add_noise(image, channel, sigma):
@@ -250,4 +266,13 @@ def add_noise(image, channel, sigma):
         numpy.array: Output 3D array containing the result of adding Gaussian noise to the
             specified channel.
     """
-    raise NotImplementedError
+    temp_image = np.copy(image)
+
+    # generate noise
+    h, w, _ = image.shape
+    noise = np.random.randn(h, w) * sigma
+
+    # Add some noise
+    temp_image[:,:,channel] = temp_image[:,:,channel] + noise
+
+    return temp_image
