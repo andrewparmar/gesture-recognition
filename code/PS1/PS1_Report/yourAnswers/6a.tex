@@ -1,5 +1,7 @@
-Splitting the southafricaflagface.png image into different channels, it appears that the green channel resembles greyscale image the closest. There are two primary reasons for this:\\
-1. The human eye has higher sensitivity to green light due to the ability of green light to stimulate two of the three types of cones in the eye.
-2. Most digital camera sensors use the Bayer pattern which allows for two green pixels for each pair of red and blue pixels. This results in images having less noise in the green channel as compared to the red and blue channels.\\
+Splitting the southafricaflagface.png image into different channels, it appears that the green channel resembles a grayscale image the closest. From reading more about this, there seem to be two primary reasons for this:\\
 
-I tried this split channel technique on other images as well and saw a similar effect. The green channel tends to retain the most detail from the full spectrum image.
+1. The human visual system puts more emphasis on luminance than color. The eye can perceive more detail in the form of luminosity changes than with color changes. The human eye also has higher sensitivity to green light due to the ability of green light to stimulate two of the three types of cones in the eye. Green is, therefore, a desirable color channel to emphasize luminosity with. A characteristic that is taken advantage of by systems that are converting images to greyscale, where higher weight (~70\%) is given to the green channel.
+
+2. Camera technology has shaped up to align with the human visual systems preferences, in particular, it is common for digital camera sensors to use the Bayer pattern which allows for two green pixels for each pair of red and blue pixels. This results in images having less noise in the green channel as compared to the red and blue channels.\\
+
+I tried this split-channel technique on other images as well and saw a similar effect. The green channel tends to retain the most detail from the full spectrum image.
