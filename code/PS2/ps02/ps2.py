@@ -35,7 +35,28 @@ def traffic_light_detection(img_in, radii_range):
         state (str): traffic light state. A value in {'red', 'yellow',
                      'green'}
     """
-    raise NotImplementedError
+
+    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
+
+    for radius in radii_range:
+        circles = cv2.HoughCircles(img_gray,
+                                   cv2.HOUGH_GRADIENT,
+                                   1,               # inverse ratio, accumulator resolution
+                                   2 * radius,      # minDist between circle centers
+                                   param1=50,       # Canny edge detector upper threshold
+                                   param2=8,        # Accumulator value for circle centers
+                                   minRadius=radius,
+                                   maxRadius=radius)
+        if circles is not None:
+            if len(circles[0]) == 3:
+                break
+
+    print(circles.shape)
+    print(circles)
+    coordinates = tuple(circles[0][1][:2].astype(np.uint64).tolist())
+
+    return coordinates, 'yellow', circles
+    # TODO: Remove the last item
 
 
 def yield_sign_detection(img_in):

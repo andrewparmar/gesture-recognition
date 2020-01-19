@@ -7,6 +7,7 @@ implementation and output images so you can verify your results.
 
 
 import cv2
+import numpy as np
 
 import ps2
 
@@ -38,7 +39,29 @@ def draw_tl_center(image_in, center, state):
         traffic light center and text that presents the numerical
         coordinates with the traffic light state.
     """
-    raise NotImplementedError
+    img = np.copy(image_in)
+
+    # TODO: Make this its own helper function, so its reusable
+    # Add cross-hair to mark center.
+    x, y = center
+    color = (0,0,255)
+    thickness = 1
+    cv2.line(img, (x-5,y), (x+5,y), color, thickness)  # cross-hair horizontal
+    cv2.line(img, (x,y+5), (x,y-5), color, thickness)  # cross-hair vertical
+
+    # TODO: Make this its own helper function, so its reusable
+    # Add text.
+    text = "(({x}, {y}), '{state}')".format(x=x, y=y, state=state)
+    h, w, _ = img.shape
+    org = (w-200, h-10)
+    # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    fontScale = 0.5
+    color = (255, 0, 0)
+    thickness = 1
+    cv2.putText(img, text, org, font, fontScale, color, thickness, cv2.LINE_AA)
+
+    return img
 
 
 def mark_traffic_signs(image_in, signs_dict):
@@ -75,10 +98,22 @@ def part_1():
     # observations.
     radii_range = range(10, 30, 1)
 
-    for img_in, label in zip(input_images, output_labels):
+    img_labels = list(zip(input_images, output_labels))
 
+    for img_in, label in img_labels:
         tl = cv2.imread("input_images/{}.png".format(img_in))
-        coords, state = ps2.traffic_light_detection(tl, radii_range)
+        coords, state, circles = ps2.traffic_light_detection(tl, radii_range)
+
+        ### TODO REMOVE #####################################################
+        tl_cpy = np.copy(tl)
+        for i in circles[0, :]:
+            # draw the outer circle
+            cv2.circle(tl_cpy, (i[0], i[1]), i[2], (0, 255, 0), 2)
+            # draw the center of the circle
+            cv2.circle(tl_cpy, (i[0], i[1]), 2, (0, 0, 255), 3)
+        cv2.imwrite("temp_{}.png".format(label), tl_cpy)
+
+        ### TODO REMOVE #####################################################
 
         img_out = draw_tl_center(tl, coords, state)
         cv2.imwrite("{}.png".format(label), img_out)
@@ -158,10 +193,11 @@ def part_5b():
         img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("{}.png".format(label), img_out)
 
+
 if __name__ == '__main__':
     part_1()
-    part_2()
-    part_3()
-    part_4()
-    part_5a()
-    part_5b()
+    # part_2()
+    # part_3()
+    # part_4()
+    # part_5a()
+    # part_5b()
