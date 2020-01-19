@@ -12,6 +12,30 @@ import numpy as np
 import ps2
 
 
+def _add_cross_hairs(img, coordinates):
+    x, y = coordinates
+    color = (0, 0, 0)
+    thickness = 2
+    cv2.line(img, (x - 5, y), (x + 5, y), color, thickness)  # cross-hair horizontal
+    cv2.line(img, (x, y + 5), (x, y - 5), color, thickness)  # cross-hair vertical
+
+    return img
+
+def _add_text(img, text):
+    h, w, _ = img.shape
+    org = (w - 225, h - 10)
+    # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
+    font = cv2.FONT_HERSHEY_COMPLEX
+    fontScale = 0.6
+    color_outline = (0, 0, 0)
+    color_text = (255, 255, 255)
+    thickness = 2
+    cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
+    cv2.putText(img, text, org, font, fontScale, color_text, int(thickness / 2),
+                cv2.LINE_AA)
+    return img
+
+
 def draw_tl_center(image_in, center, state):
     """Marks the center of a traffic light image and adds coordinates
     with the state of the current image
@@ -41,25 +65,28 @@ def draw_tl_center(image_in, center, state):
     """
     img = np.copy(image_in)
 
-    # TODO: Make this its own helper function, so its reusable
     # Add cross-hair to mark center.
-    x, y = center
-    color = (0,0,255)
-    thickness = 1
-    cv2.line(img, (x-5,y), (x+5,y), color, thickness)  # cross-hair horizontal
-    cv2.line(img, (x,y+5), (x,y-5), color, thickness)  # cross-hair vertical
+    img = _add_cross_hairs(img, center)
+    # x, y = center
+    # color = (0,0,255)
+    # thickness = 1
+    # cv2.line(img, (x-5,y), (x+5,y), color, thickness)  # cross-hair horizontal
+    # cv2.line(img, (x,y+5), (x,y-5), color, thickness)  # cross-hair vertical
 
-    # TODO: Make this its own helper function, so its reusable
     # Add text.
+    x, y = center
     text = "(({x}, {y}), '{state}')".format(x=x, y=y, state=state)
-    h, w, _ = img.shape
-    org = (w-200, h-10)
-    # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    fontScale = 0.5
-    color = (255, 0, 0)
-    thickness = 1
-    cv2.putText(img, text, org, font, fontScale, color, thickness, cv2.LINE_AA)
+    img = _add_text(img, text)
+    # h, w, _ = img.shape
+    # org = (w-225, h-10)
+    # # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
+    # font = cv2.FONT_HERSHEY_COMPLEX
+    # fontScale = 0.6
+    # color_outline = (0, 0, 0)
+    # color_text = (255, 255, 255)
+    # thickness = 2
+    # cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
+    # cv2.putText(img, text, org, font, fontScale, color_text, int(thickness/2), cv2.LINE_AA)
 
     return img
 
@@ -101,6 +128,7 @@ def part_1():
     img_labels = list(zip(input_images, output_labels))
 
     for img_in, label in img_labels:
+        print(img_in)
         tl = cv2.imread("input_images/{}.png".format(img_in))
         coords, state, circles = ps2.traffic_light_detection(tl, radii_range)
 

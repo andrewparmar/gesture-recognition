@@ -5,6 +5,27 @@ import cv2
 
 import numpy as np
 
+def _get_state(img_in, circles):
+    states = ['red', 'yellow', 'green']
+
+    img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+
+    print("Img")
+    for circle in circles[0,:]:
+        print(img_in[circle[1], circle[0]])
+
+    print("Hsv")
+    values = []
+    for circle in circles[0,:]:
+        print(img_hsv[circle[1], circle[0]])
+        values.append(sum(img_hsv[circle[1], circle[0]]))
+    print(values, np.argmax(values))
+    index = np.argmax(values)
+
+    coordinate = tuple(circles[0][index][:2].astype(np.uint64).tolist())
+    state = states[index]
+    return coordinate, state
+
 
 def traffic_light_detection(img_in, radii_range):
     """Finds the coordinates of a traffic light image given a radii
@@ -48,14 +69,16 @@ def traffic_light_detection(img_in, radii_range):
                                    minRadius=radius,
                                    maxRadius=radius)
         if circles is not None:
-            if len(circles[0]) == 3:
+            if len(circles[0]) == 3:  # The accumulator returns in order of the highest votes.
                 break
 
-    print(circles.shape)
-    print(circles)
-    coordinates = tuple(circles[0][1][:2].astype(np.uint64).tolist())
+    # print(radius)
+    # print(circles.shape)
+    # print(circles)
+    circles = circles.astype(np.uint64)
+    coordinates, state = _get_state(img_in, circles)
 
-    return coordinates, 'yellow', circles
+    return coordinates, state, circles
     # TODO: Remove the last item
 
 
