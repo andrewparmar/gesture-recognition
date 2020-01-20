@@ -67,26 +67,11 @@ def draw_tl_center(image_in, center, state):
 
     # Add cross-hair to mark center.
     img = _add_cross_hairs(img, center)
-    # x, y = center
-    # color = (0,0,255)
-    # thickness = 1
-    # cv2.line(img, (x-5,y), (x+5,y), color, thickness)  # cross-hair horizontal
-    # cv2.line(img, (x,y+5), (x,y-5), color, thickness)  # cross-hair vertical
 
     # Add text.
     x, y = center
     text = "(({x}, {y}), '{state}')".format(x=x, y=y, state=state)
     img = _add_text(img, text)
-    # h, w, _ = img.shape
-    # org = (w-225, h-10)
-    # # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
-    # font = cv2.FONT_HERSHEY_COMPLEX
-    # fontScale = 0.6
-    # color_outline = (0, 0, 0)
-    # color_text = (255, 255, 255)
-    # thickness = 2
-    # cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
-    # cv2.putText(img, text, org, font, fontScale, color_text, int(thickness/2), cv2.LINE_AA)
 
     return img
 
@@ -128,22 +113,22 @@ def part_1():
     img_labels = list(zip(input_images, output_labels))
 
     for img_in, label in img_labels:
-        print(img_in)
+        # print(img_in)
         tl = cv2.imread("input_images/{}.png".format(img_in))
-        coords, state, circles = ps2.traffic_light_detection(tl, radii_range)
+        coordinates, state, circles = ps2.traffic_light_detection(tl, radii_range)
 
-        ### TODO REMOVE #####################################################
-        tl_cpy = np.copy(tl)
-        for i in circles[0, :]:
-            # draw the outer circle
-            cv2.circle(tl_cpy, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            # draw the center of the circle
-            cv2.circle(tl_cpy, (i[0], i[1]), 2, (0, 0, 255), 3)
-        cv2.imwrite("temp_{}.png".format(label), tl_cpy)
+        # ### TODO REMOVE #####################################################
+        # tl_cpy = np.copy(tl)
+        # for i in circles[0, :]:
+        #     # draw the outer circle
+        #     cv2.circle(tl_cpy, (i[0], i[1]), i[2], (0, 255, 0), 2)
+        #     # draw the center of the circle
+        #     cv2.circle(tl_cpy, (i[0], i[1]), 2, (0, 0, 255), 3)
+        # cv2.imwrite("temp_{}.png".format(label), tl_cpy)
+        #
+        # ### TODO REMOVE #####################################################
 
-        ### TODO REMOVE #####################################################
-
-        img_out = draw_tl_center(tl, coords, state)
+        img_out = draw_tl_center(tl, coordinates, state)
         cv2.imwrite("{}.png".format(label), img_out)
 
 

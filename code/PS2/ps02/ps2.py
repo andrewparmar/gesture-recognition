@@ -5,26 +5,30 @@ import cv2
 
 import numpy as np
 
-def _get_state(img_in, circles):
+def _get_center_and_state(img_in, circles):
+    coordinate_list = circles[0].tolist()
+    f = lambda x: x[1]
+    coordinate_list.sort(key=f)
+
     states = ['red', 'yellow', 'green']
 
     img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
 
-    print("Img")
-    for circle in circles[0,:]:
-        print(img_in[circle[1], circle[0]])
+    # print("Img")
+    # for circle in coordinate_list:
+    #     print(img_in[circle[1], circle[0]])
 
-    print("Hsv")
+    # print("Hsv")
     values = []
-    for circle in circles[0,:]:
-        print(img_hsv[circle[1], circle[0]])
+    for circle in coordinate_list:
+        # print(img_hsv[circle[1], circle[0]])
         values.append(sum(img_hsv[circle[1], circle[0]]))
-    print(values, np.argmax(values))
+
     index = np.argmax(values)
 
-    coordinate = tuple(circles[0][index][:2].astype(np.uint64).tolist())
+    tl_center_coordinate = tuple(coordinate_list[1][:2])
     state = states[index]
-    return coordinate, state
+    return tl_center_coordinate, state
 
 
 def traffic_light_detection(img_in, radii_range):
@@ -69,14 +73,15 @@ def traffic_light_detection(img_in, radii_range):
                                    minRadius=radius,
                                    maxRadius=radius)
         if circles is not None:
-            if len(circles[0]) == 3:  # The accumulator returns in order of the highest votes.
+            # The accumulator returns in order of the highest votes.
+            if len(circles[0]) == 3:
                 break
 
     # print(radius)
     # print(circles.shape)
     # print(circles)
     circles = circles.astype(np.uint64)
-    coordinates, state = _get_state(img_in, circles)
+    coordinates, state = _get_center_and_state(img_in, circles)
 
     return coordinates, state, circles
     # TODO: Remove the last item
