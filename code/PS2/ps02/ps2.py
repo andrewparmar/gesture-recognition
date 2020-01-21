@@ -62,28 +62,38 @@ def traffic_light_detection(img_in, radii_range):
     """
 
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-
+    collections = []
     for radius in radii_range:
         circles = cv2.HoughCircles(img_gray,
                                    cv2.HOUGH_GRADIENT,
-                                   1,               # inverse ratio, accumulator resolution
+                                   0.5,               # inverse ratio, accumulator resolution
                                    2 * radius,      # minDist between circle centers
                                    param1=50,       # Canny edge detector upper threshold
                                    param2=8,        # Accumulator value for circle centers
                                    minRadius=radius,
                                    maxRadius=radius)
         if circles is not None:
-            # The accumulator returns in order of the highest votes.
-            if len(circles[0]) == 3:
-                break
+            # print("Radius: {}, Found: {}".format(radius, len(circles[0])))
 
+            # The accumulator returns in order of the highest votes.
+            # Additional expansion could check if all three x values are equal, as traffic
+            # lights are in a vertical line.
+            if len(circles[0]) == 3:
+                detections = circles
+                collections.append(detections)
+        else:
+            # print("Radius: {}, Found: 0".format(radius, ))
+            pass
+    # import pdb; pdb.set_trace()
     # print(radius)
     # print(circles.shape)
     # print(circles)
-    circles = circles.astype(np.uint64)
-    coordinates, state = _get_center_and_state(img_in, circles)
+    detections = sum(collections) / len(collections)
+    detections = detections.astype(np.uint64)
+    coordinates, state = _get_center_and_state(img_in, detections)
 
-    return coordinates, state, circles
+    # return coordinates, state, detections
+    return coordinates, state
     # TODO: Remove the last item
 
 
@@ -97,7 +107,7 @@ def yield_sign_detection(img_in):
     Returns:
         (x,y) tuple of coordinates of the center of the yield sign.
     """
-    raise NotImplementedError
+
 
 
 def stop_sign_detection(img_in):

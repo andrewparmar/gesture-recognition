@@ -115,9 +115,10 @@ def part_1():
     for img_in, label in img_labels:
         # print(img_in)
         tl = cv2.imread("input_images/{}.png".format(img_in))
-        coordinates, state, circles = ps2.traffic_light_detection(tl, radii_range)
+        # coordinates, state, circles = ps2.traffic_light_detection(tl, radii_range)
+        coordinates, state = ps2.traffic_light_detection(tl, radii_range)
 
-        # ### TODO REMOVE #####################################################
+        # # ### TODO REMOVE #####################################################
         # tl_cpy = np.copy(tl)
         # for i in circles[0, :]:
         #     # draw the outer circle
@@ -125,8 +126,8 @@ def part_1():
         #     # draw the center of the circle
         #     cv2.circle(tl_cpy, (i[0], i[1]), 2, (0, 0, 255), 3)
         # cv2.imwrite("temp_{}.png".format(label), tl_cpy)
-        #
-        # ### TODO REMOVE #####################################################
+        # #
+        # # ### TODO REMOVE #####################################################
 
         img_out = draw_tl_center(tl, coordinates, state)
         cv2.imwrite("{}.png".format(label), img_out)
