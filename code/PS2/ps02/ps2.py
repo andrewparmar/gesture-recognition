@@ -5,6 +5,8 @@ import cv2
 
 import numpy as np
 
+from trackbar import display_trackbar_window, param, scale
+
 def _get_center_and_state(img_in, circles):
     coordinate_list = circles[0].tolist()
     f = lambda x: x[1]
@@ -97,6 +99,63 @@ def traffic_light_detection(img_in, radii_range):
     # TODO: Remove the last item
 
 
+# Source: https://stackoverflow.com/a/46572063
+def intersection(line1, line2):
+    """Finds the intersection of two lines given in Hesse normal form.
+
+    Returns closest integer pixel locations.
+    See https://stackoverflow.com/a/383527/5087436
+    """
+    rho1, theta1 = line1[0]
+    rho2, theta2 = line2[0]
+    A = np.array([
+        [np.cos(theta1), np.sin(theta1)],
+        [np.cos(theta2), np.sin(theta2)]
+    ])
+    b = np.array([[rho1], [rho2]])
+    x0, y0 = np.linalg.solve(A, b)
+    x0, y0 = int(np.round(x0)), int(np.round(y0))
+    return [[x0, y0]]
+
+
+def find_triangle(lines, orientation):
+    """
+
+    :param lines: list of lines from HoughLines()???
+    :param orientation: this can be ignored for our case, (challenge?)
+    :return:
+    """
+    '''
+    valid_angles = [30, 90, 330]
+    valid_angles += orientation
+    
+    sides = []
+    for line in lines:
+        if line.theta is in valid_angles:
+            sides.append(lines)
+            
+    vertices = []
+    for j in 0 to 2:
+        vertices.append(intersection(sides[j-1], sides[j]))
+    '''
+    vertices = []
+    for i in range(len(lines)):
+        vertices.append(intersection(lines[i - 1], lines[i])[0])
+
+    return vertices
+
+def auto_canny(image, sigma=0.33):
+    # compute the median of the single channel pixel intensities
+    v = np.median(image)
+
+    # apply automatic Canny edge detection using the computed median
+    lower = int(max(0, (1.0 - sigma) * v))
+    upper = int(min(255, (1.0 + sigma) * v))
+    edges = cv2.Canny(image, lower, upper)
+
+    return edges
+
+
 def yield_sign_detection(img_in):
     """Finds the centroid coordinates of a yield sign in the provided
     image.
@@ -107,7 +166,52 @@ def yield_sign_detection(img_in):
     Returns:
         (x,y) tuple of coordinates of the center of the yield sign.
     """
+    img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
+    lower_red = np.array([0, 245, 245])
+    upper_red = np.array([1, 255, 255])
 
+    mask = cv2.inRange(img_hsv, lower_red, upper_red)
+    res = cv2.bitwise_and(img_in, img_in, mask=mask)
+
+    res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), 40)
+
+    image_for_canny = res_blur
+
+    edges = cv2.Canny(image_for_canny, 10, 10)
+
+    def compute_values(a, b):
+        lines = cv2.HoughLines(edges, 1, a * np.pi / 180, b)
+        return lines
+
+    def draw_image(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+        if lines is None:
+            return output_img
+        print(len(lines))
+
+        for i in lines:
+            rho, theta = i[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    result = display_trackbar_window(
+        'yield_sign',
+        draw_image,
+        compute_values,
+        a=param(10, 1),
+        b=param(200, 80)
+    )
 
 
 def stop_sign_detection(img_in):
@@ -120,7 +224,9 @@ def stop_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the stop sign.
     """
-    raise NotImplementedError
+    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    # lower_red = np.array([0, 245, 245])
+    # upper_red = np.array([1, 255, 255])
 
 
 def warning_sign_detection(img_in):
@@ -133,7 +239,9 @@ def warning_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    lower_red = np.array([0, 245, 245])
+    upper_red = np.array([1, 255, 255])
 
 
 def construction_sign_detection(img_in):
@@ -146,7 +254,9 @@ def construction_sign_detection(img_in):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    # lower_red = np.array([0, 245, 245])
+    # upper_red = np.array([1, 255, 255])
 
 
 def do_not_enter_sign_detection(img_in):
@@ -159,7 +269,9 @@ def do_not_enter_sign_detection(img_in):
     Returns:
         (x,y) typle of the coordinates of the center of the sign.
     """
-    raise NotImplementedError
+    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    lower_red = np.array([0, 245, 245])
+    upper_red = np.array([1, 255, 255])
 
 
 def traffic_sign_detection(img_in):
