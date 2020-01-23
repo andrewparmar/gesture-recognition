@@ -195,9 +195,132 @@ def yield_sign_detection(img_in):
     mask = cv2.inRange(img_hsv, lower_red, upper_red)
     res = cv2.bitwise_and(img_in, img_in, mask=mask)
 
-    def compute_values(canny_min, canny_max, hough_angle_resolution, hough_threshold,
+    def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution, hough_threshold,
                        houghP_minLineLength, houghP_maxLineGap):
-        res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), 40)
+        res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), blur_sigma)
+
+        image_for_canny = res_blur
+
+        edges = cv2.Canny(image_for_canny, canny_min, canny_max)
+
+        # lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180, hough_threshold)
+
+        lines = cv2.HoughLinesP(edges, 1, hough_angle_resolution * np.pi / 180,
+                               hough_threshold, houghP_minLineLength, houghP_maxLineGap)
+
+        return lines
+
+    def draw_image(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+        if lines is None:
+            return output_img
+        print(len(lines))
+
+        find_polygon(lines, None, num_sides=3)
+
+        for i in lines:
+            rho, theta = i[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    def draw_image_hough_p(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+        if lines is None:
+            return output_img
+        print(len(lines))
+
+        for i in lines:
+            x1, y1, x2, y2 = i[0]
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    # last_args = display_trackbar_window(
+    #     'yield_sign',
+    #     draw_image_hough_p,
+    #     compute_values,
+    #     blur_sigma=param(40, 5),
+    #     canny_min=param(100, 10),
+    #     canny_max=param(200, 10),
+    #     hough_angle_resolution=param(20, 1),
+    #     hough_threshold=param(200, 80),
+    #     houghP_minLineLength=param(80, 1),
+    #     houghP_maxLineGap=param(50, 1)
+    # )
+
+    lines = compute_values(10, 10, 6, 80, 1, 1)
+    vertices = find_vertices(lines)
+    center = find_center(vertices)
+
+    return center
+
+def stop_sign_detection(img_in):
+    """Finds the centroid coordinates of a stop sign in the provided
+    image.
+
+    Args:
+        img_in (numpy.array): image containing a traffic light.
+
+    Returns:
+        (x,y) tuple of the coordinates of the center of the stop sign.
+    """
+    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    # lower_red = np.array([0, 245, 245])
+    # upper_red = np.array([1, 255, 255])
+
+
+def normalize_hsv(values):
+
+    hue = int(round(values[0]/360.0 * 179))
+
+    saturation = int(round(values[1]/100.0 * 255))
+
+    value = int(round(values[2]/100.0 * 255))
+
+    return np.array([hue, saturation, value])
+
+
+def warning_sign_detection(img_in):
+    """Finds the centroid coordinates of a warning sign in the
+    provided image.
+
+    Args:
+        img_in (numpy.array): image containing a traffic light.
+
+    Returns:
+        (x,y) tuple of the coordinates of the center of the sign.
+    """
+    # img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
+    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
+    # lower_yellow = normalize_hsv(np.array([55, 97, 99]))
+    # upper_yellow = normalize_hsv(np.array([60, 98.82, 100]))
+    #
+    # mask = cv2.inRange(img_hsv, lower_yellow, upper_yellow)
+    # res = cv2.bitwise_and(img_in, img_in, mask=mask)
+
+    bgr = [3, 255, 255]
+    thresh = 5
+
+    minBGR = np.array([bgr[0] - thresh, bgr[1] - thresh, bgr[2] - thresh])
+    maxBGR = np.array([bgr[0] + thresh, bgr[1] + thresh, bgr[2] + thresh])
+
+    maskBGR = cv2.inRange(img_in, minBGR, maxBGR)
+    res = cv2.bitwise_and(img_in, img_in, mask=maskBGR)
+
+    def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution, hough_threshold,
+                       houghP_minLineLength, houghP_maxLineGap):
+        res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), blur_sigma)
 
         image_for_canny = res_blur
 
@@ -236,6 +359,10 @@ def yield_sign_detection(img_in):
     def draw_image_hough_p(lines):
         output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
 
+        if lines is None:
+            return output_img
+        print(len(lines))
+
         for i in lines:
             x1, y1, x2, y2 = i[0]
             cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
@@ -244,50 +371,25 @@ def yield_sign_detection(img_in):
 
     # last_args = display_trackbar_window(
     #     'yield_sign',
-    #     draw_image,
+    #     draw_image_hough_p,
     #     compute_values,
+    #     blur_sigma=param(40, 5),
     #     canny_min=param(100, 10),
     #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(10, 1),
+    #     hough_angle_resolution=param(20, 1),
     #     hough_threshold=param(200, 80),
-    #     houghP_minLineLength=param(40, 1),
-    #     houghP_maxLineGap=param(10, 1)
+    #     houghP_minLineLength=param(80, 1),
+    #     houghP_maxLineGap=param(50, 1)
     # )
 
-    lines = compute_values(10, 10, 6, 80, 1, 1)
+    lines = compute_values(0, 71, 49, 3, 51, 1, 1)
+    # lines = compute_values(5, 10, 10, 3, 14, 37, 45)
+    # lines = compute_values(10, 9, 17, 15, 9, 13, 45)
+    print(len(lines))
     vertices = find_vertices(lines)
     center = find_center(vertices)
 
     return center
-
-def stop_sign_detection(img_in):
-    """Finds the centroid coordinates of a stop sign in the provided
-    image.
-
-    Args:
-        img_in (numpy.array): image containing a traffic light.
-
-    Returns:
-        (x,y) tuple of the coordinates of the center of the stop sign.
-    """
-    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
-    # lower_red = np.array([0, 245, 245])
-    # upper_red = np.array([1, 255, 255])
-
-
-def warning_sign_detection(img_in):
-    """Finds the centroid coordinates of a warning sign in the
-    provided image.
-
-    Args:
-        img_in (numpy.array): image containing a traffic light.
-
-    Returns:
-        (x,y) tuple of the coordinates of the center of the sign.
-    """
-    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
-    lower_red = np.array([0, 245, 245])
-    upper_red = np.array([1, 255, 255])
 
 
 def construction_sign_detection(img_in):

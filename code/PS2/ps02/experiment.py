@@ -144,7 +144,7 @@ def part_2():
         # 'scene_dne_1',
         # 'scene_stp_1',
         # 'scene_constr_1',
-        # 'scene_wrng_1',
+        'scene_wrng_1',
         'scene_yld_1'
     ]
 
@@ -152,7 +152,7 @@ def part_2():
         # 'ps2-2-a-1',
         # 'ps2-2-a-2',
         # 'ps2-2-a-3',
-        # 'ps2-2-a-4',
+        'ps2-2-a-4',
         'ps2-2-a-5'
     ]
 
@@ -160,7 +160,7 @@ def part_2():
         # ps2.do_not_enter_sign_detection,
         # ps2.stop_sign_detection,
         # ps2.construction_sign_detection,
-        # ps2.warning_sign_detection,
+        ps2.warning_sign_detection,
         ps2.yield_sign_detection
     ]
 
@@ -168,7 +168,7 @@ def part_2():
         # 'no_entry',
         # 'stop',
         # 'construction',
-        # 'warning',
+        'warning',
         'yield'
     ]
 
