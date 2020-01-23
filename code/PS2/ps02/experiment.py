@@ -98,8 +98,14 @@ def mark_traffic_signs(image_in, signs_dict):
         numpy.array: output image showing markers on each traffic
         sign.
     """
-    raise NotImplementedError
+    img= image_in
+    for name, center in signs_dict.items():
+        img = _add_cross_hairs(img, center)
+        x, y = center
+        text = "(({x}, {y}), '{name}')".format(x=x, y=y, name=name)
+        img = _add_text(img, text)
 
+    return img
 
 def part_1():
 

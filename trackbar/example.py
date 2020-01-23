@@ -4,7 +4,7 @@ from trackbar import *
 
  
 img = np.zeros((480,640,3))
-img = cv2.imread('simple_tl.png') 
+#img = cv2.imread('simple_tl.png') 
 midpoint = tuple(np.roll(np.array(img.shape[0:2])/2,1).astype(dtype=np.int))
 
 def draw_image(point):

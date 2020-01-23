@@ -118,7 +118,25 @@ def intersection(line1, line2):
     return [[x0, y0]]
 
 
-def find_triangle(lines, orientation):
+def find_vertices(lines):
+    vertices = []
+    for i in range(len(lines)):
+        vertices.append(intersection(lines[i - 1], lines[i])[0])
+
+    return vertices
+
+
+def find_center(vertices):
+    vert = np.array(vertices)
+
+    row = vert[:, 1].mean(dtype=int)
+    col = vert[:, 0].mean(dtype=int)
+
+    return (col, row)
+
+
+
+def find_polygon(lines, orientation, num_sides):
     """
 
     :param lines: list of lines from HoughLines()???
@@ -138,11 +156,14 @@ def find_triangle(lines, orientation):
     for j in 0 to 2:
         vertices.append(intersection(sides[j-1], sides[j]))
     '''
-    vertices = []
-    for i in range(len(lines)):
-        vertices.append(intersection(lines[i - 1], lines[i])[0])
+    inner_angle = ((num_sides - 2) * np.pi ) / num_sides
+    inner_degrees = inner_angle * 180 / np.pi
 
-    return vertices
+    for line in lines[:,0]:
+        modulo = line[1] % inner_angle
+        degrees = line[1] * 180 / np.pi
+        print("Angle {} ({}); Inner_angle {}({}); Modulo {}".format(
+            line[1], degrees, inner_angle, inner_degrees, modulo))
 
 def auto_canny(image, sigma=0.33):
     # compute the median of the single channel pixel intensities
@@ -174,14 +195,19 @@ def yield_sign_detection(img_in):
     mask = cv2.inRange(img_hsv, lower_red, upper_red)
     res = cv2.bitwise_and(img_in, img_in, mask=mask)
 
-    res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), 40)
+    def compute_values(canny_min, canny_max, hough_angle_resolution, hough_threshold,
+                       houghP_minLineLength, houghP_maxLineGap):
+        res_blur = cv2.GaussianBlur(res[:, :, 2], (5, 5), 40)
 
-    image_for_canny = res_blur
+        image_for_canny = res_blur
 
-    edges = cv2.Canny(image_for_canny, 10, 10)
+        edges = cv2.Canny(image_for_canny, canny_min, canny_max)
 
-    def compute_values(a, b):
-        lines = cv2.HoughLines(edges, 1, a * np.pi / 180, b)
+        lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180, hough_threshold)
+
+        # lines = cv2.HoughLinesP(edges, 1, hough_angle_resolution * np.pi / 180,
+        #                        hough_threshold, houghP_minLineLength, houghP_maxLineGap)
+
         return lines
 
     def draw_image(lines):
@@ -190,6 +216,8 @@ def yield_sign_detection(img_in):
         if lines is None:
             return output_img
         print(len(lines))
+
+        find_polygon(lines, None, num_sides=3)
 
         for i in lines:
             rho, theta = i[0]
@@ -205,14 +233,32 @@ def yield_sign_detection(img_in):
 
         return output_img.astype(dtype=np.uint8)
 
-    result = display_trackbar_window(
-        'yield_sign',
-        draw_image,
-        compute_values,
-        a=param(10, 1),
-        b=param(200, 80)
-    )
+    def draw_image_hough_p(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
 
+        for i in lines:
+            x1, y1, x2, y2 = i[0]
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    # last_args = display_trackbar_window(
+    #     'yield_sign',
+    #     draw_image,
+    #     compute_values,
+    #     canny_min=param(100, 10),
+    #     canny_max=param(200, 10),
+    #     hough_angle_resolution=param(10, 1),
+    #     hough_threshold=param(200, 80),
+    #     houghP_minLineLength=param(40, 1),
+    #     houghP_maxLineGap=param(10, 1)
+    # )
+
+    lines = compute_values(10, 10, 6, 80, 1, 1)
+    vertices = find_vertices(lines)
+    center = find_center(vertices)
+
+    return center
 
 def stop_sign_detection(img_in):
     """Finds the centroid coordinates of a stop sign in the provided
