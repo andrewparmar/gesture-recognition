@@ -143,7 +143,7 @@ def part_2():
     input_images = [
         # 'scene_dne_1',
         # 'scene_stp_1',
-        # 'scene_constr_1',
+        'scene_constr_1',
         'scene_wrng_1',
         'scene_yld_1'
     ]
@@ -151,7 +151,7 @@ def part_2():
     output_labels = [
         # 'ps2-2-a-1',
         # 'ps2-2-a-2',
-        # 'ps2-2-a-3',
+        'ps2-2-a-3',
         'ps2-2-a-4',
         'ps2-2-a-5'
     ]
@@ -159,7 +159,7 @@ def part_2():
     sign_fns = [
         # ps2.do_not_enter_sign_detection,
         # ps2.stop_sign_detection,
-        # ps2.construction_sign_detection,
+        ps2.construction_sign_detection,
         ps2.warning_sign_detection,
         ps2.yield_sign_detection
     ]
@@ -167,7 +167,7 @@ def part_2():
     sign_labels = [
         # 'no_entry',
         # 'stop',
-        # 'construction',
+        'construction',
         'warning',
         'yield'
     ]
