@@ -614,9 +614,94 @@ def do_not_enter_sign_detection(img_in):
     Returns:
         (x,y) typle of the coordinates of the center of the sign.
     """
-    hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
-    lower_red = np.array([0, 245, 245])
-    upper_red = np.array([1, 255, 255])
+    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
+
+    bgr = [0, 0, 255]
+    thresh = 5
+
+    minBGR = np.array([bgr[0] - thresh, bgr[1] - thresh, bgr[2] - thresh])
+    maxBGR = np.array([bgr[0] + thresh, bgr[1] + thresh, bgr[2] + thresh])
+
+    maskBGR = cv2.inRange(img_in, minBGR, maxBGR)
+    res = cv2.bitwise_and(img_in, img_in, mask=maskBGR)
+
+    def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
+                       hough_threshold,
+                       houghP_minLineLength, houghP_maxLineGap):
+        res_blur = cv2.GaussianBlur(res[:, :, 2], (3, 3), blur_sigma)
+
+        image_for_canny = res_blur
+
+        edges = cv2.Canny(image_for_canny, canny_min, canny_max)
+
+        # lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180,
+        #                        hough_threshold)
+
+        lines = cv2.HoughLinesP(edges, 1, hough_angle_resolution * np.pi / 180,
+                                hough_threshold, houghP_minLineLength, houghP_maxLineGap)
+
+        return lines
+
+    def draw_image(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+        if lines is None:
+            return output_img
+        print(len(lines))
+
+        find_polygon(lines, None, num_sides=8)
+
+        for i in lines:
+            rho, theta = i[0]
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    def draw_image_hough_p(lines):
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+
+        if lines is None:
+            return output_img
+        print(len(lines))
+
+        for i in lines:
+            x1, y1, x2, y2 = i[0]
+            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        return output_img.astype(dtype=np.uint8)
+
+    last_args = display_trackbar_window(
+        'no_entry',
+        draw_image_hough_p,
+        compute_values,
+        blur_sigma=param(40, 5),
+        canny_min=param(100, 10),
+        canny_max=param(200, 10),
+        hough_angle_resolution=param(20, 1),
+        hough_threshold=param(200, 80),
+        houghP_minLineLength=param(200, 1),
+        houghP_maxLineGap=param(50, 1)
+    )
+
+    # lines = compute_values(0, 10, 10, 3, 32, 0, 0)      # HoughLines
+    # vertices = compute_values(5, 10, 10, 5, 44, 73, 46)    # HoughLinesP
+    # vertices = compute_values(5, 10, 10, 15, 18, 80, 14)  # HoughLinesP
+    vertices = compute_values(2, 10, 10, 1, 4, 3, 1)  # HoughLinesP
+
+    # print(len(lines))
+    # vertices = find_vertices(lines)
+    # import pdb; pdb.set_trace()
+    center = find_center_2(vertices)
+    #
+    return center
 
 
 def traffic_sign_detection(img_in):
