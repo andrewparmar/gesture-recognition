@@ -111,7 +111,7 @@ def find_center(vertices):
 
 ##########################################################################################
 
-def traffic_light_detection(img_in, radii_range):
+def traffic_light_detection(img_in, radii_range, blackout=False):
     """Finds the coordinates of a traffic light image given a radii
     range.
 
@@ -219,18 +219,26 @@ def traffic_light_detection(img_in, radii_range):
     #     max_radius=param(40, 30),
     # )
     if len(collections) == 0:
-        return None, None
+        if blackout:
+            return None, None, img_in
+        else:
+            return None, None
 
     detections = sum(collections) / len(collections)
     detections = detections.astype(np.uint64)
     coordinates, state = _get_center_and_state(img_in, detections)
-    #
-    # # return coordinates, state, detections
+
+    if blackout:
+        for circle_coordinates in detections[0, :]:
+            # import pdb; pdb.set_trace()
+            x, y, r = tuple(int(i) for i in circle_coordinates)
+            cv2.circle(img_in, (x, y), r+2, (0, 0, 0), -1)
+        return coordinates, state, img_in
+
     return coordinates, state
-    # # TODO: Remove the last item
 
 
-def yield_sign_detection(img_in):
+def yield_sign_detection(img_in, blackout=False):
     """Finds the centroid coordinates of a yield sign in the provided
     image.
 
@@ -254,7 +262,7 @@ def yield_sign_detection(img_in):
 
         edges = cv2.Canny(image_for_canny, canny_min, canny_max)
 
-        lines = cv2.HoughLines(edges, 0.5, hough_angle_resolution * np.pi / 180,
+        lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180,
                                hough_threshold)
 
         # lines = cv2.HoughLinesP(edges, 1, hough_angle_resolution * np.pi / 180,
@@ -263,8 +271,8 @@ def yield_sign_detection(img_in):
         return lines
 
     def draw_image(lines):
-        # output_img = cv2.cvtColor(img_binary, cv2.COLOR_GRAY2BGR)
-        output_img = np.copy(img_binary)
+        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+        # output_img = np.copy(img_binary)
 
         if lines is None:
             return output_img
@@ -318,24 +326,30 @@ def yield_sign_detection(img_in):
     #     blur_sigma=param(40, 3),
     #     canny_min=param(100, 10),
     #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(20, 1),
+    #     hough_angle_resolution=param(20, 6),
     #     hough_threshold=param(200, 80),
     #     houghP_minLineLength=param(80, 1),
     #     houghP_maxLineGap=param(50, 1)
     # )
 
     # vertices = compute_values(3, 10, 10, 6, 27, 38, 25)
-    vertices = compute_values(3, 10, 10, 6, 80, 1, 1)
-
-    if vertices is None or len(vertices) < 3:
-        return None
-
+    lines = compute_values(3, 10, 10, 6, 80, 1, 1)
+    # import pdb; pdb.set_trace()
+    if lines is None or len(lines) < 3:
+        if blackout:
+            return None, img_in
+        else:
+            return None
+    vertices = find_vertices(lines)
     center = _get_polygon_center(vertices, triangle=True)
+
+    if blackout:
+        return center, img_in
 
     return center
 
 
-def stop_sign_detection(img_in):
+def stop_sign_detection(img_in, blackout=False):
     """Finds the centroid coordinates of a stop sign in the provided
     image.
 
@@ -399,10 +413,13 @@ def stop_sign_detection(img_in):
 
     center = _get_polygon_center(vertices)
 
+    if blackout:
+        return center, img_in
+
     return center
 
 
-def warning_sign_detection(img_in):
+def warning_sign_detection(img_in, blackout=False):
     """Finds the centroid coordinates of a warning sign in the
     provided image.
 
@@ -467,14 +484,20 @@ def warning_sign_detection(img_in):
     vertices = compute_values(0, 71, 49, 3, 51, 1, 1)
 
     if vertices is None:
-        return None
+        if blackout:
+            return None, img_in
+        else:
+            return None
 
     center = _get_polygon_center(vertices)
+
+    if blackout:
+        return center, img_in
 
     return center
 
 
-def construction_sign_detection(img_in):
+def construction_sign_detection(img_in, blackout=False):
     """Finds the centroid coordinates of a construction sign in the
     provided image.
 
@@ -537,10 +560,13 @@ def construction_sign_detection(img_in):
 
     center = _get_polygon_center(vertices)
 
+    if blackout:
+        return center, img_in
+
     return center
 
 
-def do_not_enter_sign_detection(img_in, dims=False):
+def do_not_enter_sign_detection(img_in, blackout=False):
     """Find the centroid coordinates of a do not enter sign in the
     provided image.
 
@@ -616,10 +642,13 @@ def do_not_enter_sign_detection(img_in, dims=False):
     if circle_coordinates is None:
         return None
 
-    if dims:
-        return tuple(circle_coordinates[0, 0, :2]), circle_coordinates[0, 0, 2]
+    x, y, r = tuple(int(i) for i in circle_coordinates[0, 0, :])
 
-    return tuple(int(i) for i in circle_coordinates[0, 0, :2])
+    if blackout:
+        cv2.circle(img_in, (x, y), r+2, (0, 0, 0), -1)
+        return (x, y), img_in
+
+    return (x, y)
 
 
 def traffic_sign_detection(img_in):
@@ -656,10 +685,11 @@ def traffic_sign_detection(img_in):
         'stop': stop_sign_detection,
         'construction': construction_sign_detection,
         'warning': warning_sign_detection,
+        'traffic_light': traffic_light_detection,
         'yield': yield_sign_detection,
-        'traffic_light': traffic_light_detection
     }
 
+    img_copy = np.copy(img_in)
     signs_present = {}
 
     for name, handler in handlers.items():
@@ -669,16 +699,16 @@ def traffic_sign_detection(img_in):
         if name == 'traffic_light':
             # import pdb; pdb.set_trace()
             radii_range = range(5, 30, 1)
-            center, _ = handler(img_in, radii_range)
+            center, _, img_copy= handler(img_copy, radii_range, blackout=True)
         else:
-            center = handler(img_in)
+            center, img_copy = handler(img_copy, blackout=True)
         if center:
             signs_present[name] = center
 
     print(signs_present)
 
     output_img = np.copy(img_in)
-    import pdb; pdb.set_trace()
+
     for name, value in signs_present.items():
         output_img = _add_cross_hairs(output_img, value)
 
