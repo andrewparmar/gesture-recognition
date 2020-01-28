@@ -4,7 +4,7 @@ CS6476 Problem Set 2 imports. Only Numpy and cv2 are allowed.
 import cv2
 import numpy as np
 
-from trackbar import display_trackbar_window, param
+# from trackbar import display_trackbar_window, param
 
 
 # Helper functions #######################################################################
@@ -64,28 +64,50 @@ def _get_polygon_center(vertices, triangle=False):
 
 
 def color_filter_bgr(img_in, bgr, tolerance):
-    minBGR = np.array([bgr[0] - tolerance, bgr[1] - tolerance, bgr[2] - tolerance])
-    maxBGR = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
+    min_bgr = np.array([bgr[0] - tolerance, bgr[1] - tolerance, bgr[2] - tolerance])
+    max_bgr = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
 
-    maskBGR = cv2.inRange(img_in, minBGR, maxBGR)
-    img_binary = cv2.bitwise_and(img_in, img_in, mask=maskBGR)
+    mask_bgr = cv2.inRange(img_in, min_bgr, max_bgr)
+    img_binary = cv2.bitwise_and(img_in, img_in, mask=mask_bgr)
 
     return img_binary
 
 
+def draw_lines(img_in, lines):
+    output_img = np.copy(img_in)
+
+    for i in lines:
+        rho, theta = i[0]
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
+        cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+    return output_img
+
+
 # Source: https://stackoverflow.com/a/46572063
-def intersection(line1, line2):
+def intersection(line_1, line_2):
     """Finds the intersection of two lines given in Hesse normal form.
     Returns closest integer pixel locations.
     See https://stackoverflow.com/a/383527/5087436
     """
-    rho1, theta1 = line1[0]
-    rho2, theta2 = line2[0]
+    rho_1, theta_1 = line_1[0]
+    rho_2, theta_2 = line_2[0]
+
+    if theta_1 == theta_2:
+        return None
+
     A = np.array([
-        [np.cos(theta1), np.sin(theta1)],
-        [np.cos(theta2), np.sin(theta2)]
+        [np.cos(theta_1), np.sin(theta_1)],
+        [np.cos(theta_2), np.sin(theta_2)]
     ])
-    b = np.array([[rho1], [rho2]])
+    b = np.array([[rho_1], [rho_2]])
     x0, y0 = np.linalg.solve(A, b)
     x0, y0 = int(np.round(x0)), int(np.round(y0))
     return [[x0, y0]]
@@ -94,7 +116,9 @@ def intersection(line1, line2):
 def find_vertices(lines):
     vertices = []
     for i in range(len(lines)):
-        vertices.append(intersection(lines[i - 1], lines[i])[0])
+        vertex = intersection(lines[i - 1], lines[i])[0]
+        if vertex:
+            vertices.append(vertex)
 
     vertices = np.array(vertices)
     return vertices
@@ -108,6 +132,26 @@ def find_center(vertices):
 
     return (col, row)
 
+
+def cluster_yield_sign_lines(lines):
+    angles = np.array([0.524, 1.571, 2.618], dtype=np.float32)
+
+    good_lines = np.array([], dtype=np.float32)
+
+    for line in lines:
+        _, theta = line[0]
+        if round(theta, 3) in angles:
+            good_lines = np.append(good_lines, line)
+
+    good_lines = good_lines.reshape(-1, 2)
+
+    if len(lines) > 3:
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        ret, label, center = cv2.kmeans(good_lines, 3, None, criteria, 10,
+                                        cv2.KMEANS_RANDOM_CENTERS)
+        lines = center.reshape(3, 1, 2)
+
+    return lines
 
 ##########################################################################################
 
@@ -254,19 +298,19 @@ def yield_sign_detection(img_in, blackout=False):
     tolerance = 1
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
-    def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
-                       hough_threshold, houghP_minLineLength, houghP_maxLineGap):
-        img_binary_blur = cv2.GaussianBlur(img_binary[:, :, 2], (5, 5), blur_sigma)
+    def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution, hough_threshold):
+        # img_binary_blur = cv2.GaussianBlur(img_binary[:, :, 2], (5, 5), blur_sigma)
 
-        image_for_canny = img_binary_blur
+        image_for_canny = img_binary
 
         edges = cv2.Canny(image_for_canny, canny_min, canny_max)
 
-        lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180,
-                               hough_threshold)
-
-        # lines = cv2.HoughLinesP(edges, 1, hough_angle_resolution * np.pi / 180,
-        #                         hough_threshold, houghP_minLineLength, houghP_maxLineGap)
+        while hough_threshold > 0:
+            lines = cv2.HoughLines(edges, 1, hough_angle_resolution * np.pi / 180, hough_threshold)
+            if lines is not None and len(lines) >= 6:
+                break
+            else:
+                hough_threshold -= 1
 
         return lines
 
@@ -276,45 +320,17 @@ def yield_sign_detection(img_in, blackout=False):
 
         if lines is None:
             return output_img
-        print(len(lines))
 
-        # find_polygon(lines, None, num_sides=3)
+        # Raw Hough lines
+        output_img = draw_lines(output_img, lines)
 
-        for i in lines:
-            rho, theta = i[0]
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            x1 = int(x0 + 1000 * (-b))
-            y1 = int(y0 + 1000 * (a))
-            x2 = int(x0 - 1000 * (-b))
-            y2 = int(y0 - 1000 * (a))
-            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        lines = cluster_yield_sign_lines(lines)
 
-        print(lines)
-        try:
-            vertices = find_vertices(lines)
-            center = _get_polygon_center(vertices, triangle=True)
-            output_img = _add_cross_hairs(output_img, center)
-        except:
-            print("***** Error")
+        # Angle filtered and clustered lines.
+        output_img = draw_lines(output_img, lines)
 
-        return output_img.astype(dtype=np.uint8)
-
-    def draw_image_hough_p(lines):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-
-        if lines is None:
-            return output_img
-        print(len(lines))
-
-        for i in lines:
-            x1, y1, x2, y2 = i[0]
-            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-        center = _get_polygon_center(lines, triangle=True)
-
+        vertices = find_vertices(lines)
+        center = _get_polygon_center(vertices, triangle=True)
         output_img = _add_cross_hairs(output_img, center)
 
         return output_img.astype(dtype=np.uint8)
@@ -327,19 +343,18 @@ def yield_sign_detection(img_in, blackout=False):
     #     canny_min=param(100, 10),
     #     canny_max=param(200, 10),
     #     hough_angle_resolution=param(20, 6),
-    #     hough_threshold=param(200, 80),
-    #     houghP_minLineLength=param(80, 1),
-    #     houghP_maxLineGap=param(50, 1)
+    #     hough_threshold=param(200, 40),
     # )
 
-    # vertices = compute_values(3, 10, 10, 6, 27, 38, 25)
-    lines = compute_values(3, 10, 10, 6, 80, 1, 1)
-    # import pdb; pdb.set_trace()
+    lines = compute_values(3, 10, 10, 6, 40)
+
     if lines is None or len(lines) < 3:
         if blackout:
             return None, img_in
         else:
             return None
+
+    lines = cluster_yield_sign_lines(lines)
     vertices = find_vertices(lines)
     center = _get_polygon_center(vertices, triangle=True)
 
@@ -409,6 +424,8 @@ def stop_sign_detection(img_in, blackout=False):
     vertices = compute_values(5, 10, 10, 3, 18, 0, 14)
 
     if vertices is None:
+        if blackout:
+            return None, img_in
         return None
 
     center = _get_polygon_center(vertices)
@@ -556,6 +573,8 @@ def construction_sign_detection(img_in, blackout=False):
     vertices = compute_values(10, 10, 10, 15, 50, 0, 46)
 
     if vertices is None:
+        if blackout:
+            return None, img_in
         return None
 
     center = _get_polygon_center(vertices)
@@ -608,7 +627,8 @@ def do_not_enter_sign_detection(img_in, blackout=False):
             return None
 
     def draw_image_hough(circles):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
+        # output_img = cv2.cvtColor(img_binary, cv2.COLOR_GRAY2BGR)
+        output_img = np.copy(img_binary)
 
         if circles is None:
             return output_img
@@ -640,6 +660,8 @@ def do_not_enter_sign_detection(img_in, blackout=False):
     circle_coordinates = compute_values(1, 80, 50, 8, 20, 45)
 
     if circle_coordinates is None:
+        if blackout:
+            return None, img_in
         return None
 
     x, y, r = tuple(int(i) for i in circle_coordinates[0, 0, :])
@@ -744,7 +766,106 @@ def traffic_sign_detection_noisy(img_in):
               These are just example values and may not represent a
               valid scene.
     """
-    raise NotImplementedError
+    handlers = {
+        'no_entry': do_not_enter_sign_detection,
+        'stop': stop_sign_detection,
+        'construction': construction_sign_detection,
+        'warning': warning_sign_detection,
+        'traffic_light': traffic_light_detection,
+        'yield': yield_sign_detection,
+    }
+
+    img = np.copy(img_in)
+
+    def compute_values(h, h_color, template_window, search_window, gaussian_blur_window, gaussian_blur_sigma):
+        denoised_img = np.copy(img_in)
+        denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
+        denoised_img = cv2.fastNlMeansDenoisingColored(
+            denoised_img, None, h, h_color, template_window, search_window
+        )
+        # denoised_img = cv2.medianBlur(denoised_img, 5)
+        # denoised_img = cv2.addWeighted(denoised_img, 2, img, -0.25, 0)
+
+        # return denoised_img
+
+        img_copy = np.copy(denoised_img)
+        signs_present = {}
+
+        for name, handler in handlers.items():
+            # import pdb; pdb.set_trace()
+            print("**********", name)
+
+            if name == 'traffic_light':
+                # import pdb; pdb.set_trace()
+                radii_range = range(5, 30, 1)
+                center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+            else:
+                center, img_copy = handler(img_copy, blackout=True)
+            if center:
+                signs_present[name] = center
+
+        print(signs_present)
+
+        # output_img = np.copy(img_in)
+        output_img = img_copy
+
+        for name, value in signs_present.items():
+            output_img = _add_cross_hairs(output_img, value)
+
+        return output_img
+
+    def draw_image_hough_p(img):
+        # output_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        output_img = img
+        return output_img.astype(dtype=np.uint8)
+
+    # last_args = display_trackbar_window(
+    #     'yield_sign',
+    #     draw_image_hough_p,
+    #     compute_values,
+    #     h=param(40, 5),
+    #     h_color=param(100, 10),
+    #     template_window=param(200, 10),
+    #     search_window=param(20, 1),
+    #     gaussian_blur_window=param(200, 80),
+    #     gaussian_blur_sigma=param(80, 1)
+    # )
+
+    # img = compute_values(
+    #     last_args['h'],
+    #     last_args['h_color'],
+    #     last_args['template_window'],
+    #     last_args['search_window'],
+    #     last_args['gaussian_blur_window'],
+    #     last_args['gaussian_blur_sigma']
+    # )
+
+    # img_copy = np.copy(img)
+    # signs_present = {}
+    #
+    # for name, handler in handlers.items():
+    #     # import pdb; pdb.set_trace()
+    #     print("**********", name)
+    #
+    #     if name == 'traffic_light':
+    #         # import pdb; pdb.set_trace()
+    #         radii_range = range(5, 30, 1)
+    #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+    #     else:
+    #         center, img_copy = handler(img_copy, blackout=True)
+    #     if center:
+    #         signs_present[name] = center
+    #
+    # print(signs_present)
+    #
+    # output_img = np.copy(img_in)
+    #
+    # for name, value in signs_present.items():
+    #     output_img = _add_cross_hairs(output_img, value)
+    #
+    # return signs_present
+
+    # print(last_args)
 
 
 def traffic_sign_detection_challenge(img_in):
