@@ -205,8 +205,14 @@ def part_3():
 
 
 def part_4():
-    input_images = ['scene_some_signs_noisy', 'scene_all_signs_noisy']
-    output_labels = ['ps2-4-a-1', 'ps2-4-a-2']
+    input_images = [
+        'scene_some_signs_noisy',
+        'scene_all_signs_noisy'
+    ]
+    output_labels = [
+        'ps2-4-a-1',
+        'ps2-4-a-2'
+    ]
 
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
@@ -244,6 +250,6 @@ if __name__ == '__main__':
     part_1()
     part_2()
     part_3()
-    # part_4()
+    part_4()
     # part_5a()
     # part_5b()

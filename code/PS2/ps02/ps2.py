@@ -187,7 +187,7 @@ def traffic_light_detection(img_in, radii_range, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [51, 51, 51]
-    tolerance = 2
+    tolerance = 30
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
     img_binary_single_channel = img_binary[:,:,0]
     # cv2.imwrite("part1_test.png".format(), img_binary_single_channel)
@@ -295,7 +295,7 @@ def yield_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 0, 255]
-    tolerance = 1
+    tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution, hough_threshold):
@@ -377,7 +377,7 @@ def stop_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 0, 204]
-    tolerance = 5
+    tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
@@ -454,8 +454,8 @@ def warning_sign_detection(img_in, blackout=False):
     # mask = cv2.inRange(img_hsv, lower_yellow, upper_yellow)
     # res = cv2.bitwise_and(img_in, img_in, mask=mask)
 
-    bgr = [3, 255, 255]
-    tolerance = 5
+    bgr = [9, 254, 255]
+    tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
@@ -527,7 +527,7 @@ def construction_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 127, 255]
-    tolerance = 5
+    tolerance = 15
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
@@ -598,7 +598,7 @@ def do_not_enter_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 0, 255]
-    tolerance = 2
+    tolerance = 12
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
     img_binary_gray = cv2.cvtColor(img_binary, cv2.COLOR_BGR2GRAY)
 
@@ -650,11 +650,11 @@ def do_not_enter_sign_detection(img_in, blackout=False):
     #     draw_image_hough,
     #     compute_values,
     #     accumulator_resolution=param(3, 1),
-    #     min_dist=param(80, 10),
+    #     min_dist=param(80, 80),
     #     param1=param(100, 50),
     #     param2=param(20, 8),
-    #     min_radius=param(100, 10),
-    #     max_radius=param(100, 30),
+    #     min_radius=param(100, 20),
+    #     max_radius=param(100, 45),
     # )
 
     circle_coordinates = compute_values(1, 80, 50, 8, 20, 45)
@@ -777,42 +777,44 @@ def traffic_sign_detection_noisy(img_in):
 
     img = np.copy(img_in)
 
-    def compute_values(h, h_color, template_window, search_window, gaussian_blur_window, gaussian_blur_sigma):
+    # def compute_values(h, h_color, template_window, search_window, gaussian_blur_window, gaussian_blur_sigma):
+    def compute_values(d, sigma_color, sigma_space):
         denoised_img = np.copy(img_in)
-        denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
-        denoised_img = cv2.fastNlMeansDenoisingColored(
-            denoised_img, None, h, h_color, template_window, search_window
-        )
+        denoised_img = cv2.bilateralFilter(denoised_img, d, sigma_color, sigma_space)
+        # denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
+        # denoised_img = cv2.fastNlMeansDenoisingColored(
+        #     denoised_img, None, h, h_color, template_window, search_window
+        # )
         # denoised_img = cv2.medianBlur(denoised_img, 5)
         # denoised_img = cv2.addWeighted(denoised_img, 2, img, -0.25, 0)
 
-        # return denoised_img
+        return denoised_img
 
-        img_copy = np.copy(denoised_img)
-        signs_present = {}
-
-        for name, handler in handlers.items():
-            # import pdb; pdb.set_trace()
-            print("**********", name)
-
-            if name == 'traffic_light':
-                # import pdb; pdb.set_trace()
-                radii_range = range(5, 30, 1)
-                center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-            else:
-                center, img_copy = handler(img_copy, blackout=True)
-            if center:
-                signs_present[name] = center
-
-        print(signs_present)
+        # img_copy = np.copy(denoised_img)
+        # signs_present = {}
+        #
+        # for name, handler in handlers.items():
+        #     # import pdb; pdb.set_trace()
+        #     print("**********", name)
+        #
+        #     if name == 'traffic_light':
+        #         # import pdb; pdb.set_trace()
+        #         radii_range = range(5, 30, 1)
+        #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+        #     else:
+        #         center, img_copy = handler(img_copy, blackout=True)
+        #     if center:
+        #         signs_present[name] = center
+        #
+        # print(signs_present)
 
         # output_img = np.copy(img_in)
-        output_img = img_copy
-
-        for name, value in signs_present.items():
-            output_img = _add_cross_hairs(output_img, value)
-
-        return output_img
+        # output_img = img_copy
+        #
+        # for name, value in signs_present.items():
+        #     output_img = _add_cross_hairs(output_img, value)
+        #
+        # return output_img
 
     def draw_image_hough_p(img):
         # output_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -823,12 +825,9 @@ def traffic_sign_detection_noisy(img_in):
     #     'yield_sign',
     #     draw_image_hough_p,
     #     compute_values,
-    #     h=param(40, 5),
-    #     h_color=param(100, 10),
-    #     template_window=param(200, 10),
-    #     search_window=param(20, 1),
-    #     gaussian_blur_window=param(200, 80),
-    #     gaussian_blur_sigma=param(80, 1)
+    #     d=param(100, 45),
+    #     sigma_color=param(200, 70),
+    #     sigma_space=param(200, 70)
     # )
 
     # img = compute_values(
@@ -840,30 +839,36 @@ def traffic_sign_detection_noisy(img_in):
     #     last_args['gaussian_blur_sigma']
     # )
 
-    # img_copy = np.copy(img)
-    # signs_present = {}
-    #
-    # for name, handler in handlers.items():
-    #     # import pdb; pdb.set_trace()
-    #     print("**********", name)
-    #
-    #     if name == 'traffic_light':
-    #         # import pdb; pdb.set_trace()
-    #         radii_range = range(5, 30, 1)
-    #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-    #     else:
-    #         center, img_copy = handler(img_copy, blackout=True)
-    #     if center:
-    #         signs_present[name] = center
-    #
-    # print(signs_present)
-    #
-    # output_img = np.copy(img_in)
-    #
-    # for name, value in signs_present.items():
-    #     output_img = _add_cross_hairs(output_img, value)
-    #
-    # return signs_present
+    # img = compute_values(
+    #     last_args['d'],
+    #     last_args['sigma_color'],
+    #     last_args['sigma_space'],
+    # )
+
+    img = compute_values(45, 70, 70)
+
+    img_copy = np.copy(img)
+    signs_present = {}
+
+    for name, handler in handlers.items():
+        print("**********", name)
+
+        if name == 'traffic_light':
+            radii_range = range(5, 30, 1)
+            center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+        else:
+            center, img_copy = handler(img_copy, blackout=True)
+        if center:
+            signs_present[name] = center
+
+    print(signs_present)
+
+    output_img = np.copy(img_in)
+
+    for name, value in signs_present.items():
+        output_img = _add_cross_hairs(output_img, value)
+
+    return signs_present
 
     # print(last_args)
 
