@@ -21,18 +21,25 @@ def _add_cross_hairs(img, coordinates):
 
     return img
 
-def _add_text(img, text):
+def _add_text(img, text, coordinate):
     h, w, _ = img.shape
-    org = (w - 225, h - 10)
+    # org = (w - 225, h - 10)
+    x, y = coordinate
+    org = (x + 30, y + 5)
     # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
-    font = cv2.FONT_HERSHEY_COMPLEX
-    fontScale = 0.6
-    color_outline = (0, 0, 0)
+    font = cv2.FONT_HERSHEY_DUPLEX
+    fontScale = 0.5
+    color_outline = (255, 0, 0)
     color_text = (255, 255, 255)
-    thickness = 2
-    cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
-    cv2.putText(img, text, org, font, fontScale, color_text, int(thickness / 2),
-                cv2.LINE_AA)
+    thickness = 0.9
+
+    text_width, text_height = cv2.getTextSize(text, font, fontScale)[0]
+    if (org[0] + text_width) > w:
+        org = (org[0] - text_width - 30, y)
+
+    cv2.putText(img, text, org, font, fontScale, color_outline, thickness)
+    # cv2.putText(img, text, org, font, fontScale, color_text, int(thickness / 2),
+    #             cv2.LINE_AA)
     return img
 
 
@@ -71,7 +78,7 @@ def draw_tl_center(image_in, center, state):
     # Add text.
     x, y = center
     text = "(({x}, {y}), '{state}')".format(x=x, y=y, state=state)
-    img = _add_text(img, text)
+    img = _add_text(img, text, (x, y))
 
     return img
 
@@ -102,8 +109,10 @@ def mark_traffic_signs(image_in, signs_dict):
     for name, center in signs_dict.items():
         img = _add_cross_hairs(img, center)
         x, y = center
-        text = "(({x}, {y}), '{name}')".format(x=x, y=y, name=name)
-        img = _add_text(img, text)
+        text = "({x}, {y})".format(x=x, y=y)
+        img = _add_text(img, text, (x, y))
+        text = "{name}".format(name=name)
+        img = _add_text(img, text, (x, y + 15))
 
     return img
 
@@ -119,21 +128,8 @@ def part_1():
     img_labels = list(zip(input_images, output_labels))
 
     for img_in, label in img_labels:
-        # print(img_in)
         tl = cv2.imread("input_images/{}.png".format(img_in))
-        # coordinates, state, circles = ps2.traffic_light_detection(tl, radii_range)
         coordinates, state = ps2.traffic_light_detection(tl, radii_range)
-
-        # # ### TODO REMOVE #####################################################
-        # tl_cpy = np.copy(tl)
-        # for i in circles[0, :]:
-        #     # draw the outer circle
-        #     cv2.circle(tl_cpy, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        #     # draw the center of the circle
-        #     cv2.circle(tl_cpy, (i[0], i[1]), 2, (0, 0, 255), 3)
-        # cv2.imwrite("temp_{}.png".format(label), tl_cpy)
-        # #
-        # # ### TODO REMOVE #####################################################
 
         img_out = draw_tl_center(tl, coordinates, state)
         cv2.imwrite("{}.png".format(label), img_out)
@@ -146,7 +142,6 @@ def part_2():
         'scene_constr_1',
         'scene_wrng_1',
         'scene_yld_1'
-        # 'scene_yld_double'
     ]
 
     output_labels = [
