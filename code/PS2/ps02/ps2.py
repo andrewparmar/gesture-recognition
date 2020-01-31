@@ -28,15 +28,8 @@ def _get_center_and_state(img_in, circles):
 
     img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
 
-    # print("Img")
-    # for circle in coordinate_list:
-    #     print(img_in[circle[1], circle[0]])
-
-    # print("Hsv")
     values = []
     for circle in coordinate_list:
-        # print(img_hsv[circle[1], circle[0]])
-        # import pdb; pdb.set_trace()
         values.append(sum(img_hsv[circle[1], circle[0]]))
 
     index = np.argmax(values)
@@ -64,6 +57,9 @@ def _get_polygon_center(vertices, triangle=False):
 
 
 def color_filter_bgr(img_in, bgr, tolerance):
+    """
+    Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
+    """
     min_bgr = np.array([bgr[0] - tolerance, bgr[1] - tolerance, bgr[2] - tolerance])
     max_bgr = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
 
@@ -91,7 +87,6 @@ def draw_lines(img_in, lines):
     return output_img
 
 
-# Source: https://stackoverflow.com/a/46572063
 def intersection(line_1, line_2):
     """Finds the intersection of two lines given in Hesse normal form.
     Returns closest integer pixel locations.
@@ -125,10 +120,10 @@ def find_vertices(lines):
 
 
 def find_center(vertices):
-    vert = np.array(vertices)
+    vertex_array = np.array(vertices)
 
-    row = vert[:, 1].mean(dtype=int)
-    col = vert[:, 0].mean(dtype=int)
+    row = vertex_array[:, 1].mean(dtype=int)
+    col = vertex_array[:, 0].mean(dtype=int)
 
     return (col, row)
 
@@ -184,13 +179,10 @@ def traffic_light_detection(img_in, radii_range, blackout=False):
         state (str): traffic light state. A value in {'red', 'yellow',
                      'green'}
     """
-    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-
     bgr = [51, 51, 51]
     tolerance = 30
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
     img_binary_single_channel = img_binary[:,:,0]
-    # cv2.imwrite("part1_test.png".format(), img_binary_single_channel)
 
     collections = []
     for radius in radii_range:
@@ -203,8 +195,6 @@ def traffic_light_detection(img_in, radii_range, blackout=False):
                                    minRadius=radius,
                                    maxRadius=radius)
         if circles is not None:
-            # print("Radius: {}, Found: {}".format(radius, len(circles[0])))
-
             # The accumulator returns in order of the highest votes.
             # Additional expansion could check if all three x values are equal, as traffic
             # lights are in a vertical line.
@@ -212,56 +202,8 @@ def traffic_light_detection(img_in, radii_range, blackout=False):
                 detections = circles
                 collections.append(detections)
         else:
-            # print("Radius: {}, Found: 0".format(radius, ))
-            # import pdb; pdb.set_trace()
             pass
-    # import pdb; pdb.set_trace()
-    # print(radius)
-    # print(circles.shape)
-    # print(circles)
 
-    def compute_values(accumulator_resolution, min_dist, param1, param2, min_radius, max_radius):
-
-        circles = cv2.HoughCircles(img_binary_single_channel,
-                                   cv2.HOUGH_GRADIENT,
-                                   accumulator_resolution,  # inverse ratio, accumulator resolution
-                                   min_dist,  # minDist between circle centers
-                                   param1=param1,  # Canny edge detector upper threshold
-                                   param2=param2,  # Accumulator value for circle centers
-                                   minRadius=min_radius,
-                                   maxRadius=max_radius)
-
-        return circles
-
-    def draw_image_hough_p(circles):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-
-        if circles is None:
-            return output_img
-        print(len(circles[0]))
-
-        for i in circles[0, :]:
-            # draw the outer circle
-            cv2.circle(output_img, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            # draw the center of the circle
-            cv2.circle(output_img, (i[0], i[1]), 2, (0, 0, 255), 3)
-            print(i)
-
-            # output_img = _add_cross_hairs(output_img, (int(i[0]), int(i[1])))
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'traffic_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     accumulator_resolution=param(3, 1),
-    #     min_dist=param(80, 10),
-    #     param1=param(100, 50),
-    #     param2=param(20, 8),
-    #     min_radius=param(40, 10),
-    #     max_radius=param(40, 30),
-    # )
     if len(collections) == 0:
         if blackout:
             return None, None, img_in
@@ -274,7 +216,6 @@ def traffic_light_detection(img_in, radii_range, blackout=False):
 
     if blackout:
         for circle_coordinates in detections[0, :]:
-            # import pdb; pdb.set_trace()
             x, y, r = tuple(int(i) for i in circle_coordinates)
             cv2.circle(img_in, (x, y), r+2, (0, 0, 0), -1)
         return coordinates, state, img_in
@@ -292,15 +233,11 @@ def yield_sign_detection(img_in, blackout=False):
     Returns:
         (x,y) tuple of coordinates of the center of the yield sign.
     """
-    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-
     bgr = [0, 0, 255]
     tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution, hough_threshold):
-        # img_binary_blur = cv2.GaussianBlur(img_binary[:, :, 2], (5, 5), blur_sigma)
-
         image_for_canny = img_binary
 
         edges = cv2.Canny(image_for_canny, canny_min, canny_max)
@@ -313,38 +250,6 @@ def yield_sign_detection(img_in, blackout=False):
                 hough_threshold -= 1
 
         return lines
-
-    def draw_image(lines):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-        # output_img = np.copy(img_binary)
-
-        if lines is None:
-            return output_img
-
-        # Raw Hough lines
-        output_img = draw_lines(output_img, lines)
-
-        lines = cluster_yield_sign_lines(lines)
-
-        # Angle filtered and clustered lines.
-        output_img = draw_lines(output_img, lines)
-
-        vertices = find_vertices(lines)
-        center = _get_polygon_center(vertices, triangle=True)
-        output_img = _add_cross_hairs(output_img, center)
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image,
-    #     compute_values,
-    #     blur_sigma=param(40, 3),
-    #     canny_min=param(100, 10),
-    #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(20, 6),
-    #     hough_threshold=param(200, 40),
-    # )
 
     lines = compute_values(3, 10, 10, 6, 40)
 
@@ -374,8 +279,6 @@ def stop_sign_detection(img_in, blackout=False):
     Returns:
         (x,y) tuple of the coordinates of the center of the stop sign.
     """
-    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-
     bgr = [0, 0, 204]
     tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
@@ -393,33 +296,6 @@ def stop_sign_detection(img_in, blackout=False):
                                 hough_threshold, houghP_minLineLength, houghP_maxLineGap)
 
         return lines
-
-    def draw_image_hough_p(lines):
-        # output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-        output_img = np.copy(img_binary)
-
-        if lines is None:
-            return output_img
-        print(len(lines))
-
-        for i in lines:
-            x1, y1, x2, y2 = i[0]
-            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     blur_sigma=param(40, 5),
-    #     canny_min=param(100, 10),
-    #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(20, 1),
-    #     hough_threshold=param(200, 80),
-    #     houghP_minLineLength=param(200, 1),
-    #     houghP_maxLineGap=param(50, 1)
-    # )
 
     vertices = compute_values(5, 10, 10, 3, 18, 0, 14)
 
@@ -446,14 +322,6 @@ def warning_sign_detection(img_in, blackout=False):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    # img_hsv = cv2.cvtColor(img_in, cv2.COLOR_BGR2HSV)
-    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-    # lower_yellow = normalize_hsv(np.array([55, 97, 99]))
-    # upper_yellow = normalize_hsv(np.array([60, 98.82, 100]))
-    #
-    # mask = cv2.inRange(img_hsv, lower_yellow, upper_yellow)
-    # res = cv2.bitwise_and(img_in, img_in, mask=mask)
-
     bgr = [9, 254, 255]
     tolerance = 80
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
@@ -471,32 +339,6 @@ def warning_sign_detection(img_in, blackout=False):
                                 hough_threshold, houghP_minLineLength, houghP_maxLineGap)
 
         return lines
-
-    def draw_image_hough_p(lines):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-
-        if lines is None:
-            return output_img
-        print(len(lines))
-
-        for i in lines:
-            x1, y1, x2, y2 = i[0]
-            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     blur_sigma=param(40, 5),
-    #     canny_min=param(100, 10),
-    #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(20, 1),
-    #     hough_threshold=param(200, 80),
-    #     houghP_minLineLength=param(80, 1),
-    #     houghP_maxLineGap=param(50, 1)
-    # )
 
     vertices = compute_values(0, 71, 49, 3, 51, 1, 1)
 
@@ -544,32 +386,6 @@ def construction_sign_detection(img_in, blackout=False):
 
         return lines
 
-    def draw_image_hough_p(lines):
-        output_img = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
-
-        if lines is None:
-            return output_img
-        print(len(lines))
-
-        for i in lines:
-            x1, y1, x2, y2 = i[0]
-            cv2.line(output_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     blur_sigma=param(40, 5),
-    #     canny_min=param(100, 10),
-    #     canny_max=param(200, 10),
-    #     hough_angle_resolution=param(20, 1),
-    #     hough_threshold=param(200, 80),
-    #     houghP_minLineLength=param(80, 1),
-    #     houghP_maxLineGap=param(50, 1)
-    # )
-
     vertices = compute_values(10, 10, 10, 15, 50, 0, 46)
 
     if vertices is None:
@@ -595,8 +411,6 @@ def do_not_enter_sign_detection(img_in, blackout=False):
     Returns:
         (x,y) tuple of the coordinates of the center of the sign.
     """
-    img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
-
     bgr = [0, 0, 255]
     tolerance = 40
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
@@ -625,37 +439,6 @@ def do_not_enter_sign_detection(img_in, blackout=False):
             return detections
         else:
             return None
-
-    def draw_image_hough(circles):
-        # output_img = cv2.cvtColor(img_binary, cv2.COLOR_GRAY2BGR)
-        output_img = np.copy(img_binary)
-
-        if circles is None:
-            return output_img
-        print(len(circles[0]))
-
-        for i in circles[0, :]:
-            # draw the outer circle
-            cv2.circle(output_img, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            # draw the center of the circle
-            cv2.circle(output_img, (i[0], i[1]), 2, (0, 0, 255), 3)
-            print(i)
-
-            output_img = _add_cross_hairs(output_img, (int(i[0]), int(i[1])))
-
-        return output_img.astype(dtype=np.uint8)
-
-    # last_args = display_trackbar_window(
-    #     'do_not_enter',
-    #     draw_image_hough,
-    #     compute_values,
-    #     accumulator_resolution=param(3, 1),
-    #     min_dist=param(80, 80),
-    #     param1=param(100, 50),
-    #     param2=param(20, 8),
-    #     min_radius=param(100, 20),
-    #     max_radius=param(100, 45),
-    # )
 
     circle_coordinates = compute_values(1, 80, 50, 8, 20, 45)
 
@@ -711,30 +494,32 @@ def traffic_sign_detection(img_in):
         'yield': yield_sign_detection,
     }
 
-    img_copy = np.copy(img_in)
-    signs_present = {}
+    def compute_values():
+        img_copy = np.copy(img_in)
+        signs_present = {}
 
-    for name, handler in handlers.items():
-        # import pdb; pdb.set_trace()
-        print("**********", name)
+        for name, handler in handlers.items():
 
-        if name == 'traffic_light':
-            # import pdb; pdb.set_trace()
-            radii_range = range(5, 30, 1)
-            center, _, img_copy= handler(img_copy, radii_range, blackout=True)
-        else:
-            center, img_copy = handler(img_copy, blackout=True)
-        if center:
-            signs_present[name] = center
+            if name == 'traffic_light':
+                radii_range = range(5, 30, 1)
+                center, _, img_copy= handler(img_copy, radii_range, blackout=True)
+            else:
+                center, img_copy = handler(img_copy, blackout=True)
+            if center:
+                signs_present[name] = center
 
-    print(signs_present)
+        # print(signs_present)
 
-    output_img = np.copy(img_in)
+        output_img = np.copy(img_in)
 
-    for name, value in signs_present.items():
-        output_img = _add_cross_hairs(output_img, value)
+        for name, value in signs_present.items():
+            output_img = _add_cross_hairs(output_img, value)
 
-    return signs_present
+        return signs_present
+
+    sings_present = compute_values()
+
+    return sings_present
 
 
 def traffic_sign_detection_noisy(img_in):
@@ -775,102 +560,32 @@ def traffic_sign_detection_noisy(img_in):
         'yield': yield_sign_detection,
     }
 
-    img = np.copy(img_in)
-
-    # def compute_values(h, h_color, template_window, search_window, gaussian_blur_window, gaussian_blur_sigma):
     def compute_values(d, sigma_color, sigma_space):
         denoised_img = np.copy(img_in)
         denoised_img = cv2.bilateralFilter(denoised_img, d, sigma_color, sigma_space)
-        # denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
-        # denoised_img = cv2.fastNlMeansDenoisingColored(
-        #     denoised_img, None, h, h_color, template_window, search_window
-        # )
-        # denoised_img = cv2.medianBlur(denoised_img, 5)
-        # denoised_img = cv2.addWeighted(denoised_img, 2, img, -0.25, 0)
 
-        return denoised_img
+        img_copy = np.copy(denoised_img)
+        signs_present = {}
 
-        # img_copy = np.copy(denoised_img)
-        # signs_present = {}
-        #
-        # for name, handler in handlers.items():
-        #     # import pdb; pdb.set_trace()
-        #     print("**********", name)
-        #
-        #     if name == 'traffic_light':
-        #         # import pdb; pdb.set_trace()
-        #         radii_range = range(5, 30, 1)
-        #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-        #     else:
-        #         center, img_copy = handler(img_copy, blackout=True)
-        #     if center:
-        #         signs_present[name] = center
-        #
-        # print(signs_present)
+        for name, handler in handlers.items():
+            if name == 'traffic_light':
+                radii_range = range(5, 30, 1)
+                center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+            else:
+                center, img_copy = handler(img_copy, blackout=True)
+            if center:
+                signs_present[name] = center
 
-        # output_img = np.copy(img_in)
-        # output_img = img_copy
-        #
-        # for name, value in signs_present.items():
-        #     output_img = _add_cross_hairs(output_img, value)
-        #
-        # return output_img
+        output_img = np.copy(img_in)
 
-    def draw_image_hough_p(img):
-        # output_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        output_img = img
-        return output_img.astype(dtype=np.uint8)
+        for name, value in signs_present.items():
+            output_img = _add_cross_hairs(output_img, value)
 
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     d=param(100, 45),
-    #     sigma_color=param(200, 70),
-    #     sigma_space=param(200, 70)
-    # )
+        return signs_present
 
-    # img = compute_values(
-    #     last_args['h'],
-    #     last_args['h_color'],
-    #     last_args['template_window'],
-    #     last_args['search_window'],
-    #     last_args['gaussian_blur_window'],
-    #     last_args['gaussian_blur_sigma']
-    # )
-
-    # img = compute_values(
-    #     last_args['d'],
-    #     last_args['sigma_color'],
-    #     last_args['sigma_space'],
-    # )
-
-    img = compute_values(45, 70, 70)
-
-    img_copy = np.copy(img)
-    signs_present = {}
-
-    for name, handler in handlers.items():
-        print("**********", name)
-
-        if name == 'traffic_light':
-            radii_range = range(5, 30, 1)
-            center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-        else:
-            center, img_copy = handler(img_copy, blackout=True)
-        if center:
-            signs_present[name] = center
-
-    print(signs_present)
-
-    output_img = np.copy(img_in)
-
-    for name, value in signs_present.items():
-        output_img = _add_cross_hairs(output_img, value)
+    signs_present = compute_values(45, 70, 70)
 
     return signs_present
-
-    # print(last_args)
 
 
 def traffic_sign_detection_challenge(img_in):
@@ -903,91 +618,26 @@ def traffic_sign_detection_challenge(img_in):
     def compute_values(d, sigma_color, sigma_space):
         denoised_img = np.copy(img_in)
         denoised_img = cv2.bilateralFilter(denoised_img, d, sigma_color, sigma_space)
-        # denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
-        # denoised_img = cv2.fastNlMeansDenoisingColored(
-        #     denoised_img, None, h, h_color, template_window, search_window
-        # )
-        # denoised_img = cv2.medianBlur(denoised_img, 5)
-        # denoised_img = cv2.addWeighted(denoised_img, 2, img, -0.25, 0)
 
-        return denoised_img
+        img_copy = np.copy(denoised_img)
+        signs_present = {}
 
-        # img_copy = np.copy(denoised_img)
-        # signs_present = {}
-        #
-        # for name, handler in handlers.items():
-        #     # import pdb; pdb.set_trace()
-        #     print("**********", name)
-        #
-        #     if name == 'traffic_light':
-        #         # import pdb; pdb.set_trace()
-        #         radii_range = range(5, 30, 1)
-        #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-        #     else:
-        #         center, img_copy = handler(img_copy, blackout=True)
-        #     if center:
-        #         signs_present[name] = center
-        #
-        # print(signs_present)
+        for name, handler in handlers.items():
+            if name == 'traffic_light':
+                radii_range = range(5, 30, 1)
+                center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+            else:
+                center, img_copy = handler(img_copy, blackout=True)
+            if center:
+                signs_present[name] = center
 
-        # output_img = np.copy(img_in)
-        # output_img = img_copy
-        #
-        # for name, value in signs_present.items():
-        #     output_img = _add_cross_hairs(output_img, value)
-        #
-        # return output_img
+        output_img = np.copy(img_in)
 
-    # def draw_image_hough_p(img):
-    #     # output_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    #     output_img = img
-    #     return output_img.astype(dtype=np.uint8)
+        for name, value in signs_present.items():
+            output_img = _add_cross_hairs(output_img, value)
 
-    # last_args = display_trackbar_window(
-    #     'yield_sign',
-    #     draw_image_hough_p,
-    #     compute_values,
-    #     d=param(100, 45),
-    #     sigma_color=param(200, 70),
-    #     sigma_space=param(200, 70)
-    # )
+        return signs_present
 
-    # img = compute_values(
-    #     last_args['h'],
-    #     last_args['h_color'],
-    #     last_args['template_window'],
-    #     last_args['search_window'],
-    #     last_args['gaussian_blur_window'],
-    #     last_args['gaussian_blur_sigma']
-    # )
-
-    # img = compute_values(
-    #     last_args['d'],
-    #     last_args['sigma_color'],
-    #     last_args['sigma_space'],
-    # )
-
-    img = compute_values(45, 70, 70)
-
-    img_copy = np.copy(img)
-    signs_present = {}
-
-    for name, handler in handlers.items():
-        print("**********", name)
-
-        if name == 'traffic_light':
-            radii_range = range(5, 30, 1)
-            center, _, img_copy = handler(img_copy, radii_range, blackout=True)
-        else:
-            center, img_copy = handler(img_copy, blackout=True)
-        if center:
-            signs_present[name] = center
-
-    print(signs_present)
-
-    output_img = np.copy(img_in)
-
-    for name, value in signs_present.items():
-        output_img = _add_cross_hairs(output_img, value)
+    signs_present = compute_values(45, 70, 70)
 
     return signs_present

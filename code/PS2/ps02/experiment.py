@@ -232,14 +232,22 @@ def part_5a():
 
 
 def part_5b():
-    input_images = ['img-5-b-1', 'img-5-b-2', 'img-5-b-3']
-    output_labels = ['ps2-5-b-1', 'ps2-5-b-2', 'ps2-5-b-3']
+    input_images = [
+        'img-5-b-1',
+        'img-5-b-2',
+        'img-5-b-3'
+    ]
+    output_labels = [
+        'ps2-5-b-1',
+        'ps2-5-b-2',
+        'ps2-5-b-3'
+    ]
 
     for img_in, label in zip(input_images, output_labels):
         scene = cv2.imread("input_images/{}.png".format(img_in))
         coords = ps2.traffic_sign_detection_challenge(scene)
 
-        img_out = mark_traffic_signs(scene, coords, 10)
+        img_out = mark_traffic_signs(scene, coords)
         cv2.imwrite("{}.png".format(label), img_out)
 
 
@@ -249,4 +257,4 @@ if __name__ == '__main__':
     part_3()
     part_4()
     part_5a()
-    # part_5b()
+    part_5b()
