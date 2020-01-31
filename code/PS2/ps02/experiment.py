@@ -12,35 +12,35 @@ import numpy as np
 import ps2
 
 
-def _add_cross_hairs(img, coordinates, scale=1):
+def _add_cross_hairs(img, coordinates):
     x, y = coordinates
     color_border = (255, 255, 255)
     color_inner = (0, 0, 0)
-    thickness = 2 + scale
-    cv2.line(img, (x - 5 * scale, y), (x + 5 * scale, y), color_border, thickness)  # cross-hair horizontal
-    cv2.line(img, (x, y + 5 * scale), (x, y - 5 * scale), color_border, thickness)  # cross-hair vertical
-    cv2.line(img, (x - 5 * scale, y), (x + 5 * scale, y), color_inner, 1)  # cross-hair horizontal
-    cv2.line(img, (x, y + 5 * scale), (x, y - 5 * scale), color_inner, 1)  # cross-hair vertical
+    thickness = 4
+    cv2.line(img, (x - 5, y), (x + 5, y), color_border, thickness)  # cross-hair horizontal
+    cv2.line(img, (x, y + 5), (x, y - 5), color_border, thickness)  # cross-hair vertical
+    cv2.line(img, (x - 5, y), (x + 5, y), color_inner, 2)  # cross-hair horizontal
+    cv2.line(img, (x, y + 5), (x, y - 5), color_inner, 2)  # cross-hair vertical
 
     return img
 
-def _add_text(img, text, coordinate, scale=1):
+def _add_text(img, text, coordinate):
     h, w, _ = img.shape
     x, y = coordinate
-    org = (x, y + 30)
     font = cv2.FONT_ITALIC
-    fontScale = 0.7 * scale
+    fontScale = 0.7
     color_outline = (255, 255, 255)
     color_text = (0, 0, 0)
-    thickness = 4 + scale
-    # print("*"*40, fontScale, thickness)
+    thickness_outline = 5
+    thickness_text = 2
 
-    text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness)[0]
-    if (org[0] + text_width) > w:
-        org = (org[0] - text_width - 30, org[1])
+    text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
+    org = (x - int(text_width/2), y + 30)
+    while (org[0] + text_width) > w:
+        org = (org[0] - 1, org[1])
 
-    cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
-    cv2.putText(img, text, org, font, fontScale, color_text, int(thickness/2), cv2.LINE_AA)
+    cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
+    cv2.putText(img, text, org, font, fontScale, color_text, thickness_text, cv2.LINE_AA)
     return img
 
 
@@ -84,7 +84,7 @@ def draw_tl_center(image_in, center, state):
     return img
 
 
-def mark_traffic_signs(image_in, signs_dict, scale=1):
+def mark_traffic_signs(image_in, signs_dict):
     """Marks the center of a traffic sign and adds its coordinates.
 
     This function uses a dictionary that follows the following
@@ -106,17 +106,17 @@ def mark_traffic_signs(image_in, signs_dict, scale=1):
         numpy.array: output image showing markers on each traffic
         sign.
     """
-    # print("*" * 10 + "Scale: {}".format(scale))
     img= image_in
     for name, center in signs_dict.items():
-        img = _add_cross_hairs(img, center, scale=scale)
+        img = _add_cross_hairs(img, center)
         x, y = center
         text = "({x}, {y})".format(x=x, y=y)
-        img = _add_text(img, text, (x, y), scale=scale)
+        img = _add_text(img, text, (x, y))
         text = "{name}".format(name=name)
-        img = _add_text(img, text, (x, y + 20*scale), scale=scale)
-    # print("*" * 10 + "Scale: {}".format(scale))
+        img = _add_text(img, text, (x, y + 20))
+
     return img
+
 
 def part_1():
 
