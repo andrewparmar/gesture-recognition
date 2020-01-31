@@ -12,34 +12,35 @@ import numpy as np
 import ps2
 
 
-def _add_cross_hairs(img, coordinates):
+def _add_cross_hairs(img, coordinates, scale=1):
     x, y = coordinates
-    color = (0, 0, 0)
-    thickness = 2
-    cv2.line(img, (x - 5, y), (x + 5, y), color, thickness)  # cross-hair horizontal
-    cv2.line(img, (x, y + 5), (x, y - 5), color, thickness)  # cross-hair vertical
+    color_border = (255, 255, 255)
+    color_inner = (0, 0, 0)
+    thickness = 2 + scale
+    cv2.line(img, (x - 5 * scale, y), (x + 5 * scale, y), color_border, thickness)  # cross-hair horizontal
+    cv2.line(img, (x, y + 5 * scale), (x, y - 5 * scale), color_border, thickness)  # cross-hair vertical
+    cv2.line(img, (x - 5 * scale, y), (x + 5 * scale, y), color_inner, 1)  # cross-hair horizontal
+    cv2.line(img, (x, y + 5 * scale), (x, y - 5 * scale), color_inner, 1)  # cross-hair vertical
 
     return img
 
-def _add_text(img, text, coordinate):
+def _add_text(img, text, coordinate, scale=1):
     h, w, _ = img.shape
-    # org = (w - 225, h - 10)
     x, y = coordinate
-    org = (x + 30, y + 5)
-    # print(f'image: ({w}, {h})\ntext : ({org[0]}, {org[1]})')
-    font = cv2.FONT_HERSHEY_DUPLEX
-    fontScale = 0.5
-    color_outline = (255, 0, 0)
-    color_text = (255, 255, 255)
-    thickness = 0.9
+    org = (x, y + 30)
+    font = cv2.FONT_ITALIC
+    fontScale = 0.7 * scale
+    color_outline = (255, 255, 255)
+    color_text = (0, 0, 0)
+    thickness = 4 + scale
+    # print("*"*40, fontScale, thickness)
 
-    text_width, text_height = cv2.getTextSize(text, font, fontScale)[0]
+    text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness)[0]
     if (org[0] + text_width) > w:
-        org = (org[0] - text_width - 30, y)
+        org = (org[0] - text_width - 30, org[1])
 
-    cv2.putText(img, text, org, font, fontScale, color_outline, thickness)
-    # cv2.putText(img, text, org, font, fontScale, color_text, int(thickness / 2),
-    #             cv2.LINE_AA)
+    cv2.putText(img, text, org, font, fontScale, color_outline, thickness, cv2.LINE_AA)
+    cv2.putText(img, text, org, font, fontScale, color_text, int(thickness/2), cv2.LINE_AA)
     return img
 
 
@@ -83,7 +84,7 @@ def draw_tl_center(image_in, center, state):
     return img
 
 
-def mark_traffic_signs(image_in, signs_dict):
+def mark_traffic_signs(image_in, signs_dict, scale=1):
     """Marks the center of a traffic sign and adds its coordinates.
 
     This function uses a dictionary that follows the following
@@ -105,15 +106,16 @@ def mark_traffic_signs(image_in, signs_dict):
         numpy.array: output image showing markers on each traffic
         sign.
     """
+    # print("*" * 10 + "Scale: {}".format(scale))
     img= image_in
     for name, center in signs_dict.items():
-        img = _add_cross_hairs(img, center)
+        img = _add_cross_hairs(img, center, scale=scale)
         x, y = center
         text = "({x}, {y})".format(x=x, y=y)
-        img = _add_text(img, text, (x, y))
+        img = _add_text(img, text, (x, y), scale=scale)
         text = "{name}".format(name=name)
-        img = _add_text(img, text, (x, y + 15))
-
+        img = _add_text(img, text, (x, y + 20*scale), scale=scale)
+    # print("*" * 10 + "Scale: {}".format(scale))
     return img
 
 def part_1():
@@ -237,7 +239,7 @@ def part_5b():
         scene = cv2.imread("input_images/{}.png".format(img_in))
         coords = ps2.traffic_sign_detection_challenge(scene)
 
-        img_out = mark_traffic_signs(scene, coords)
+        img_out = mark_traffic_signs(scene, coords, 10)
         cv2.imwrite("{}.png".format(label), img_out)
 
 
@@ -246,5 +248,5 @@ if __name__ == '__main__':
     part_2()
     part_3()
     part_4()
-    # part_5a()
+    part_5a()
     # part_5b()

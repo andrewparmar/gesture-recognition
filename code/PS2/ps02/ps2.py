@@ -455,7 +455,7 @@ def warning_sign_detection(img_in, blackout=False):
     # res = cv2.bitwise_and(img_in, img_in, mask=mask)
 
     bgr = [9, 254, 255]
-    tolerance = 20
+    tolerance = 80
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
@@ -527,7 +527,7 @@ def construction_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 127, 255]
-    tolerance = 15
+    tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
 
     def compute_values(blur_sigma, canny_min, canny_max, hough_angle_resolution,
@@ -598,7 +598,7 @@ def do_not_enter_sign_detection(img_in, blackout=False):
     img_gray = cv2.cvtColor(img_in, cv2.COLOR_BGR2GRAY)
 
     bgr = [0, 0, 255]
-    tolerance = 12
+    tolerance = 40
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
     img_binary_gray = cv2.cvtColor(img_binary, cv2.COLOR_BGR2GRAY)
 
@@ -891,4 +891,103 @@ def traffic_sign_detection_challenge(img_in):
               These are just example values and may not represent a
               valid scene.
     """
-    raise NotImplementedError
+    handlers = {
+        'no_entry': do_not_enter_sign_detection,
+        'stop': stop_sign_detection,
+        'construction': construction_sign_detection,
+        'warning': warning_sign_detection,
+        'traffic_light': traffic_light_detection,
+        'yield': yield_sign_detection,
+    }
+
+    def compute_values(d, sigma_color, sigma_space):
+        denoised_img = np.copy(img_in)
+        denoised_img = cv2.bilateralFilter(denoised_img, d, sigma_color, sigma_space)
+        # denoised_img = cv2.GaussianBlur(denoised_img, (3, 3), 0)
+        # denoised_img = cv2.fastNlMeansDenoisingColored(
+        #     denoised_img, None, h, h_color, template_window, search_window
+        # )
+        # denoised_img = cv2.medianBlur(denoised_img, 5)
+        # denoised_img = cv2.addWeighted(denoised_img, 2, img, -0.25, 0)
+
+        return denoised_img
+
+        # img_copy = np.copy(denoised_img)
+        # signs_present = {}
+        #
+        # for name, handler in handlers.items():
+        #     # import pdb; pdb.set_trace()
+        #     print("**********", name)
+        #
+        #     if name == 'traffic_light':
+        #         # import pdb; pdb.set_trace()
+        #         radii_range = range(5, 30, 1)
+        #         center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+        #     else:
+        #         center, img_copy = handler(img_copy, blackout=True)
+        #     if center:
+        #         signs_present[name] = center
+        #
+        # print(signs_present)
+
+        # output_img = np.copy(img_in)
+        # output_img = img_copy
+        #
+        # for name, value in signs_present.items():
+        #     output_img = _add_cross_hairs(output_img, value)
+        #
+        # return output_img
+
+    # def draw_image_hough_p(img):
+    #     # output_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    #     output_img = img
+    #     return output_img.astype(dtype=np.uint8)
+
+    # last_args = display_trackbar_window(
+    #     'yield_sign',
+    #     draw_image_hough_p,
+    #     compute_values,
+    #     d=param(100, 45),
+    #     sigma_color=param(200, 70),
+    #     sigma_space=param(200, 70)
+    # )
+
+    # img = compute_values(
+    #     last_args['h'],
+    #     last_args['h_color'],
+    #     last_args['template_window'],
+    #     last_args['search_window'],
+    #     last_args['gaussian_blur_window'],
+    #     last_args['gaussian_blur_sigma']
+    # )
+
+    # img = compute_values(
+    #     last_args['d'],
+    #     last_args['sigma_color'],
+    #     last_args['sigma_space'],
+    # )
+
+    img = compute_values(45, 70, 70)
+
+    img_copy = np.copy(img)
+    signs_present = {}
+
+    for name, handler in handlers.items():
+        print("**********", name)
+
+        if name == 'traffic_light':
+            radii_range = range(5, 30, 1)
+            center, _, img_copy = handler(img_copy, radii_range, blackout=True)
+        else:
+            center, img_copy = handler(img_copy, blackout=True)
+        if center:
+            signs_present[name] = center
+
+    print(signs_present)
+
+    output_img = np.copy(img_in)
+
+    for name, value in signs_present.items():
+        output_img = _add_cross_hairs(output_img, value)
+
+    return signs_present
