@@ -4,8 +4,6 @@ CS6476 Problem Set 2 imports. Only Numpy and cv2 are allowed.
 import cv2
 import numpy as np
 
-# from trackbar import display_trackbar_window, param
-
 
 # Helper functions #######################################################################
 
@@ -88,9 +86,8 @@ def draw_lines(img_in, lines):
 
 
 def intersection(line_1, line_2):
-    """Finds the intersection of two lines given in Hesse normal form.
-    Returns closest integer pixel locations.
-    See https://stackoverflow.com/a/383527/5087436
+    """Finds the intersection of two lines.
+    Source https://stackoverflow.com/a/383527/5087436
     """
     rho_1, theta_1 = line_1[0]
     rho_2, theta_2 = line_2[0]
@@ -412,7 +409,7 @@ def do_not_enter_sign_detection(img_in, blackout=False):
         (x,y) tuple of the coordinates of the center of the sign.
     """
     bgr = [0, 0, 255]
-    tolerance = 40
+    tolerance = 20
     img_binary = color_filter_bgr(img_in, bgr, tolerance)
     img_binary_gray = cv2.cvtColor(img_binary, cv2.COLOR_BGR2GRAY)
 
