@@ -82,6 +82,9 @@ class AssignmentTests(unittest.TestCase):
             np.array(self.marker_positions, 'float32'))
         self.homography.setflags(write=False)  # Copies will be writeable
 
+    def setUp(self):
+        print("In method ", self._testMethodName)
+
     def test_get_corners_list(self):
         clist = ps3.get_corners_list(np.zeros((self.height, self.width)))
         self.assertEqual(len(clist), 4, msg="List should have a length of 4.")

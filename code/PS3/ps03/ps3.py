@@ -5,6 +5,54 @@ import cv2
 import numpy as np
 
 
+##########################################################################################
+# Helper Functions
+##########################################################################################
+def _denoise_img(image):
+    """
+    Denoise images while preserving edges.
+    """
+    temp_img = np.copy(image)
+    d, sigma_color, sigma_space = (30, 70, 70)
+    denoised_img = cv2.bilateralFilter(temp_img, d, sigma_color, sigma_space)
+
+    return denoised_img
+
+
+def _template_match(image, template, threshold=0.99):
+    """
+    Returns list of tuples of template match coordinates.
+    Coordinate are center-point of template match.
+    """
+    results = cv2.matchTemplate(image, template, method=cv2.TM_CCORR_NORMED)
+    markers_ = np.where(results >= threshold)
+
+    th, tw = template.shape
+
+    markers = []
+    for upper_left_pt in zip(*markers_[::-1]):
+        x = upper_left_pt[0] + int(tw / 2)
+        y = upper_left_pt[1] + int(th / 2)
+        markers.append((x, y))
+
+    return markers
+
+
+def _color_filter_bgr(img_in, bgr, tolerance):
+    """
+    Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
+    """
+    min_bgr = np.array([bgr[0] - tolerance, bgr[1] - tolerance, bgr[2] - tolerance])
+    max_bgr = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
+
+    mask_bgr = cv2.inRange(img_in, min_bgr, max_bgr)
+    img_binary = cv2.bitwise_and(img_in, img_in, mask=mask_bgr)
+
+    return img_binary
+
+
+##########################################################################################
+
 def euclidean_distance(p0, p1):
     """Gets the distance between two (x,y) points
 
@@ -50,8 +98,24 @@ def find_markers(image, template=None):
         list: List of four (x, y) tuples
             in the order [top-left, bottom-left, top-right, bottom-right].
     """
+    # Pipeline
 
-    raise NotImplementedError
+    # Denoise while preserving edges
+    denoised_image = _denoise_img(image)
+
+    # Mask
+    # bgr = [0, 0, 0]
+    # tolerance = 2
+    # img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
+    # img_binary = cv2.bitwise_not(img_binary)
+
+    # Gray-scale
+    gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+
+    # Fine markers
+    markers_positions = _template_match(gray_image, template[:,:,1], threshold=0.93)
+
+    return markers_positions
 
 
 def draw_box(image, markers, thickness=1):
