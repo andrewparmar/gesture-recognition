@@ -4,6 +4,25 @@ CS6476 Problem Set 3 imports. Only Numpy and cv2 are allowed.
 import cv2
 import numpy as np
 
+##########################################################################################
+# Experimental
+##########################################################################################
+from trackbar import display_trackbar_window, param, scale
+
+def mark_location(image, pt):
+    """Draws a dot on the marker center and writes the location as text nearby.
+
+    Args:
+        image (numpy.array): Image to draw on
+        pt (tuple): (x, y) coordinate of marker center
+    """
+    color = (0, 50, 255)
+    cv2.circle(image, pt, 3, color, -1)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(image, "(x:{}, y:{})".format(*pt), (pt[0]+15, pt[1]), font, 0.5, color, 1)
+
+##########################################################################################
+
 
 ##########################################################################################
 # Helper Functions
@@ -38,6 +57,28 @@ def _template_match(image, template, threshold=0.99):
     return markers
 
 
+def _harris_corners(image, k=0.04, threshold=0.99):
+    dst = cv2.cornerHarris(image, 3, 5, k)
+
+    results = np.where(dst >= threshold)
+
+    markers = []
+    for marker in zip(*results[::-1]):
+        x = marker[0]
+        y = marker[1]
+        markers.append((x, y))
+
+    _markers = np.array(markers, dtype='float32')
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+
+    ret, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+    markers = [tuple(x) for x in markers_.astype(np.uint8).tolist()]
+
+    return markers
+
+
 def _color_filter_bgr(img_in, bgr, tolerance):
     """
     Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
@@ -46,9 +87,11 @@ def _color_filter_bgr(img_in, bgr, tolerance):
     max_bgr = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
 
     mask_bgr = cv2.inRange(img_in, min_bgr, max_bgr)
-    img_binary = cv2.bitwise_and(img_in, img_in, mask=mask_bgr)
+    # if bgr == [0, 0, 0]:
+    #     return mask_bgr
 
-    return img_binary
+    # img_binary = cv2.bitwise_and(img_in, img_in, mask=mask_bgr)
+    return mask_bgr
 
 
 ##########################################################################################
@@ -98,23 +141,69 @@ def find_markers(image, template=None):
         list: List of four (x, y) tuples
             in the order [top-left, bottom-left, top-right, bottom-right].
     """
+    ######################################################################################
+
+
+    def draw_image(marker_positions):
+        new_image = np.copy(image)
+
+        if marker_positions is None:
+            return new_image
+
+        for marker in marker_positions:
+            mark_location(new_image, marker)
+
+        return new_image.astype(dtype=np.uint8)
+
+    def compute_values(template_threshold, k, harris_threshold):
+        # Denoise while preserving edges
+        denoised_image = _denoise_img(image)
+
+        # Mask
+        bgr = [0, 0, 0]
+        tolerance = 2
+        img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
+        img_binary = cv2.bitwise_not(img_binary)
+
+        # Gray-scale
+        # gray_image = cv2.cvtColor(img_binary, cv2.COLOR_BGR2GRAY)
+
+        # Fine markers
+        markers_positions = _template_match(img_binary, template[:, :, 1], threshold=template_threshold)
+        # markers_positions = _harris_corners(img_binary, k, harris_threshold)
+
+        return markers_positions
+
+    # result = display_trackbar_window(
+    #     'find_markers',
+    #     draw_image,
+    #     compute_values,
+    #     template_threshold=param(100, 50, lambda x: x / 100),
+    #     k=param(3000, 2199, lambda x: x / 10000),
+    #     harris_threshold=param(100, 56, lambda x: x / 100),
+    # )
+
     # Pipeline
 
     # Denoise while preserving edges
     denoised_image = _denoise_img(image)
 
     # Mask
-    # bgr = [0, 0, 0]
-    # tolerance = 2
-    # img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
-    # img_binary = cv2.bitwise_not(img_binary)
+    bgr = [0, 0, 0]
+    tolerance = 100
+    img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
+    img_binary = cv2.bitwise_not(img_binary)
+    cv2.imshow('img_binary', img_binary.astype(np.uint8))
+    cv2.waitKey(0)
 
-    # Gray-scale
-    gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+    # # Gray-scale
+    # gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+    # cv2.imshow('img_gray', gray_image.astype(np.uint8))
+    # cv2.waitKey(0)
 
     # Fine markers
-    markers_positions = _template_match(gray_image, template[:,:,1], threshold=0.93)
-
+    markers_positions = _template_match(img_binary, template[:,:,1], threshold=0.93)
+    print(markers_positions)
     return markers_positions
 
 
@@ -133,8 +222,6 @@ def draw_box(image, markers, thickness=1):
     Returns:
         numpy.array: image with lines drawn.
     """
-
-    raise NotImplementedError
 
 
 def project_imageA_onto_imageB(imageA, imageB, homography):
