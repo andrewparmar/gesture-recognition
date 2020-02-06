@@ -43,16 +43,22 @@ def _template_match(image, template, threshold=0.99):
     Returns list of tuples of template match coordinates.
     Coordinate are center-point of template match.
     """
-    results = cv2.matchTemplate(image, template, method=cv2.TM_CCORR_NORMED)
-    markers_ = np.where(results >= threshold)
-
-    th, tw = template.shape
-
     markers = []
-    for upper_left_pt in zip(*markers_[::-1]):
-        x = upper_left_pt[0] + int(tw / 2)
-        y = upper_left_pt[1] + int(th / 2)
-        markers.append((x, y))
+
+    while len(markers) < 4:
+        markers = []
+
+        results = cv2.matchTemplate(image, template, method=cv2.TM_CCORR_NORMED)
+        markers_ = np.where(results >= threshold)
+
+        th, tw = template.shape
+
+        for upper_left_pt in zip(*markers_[::-1]):
+            x = upper_left_pt[0] + int(tw / 2)
+            y = upper_left_pt[1] + int(th / 2)
+            markers.append((x, y))
+
+        threshold -= 0.01
 
     return markers
 
@@ -111,6 +117,7 @@ def _color_filter_hsv(img_in, hsv, tolerance):
 
 def _cluster_and_order(markers):
     _markers = np.array(markers, dtype='float32')
+    import pdb; pdb.set_trace()
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
@@ -119,6 +126,19 @@ def _cluster_and_order(markers):
     markers_clustered = [tuple(x) for x in markers_.astype(np.uint8).tolist()]
 
     return markers_clustered
+
+
+def _order_markers(markers):
+    markers.sort(key=lambda x: x[0])
+    top = markers[:2]
+    top.sort(key=lambda x: x[1])
+    bottom = markers[2:]
+    bottom.sort(key=lambda x: x[1])
+
+    top_left, top_right = top
+    bottom_left, bottom_right = bottom
+
+    return (top_left, bottom_left, top_right, bottom_right)
 
 ##########################################################################################
 
@@ -169,7 +189,6 @@ def find_markers(image, template=None):
     """
     ######################################################################################
 
-
     def draw_image(marker_positions):
         new_image = np.copy(image)
 
@@ -186,51 +205,28 @@ def find_markers(image, template=None):
         denoised_image = _denoise_img(image)
         denoised_template = _denoise_img(template)
 
-        # # HSV
-        # hsv_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2HSV)
-        # hsv = [0, 0, 0]
-        # tolerance = 100
-        # img_binary_hsv_value = _color_filter_hsv(hsv_image, hsv, tolerance)
-        # img_binary_hsv_value = cv2.bitwise_not(img_binary_hsv_value)
-        # import pdb; pdb.set_trace()
-        # cv2.imshow('img_hsv', hsv_image)
-        # cv2.imshow('hue_channel', hsv_image[:, :, 0])
-        # cv2.imshow('saturation_channel', hsv_image[:, :, 1])
-        # cv2.imshow('value_channel', hsv_image[:, :, 2])
-        # cv2.imshow('hsv_mask', img_binary_hsv_value)
-        # cv2.waitKey(0)
-
-        # Mask
-        # bgr = [0, 0, 0]
-        # tolerance = 120
-        # img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
-        # img_binary = cv2.bitwise_not(img_binary)
-        # cv2.imshow('img_binary', img_binary.astype(np.uint8))
-        # cv2.imshow('img_binary', img_binary)
-        # cv2.waitKey(0)
-
         # # Gray-scale
         gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
-        # cv2.imshow('img_gray', gray_image.astype(np.uint8))
-        # cv2.waitKey(0)
 
         # Fine markers
-        markers_positions = _template_match(gray_image, denoised_template[:, :, 1], threshold=template_threshold)
-        # print(markers_positions)
+        markers_positions = _template_match(
+            gray_image, denoised_template[:, :, 1], threshold=template_threshold
+        )
 
         # Cluster and sort
         # markers_positions = _cluster_and_order(markers_positions)
+        ordered_markers_positions = _order_markers(markers_positions)
 
-        return markers_positions
+        return ordered_markers_positions
 
-    result = display_trackbar_window(
-        'find_markers',
-        draw_image,
-        compute_values,
-        template_threshold=param(100, 80, lambda x: x / 100),
-        k=param(3000, 2199, lambda x: x / 10000),
-        harris_threshold=param(100, 56, lambda x: x / 100),
-    )
+    # result = display_trackbar_window(
+    #     'find_markers',
+    #     draw_image,
+    #     compute_values,
+    #     template_threshold=param(100, 80, lambda x: x / 100),
+    #     k=param(3000, 2199, lambda x: x / 10000),
+    #     harris_threshold=param(100, 56, lambda x: x / 100),
+    # )
 
     markers_positions = compute_values(0.93, 0, 0)
 
@@ -245,6 +241,13 @@ def draw_box(image, markers, thickness=1):
     Use cv2.line, leave the default "lineType" and Pass the thickness
     parameter from this function.
 
+
+    tl ------------- tr
+    |                 |
+    |                 |
+    |                 |
+    bl ------------- br
+
     Args:
         image (numpy.array): image array of uint8 values.
         markers(list): the points where the markers were located.
@@ -253,6 +256,16 @@ def draw_box(image, markers, thickness=1):
     Returns:
         numpy.array: image with lines drawn.
     """
+    img = np.copy(image)
+
+    tl, bl, tr, br = markers
+
+    cv2.line(img, tl, tr, (255, 0, 0), thickness)
+    cv2.line(img, tr, br, (0, 0, 255), thickness)
+    cv2.line(img, br, bl, (0, 0, 0), thickness)
+    cv2.line(img, bl, tl, (0, 255, 0), thickness)
+
+    return img
 
 
 def project_imageA_onto_imageB(imageA, imageB, homography):
