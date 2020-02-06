@@ -94,6 +94,32 @@ def _color_filter_bgr(img_in, bgr, tolerance):
     return mask_bgr
 
 
+def _color_filter_hsv(img_in, hsv, tolerance):
+    """
+    Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
+    """
+    # minHSV = np.array([hsv[0] - tolerance, hsv[1], hsv[2]])
+    # maxHSV = np.array([hsv[0] + tolerance, hsv[1], hsv[2]])
+
+    minHSV = np.array([0, 0, 0])
+    maxHSV = np.array([180, 255, 50])
+
+    maskHSV = cv2.inRange(img_in, minHSV, maxHSV)
+    # resultHSV = cv2.bitwise_and(img_in, img_in, mask=maskHSV)
+    return maskHSV
+
+
+def _cluster_and_order(markers):
+    _markers = np.array(markers, dtype='float32')
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+
+    ret, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+    markers_clustered = [tuple(x) for x in markers_.astype(np.uint8).tolist()]
+
+    return markers_clustered
+
 ##########################################################################################
 
 def euclidean_distance(p0, p1):
@@ -158,52 +184,57 @@ def find_markers(image, template=None):
     def compute_values(template_threshold, k, harris_threshold):
         # Denoise while preserving edges
         denoised_image = _denoise_img(image)
+        denoised_template = _denoise_img(template)
+
+        # # HSV
+        # hsv_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2HSV)
+        # hsv = [0, 0, 0]
+        # tolerance = 100
+        # img_binary_hsv_value = _color_filter_hsv(hsv_image, hsv, tolerance)
+        # img_binary_hsv_value = cv2.bitwise_not(img_binary_hsv_value)
+        # import pdb; pdb.set_trace()
+        # cv2.imshow('img_hsv', hsv_image)
+        # cv2.imshow('hue_channel', hsv_image[:, :, 0])
+        # cv2.imshow('saturation_channel', hsv_image[:, :, 1])
+        # cv2.imshow('value_channel', hsv_image[:, :, 2])
+        # cv2.imshow('hsv_mask', img_binary_hsv_value)
+        # cv2.waitKey(0)
 
         # Mask
-        bgr = [0, 0, 0]
-        tolerance = 2
-        img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
-        img_binary = cv2.bitwise_not(img_binary)
+        # bgr = [0, 0, 0]
+        # tolerance = 120
+        # img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
+        # img_binary = cv2.bitwise_not(img_binary)
+        # cv2.imshow('img_binary', img_binary.astype(np.uint8))
+        # cv2.imshow('img_binary', img_binary)
+        # cv2.waitKey(0)
 
-        # Gray-scale
-        # gray_image = cv2.cvtColor(img_binary, cv2.COLOR_BGR2GRAY)
+        # # Gray-scale
+        gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+        # cv2.imshow('img_gray', gray_image.astype(np.uint8))
+        # cv2.waitKey(0)
 
         # Fine markers
-        markers_positions = _template_match(img_binary, template[:, :, 1], threshold=template_threshold)
-        # markers_positions = _harris_corners(img_binary, k, harris_threshold)
+        markers_positions = _template_match(gray_image, denoised_template[:, :, 1], threshold=template_threshold)
+        # print(markers_positions)
+
+        # Cluster and sort
+        # markers_positions = _cluster_and_order(markers_positions)
 
         return markers_positions
 
-    # result = display_trackbar_window(
-    #     'find_markers',
-    #     draw_image,
-    #     compute_values,
-    #     template_threshold=param(100, 50, lambda x: x / 100),
-    #     k=param(3000, 2199, lambda x: x / 10000),
-    #     harris_threshold=param(100, 56, lambda x: x / 100),
-    # )
+    result = display_trackbar_window(
+        'find_markers',
+        draw_image,
+        compute_values,
+        template_threshold=param(100, 80, lambda x: x / 100),
+        k=param(3000, 2199, lambda x: x / 10000),
+        harris_threshold=param(100, 56, lambda x: x / 100),
+    )
 
-    # Pipeline
+    markers_positions = compute_values(0.93, 0, 0)
 
-    # Denoise while preserving edges
-    denoised_image = _denoise_img(image)
 
-    # Mask
-    bgr = [0, 0, 0]
-    tolerance = 100
-    img_binary = _color_filter_bgr(denoised_image, bgr, tolerance)
-    img_binary = cv2.bitwise_not(img_binary)
-    cv2.imshow('img_binary', img_binary.astype(np.uint8))
-    cv2.waitKey(0)
-
-    # # Gray-scale
-    # gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
-    # cv2.imshow('img_gray', gray_image.astype(np.uint8))
-    # cv2.waitKey(0)
-
-    # Fine markers
-    markers_positions = _template_match(img_binary, template[:,:,1], threshold=0.93)
-    print(markers_positions)
     return markers_positions
 
 
