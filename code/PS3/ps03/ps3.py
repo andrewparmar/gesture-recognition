@@ -3,6 +3,7 @@ CS6476 Problem Set 3 imports. Only Numpy and cv2 are allowed.
 """
 import cv2
 import numpy as np
+import scipy.ndimage
 
 ##########################################################################################
 # Experimental
@@ -38,30 +39,42 @@ def _denoise_img(image):
     return denoised_img
 
 
-def _template_match(image, template, threshold=0.99):
+def _template_match(image, template, threshold=0.99, rotation_angle=0):
     """
     Returns list of tuples of template match coordinates.
     Coordinate are center-point of template match.
     """
-    markers = []
+    global_max = 0
+    global_max_val = 0
+    all_values = {}
 
-    print("Starting Match")
-    # import pdb; pdb.set_trace()
-    while len(markers) < 16 and threshold > 0.5:
-        print(threshold)
+    for theta in range(0, 360, 5):
+
+        template_rot = scipy.ndimage.rotate(template, theta)
+        threshold = 0.95
+
+        results = cv2.matchTemplate(image, template_rot, method=cv2.TM_CCORR_NORMED)
         markers = []
+        while len(markers) < 16 and threshold > 0.70:
+            markers = []
+            markers_ = np.where(results >= threshold)
 
-        results = cv2.matchTemplate(image, template, method=cv2.TM_CCORR_NORMED)
-        markers_ = np.where(results >= threshold)
+            th, tw = template.shape
 
-        th, tw = template.shape
+            for upper_left_pt in zip(*markers_[::-1]):
+                x = upper_left_pt[0] + int(tw / 2)
+                y = upper_left_pt[1] + int(th / 2)
+                markers.append((x, y))
 
-        for upper_left_pt in zip(*markers_[::-1]):
-            x = upper_left_pt[0] + int(tw / 2)
-            y = upper_left_pt[1] + int(th / 2)
-            markers.append((x, y))
+            threshold = threshold - 0.01
 
-        threshold = threshold - 0.01
+        if results.max() > global_max:
+            print("New global Max", results.max(), "Theta: ", theta)
+            global_max_val = theta
+            global_max = results.max()
+            all_values[theta] = markers
+
+    markers = all_values[global_max_val]
 
     return markers
 
@@ -140,14 +153,15 @@ def _order_markers(markers):
     """
     if len(markers) < 4:
         return markers
-    markers.sort(key=lambda x: x[0])
-    top = markers[:2]
-    top.sort(key=lambda x: x[1])
-    bottom = markers[2:]
-    bottom.sort(key=lambda x: x[1])
 
-    top_left, top_right = top[:2]
-    bottom_left, bottom_right = bottom[:2]
+    markers.sort(key=lambda x: x[1])
+    top = markers[:2]
+    top.sort(key=lambda x: x[0])
+    bottom = markers[2:]
+    bottom.sort(key=lambda x: x[0])
+
+    top_left, top_right = top
+    bottom_left, bottom_right = bottom
 
     return (top_left, bottom_left, top_right, bottom_right)
 
@@ -206,12 +220,17 @@ def find_markers(image, template=None):
         if marker_positions is None:
             return new_image
 
-        for marker in marker_positions:
-            mark_location(new_image, marker)
+        try:
+            for marker in marker_positions:
+                mark_location(new_image, marker)
+
+            new_image = draw_box(new_image, marker_positions, 3)
+        except:
+            return new_image.astype(dtype=np.uint8)
 
         return new_image.astype(dtype=np.uint8)
 
-    def compute_values(template_threshold, block_size, k, harris_threshold):
+    def compute_values(template_threshold, block_size, k, harris_threshold, rotation_angle):
         # Denoise while preserving edges
         denoised_image = _denoise_img(image)
         # gray_template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -234,16 +253,22 @@ def find_markers(image, template=None):
 
         # Find markers
         markers_positions = _template_match(
-            gray_image, template[:, :, 1], threshold=template_threshold
+            gray_image, template[:, :, 1], threshold=template_threshold, rotation_angle=rotation_angle
         )
         # markers_positions = _harris_corners(
         #     gray_image, block_size, k_size= 3, k=k, harris_threshold=harris_threshold
         # )
+        match_count = len(markers_positions)
 
 
         # Cluster and sort
-        markers_positions = _cluster_markers(markers_positions)
-        markers_positions = _order_markers(markers_positions)
+        try:
+            markers_positions = _cluster_markers(markers_positions)
+            markers_positions = _order_markers(markers_positions)
+        except:
+            print("*"*80)
+            print(markers_positions, match_count)
+            print("*" * 80)
 
         return markers_positions
 
@@ -255,9 +280,10 @@ def find_markers(image, template=None):
     #     block_size=param(20, 3),
     #     k=param(3000, 2199, lambda x: x / 10000),
     #     harris_threshold=param(100, 56, lambda x: x / 100),
+    #     rotation_angle=param(360, 0)
     # )
 
-    markers_positions = compute_values(0.95, block_size=3, k=0.04, harris_threshold=0.99)
+    markers_positions = compute_values(0.95, block_size=3, k=0.04, harris_threshold=0.99, rotation_angle=0)
 
 
     return markers_positions
@@ -269,7 +295,6 @@ def draw_box(image, markers, thickness=1):
     Use your find_markers method to find the corners.
     Use cv2.line, leave the default "lineType" and Pass the thickness
     parameter from this function.
-
 
     tl ------------- tr
     |                 |
@@ -286,7 +311,6 @@ def draw_box(image, markers, thickness=1):
         numpy.array: image with lines drawn.
     """
     img = np.copy(image)
-
     tl, bl, tr, br = markers
 
     cv2.line(img, tl, tr, (255, 0, 0), thickness)
