@@ -45,7 +45,10 @@ def _template_match(image, template, threshold=0.99):
     """
     markers = []
 
-    while len(markers) < 4:
+    print("Starting Match")
+    # import pdb; pdb.set_trace()
+    while len(markers) < 16 and threshold > 0.5:
+        print(threshold)
         markers = []
 
         results = cv2.matchTemplate(image, template, method=cv2.TM_CCORR_NORMED)
@@ -58,15 +61,17 @@ def _template_match(image, template, threshold=0.99):
             y = upper_left_pt[1] + int(th / 2)
             markers.append((x, y))
 
-        threshold -= 0.01
+        threshold = threshold - 0.01
 
     return markers
 
 
-def _harris_corners(image, k=0.04, threshold=0.99):
-    dst = cv2.cornerHarris(image, 3, 5, k)
+def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.99):
+    # dst = cv2.cornerHarris(image, block_size, k_size, k) # (image, 3, 5, k)
+    print("block_size:{}; k_size:{}; k:{}".format(block_size, k_size, k))
+    dst = cv2.cornerHarris(image, 3, 5, k) # (image, 3, 5, k)
 
-    results = np.where(dst >= threshold)
+    results = np.where(dst >= harris_threshold)
 
     markers = []
     for marker in zip(*results[::-1]):
@@ -74,13 +79,13 @@ def _harris_corners(image, k=0.04, threshold=0.99):
         y = marker[1]
         markers.append((x, y))
 
-    _markers = np.array(markers, dtype='float32')
+    # markers = np.array(markers, dtype='float32')
 
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    #
+    # ret, label, markers_ = cv2.kmeans(markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
-    ret, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-    markers = [tuple(x) for x in markers_.astype(np.uint8).tolist()]
+    # markers = [tuple(x) for x in markers.astype(np.uint8).tolist()]
 
     return markers
 
@@ -115,28 +120,34 @@ def _color_filter_hsv(img_in, hsv, tolerance):
     return maskHSV
 
 
-def _cluster_and_order(markers):
+def _cluster_markers(markers):
     _markers = np.array(markers, dtype='float32')
-    import pdb; pdb.set_trace()
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
     ret, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
-    markers_clustered = [tuple(x) for x in markers_.astype(np.uint8).tolist()]
+    markers_clustered = [tuple(x) for x in markers_.astype(np.uint16).tolist()]
 
     return markers_clustered
 
 
 def _order_markers(markers):
+    """
+
+    :param markers:
+    :return:
+    """
+    if len(markers) < 4:
+        return markers
     markers.sort(key=lambda x: x[0])
     top = markers[:2]
     top.sort(key=lambda x: x[1])
     bottom = markers[2:]
     bottom.sort(key=lambda x: x[1])
 
-    top_left, top_right = top
-    bottom_left, bottom_right = bottom
+    top_left, top_right = top[:2]
+    bottom_left, bottom_right = bottom[:2]
 
     return (top_left, bottom_left, top_right, bottom_right)
 
@@ -200,35 +211,53 @@ def find_markers(image, template=None):
 
         return new_image.astype(dtype=np.uint8)
 
-    def compute_values(template_threshold, k, harris_threshold):
+    def compute_values(template_threshold, block_size, k, harris_threshold):
         # Denoise while preserving edges
         denoised_image = _denoise_img(image)
-        denoised_template = _denoise_img(template)
+        # gray_template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        # canny_template = cv2.Canny(template, 50, 200)
+        # denoised_template = _denoise_img(gray_template)
 
-        # # Gray-scale
-        gray_image = cv2.cvtColor(denoised_image, cv2.COLOR_BGR2GRAY)
+        # Gray-scale
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('gray_image', gray_image)
 
-        # Fine markers
+
+        # Average Gray
+        # img_avg = np.average(image, axis=2).astype(np.uint8)
+        # threshed = cv2.adaptiveThreshold(
+        #     img_avg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 3, 0
+        # )
+
+        # cv2.imshow('avg_image', threshed)
+        # cv2.waitKey(0)
+
+        # Find markers
         markers_positions = _template_match(
-            gray_image, denoised_template[:, :, 1], threshold=template_threshold
+            gray_image, template[:, :, 1], threshold=template_threshold
         )
+        # markers_positions = _harris_corners(
+        #     gray_image, block_size, k_size= 3, k=k, harris_threshold=harris_threshold
+        # )
+
 
         # Cluster and sort
-        # markers_positions = _cluster_and_order(markers_positions)
-        ordered_markers_positions = _order_markers(markers_positions)
+        markers_positions = _cluster_markers(markers_positions)
+        markers_positions = _order_markers(markers_positions)
 
-        return ordered_markers_positions
+        return markers_positions
 
     # result = display_trackbar_window(
     #     'find_markers',
     #     draw_image,
     #     compute_values,
     #     template_threshold=param(100, 80, lambda x: x / 100),
+    #     block_size=param(20, 3),
     #     k=param(3000, 2199, lambda x: x / 10000),
     #     harris_threshold=param(100, 56, lambda x: x / 100),
     # )
 
-    markers_positions = compute_values(0.93, 0, 0)
+    markers_positions = compute_values(0.95, block_size=3, k=0.04, harris_threshold=0.99)
 
 
     return markers_positions
