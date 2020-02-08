@@ -44,47 +44,57 @@ def _template_match(image, template, threshold=0.99, rotation_angle=0):
     Returns list of tuples of template match coordinates.
     Coordinate are center-point of template match.
     """
-    global_max = 0
-    global_max_val = 0
+    # global_max = 0
+    # global_max_val = 0
     all_values = {}
 
-    for theta in range(0, 360, 5):
+    for theta in range(0, 360):
+    # for theta in range(172, 180):
 
-        template_rot = scipy.ndimage.rotate(template, theta)
-        threshold = 0.95
+        template_rotation = scipy.ndimage.rotate(template, theta)
+        threshold = 0.5
 
-        results = cv2.matchTemplate(image, template_rot, method=cv2.TM_CCORR_NORMED)
+        results = cv2.matchTemplate(image, template_rotation, method=cv2.TM_CCORR_NORMED)
         markers = []
-        while len(markers) < 16 and threshold > 0.70:
-            markers = []
-            markers_ = np.where(results >= threshold)
+        # while len(markers) < 16 and threshold > 0.70:
+        markers = []
+        markers_ = np.where(results >= threshold)
 
-            th, tw = template.shape
+        markers_ = zip(*markers_[::-1])
 
-            for upper_left_pt in zip(*markers_[::-1]):
-                x = upper_left_pt[0] + int(tw / 2)
-                y = upper_left_pt[1] + int(th / 2)
-                markers.append((x, y))
+        all_values[theta] = _cluster_markers(markers)
 
-            threshold = threshold - 0.01
+        th, tw = template.shape
 
-        if results.max() > global_max:
-            print("New global Max", results.max(), "Theta: ", theta)
-            global_max_val = theta
-            global_max = results.max()
-            all_values[theta] = markers
+        # for upper_left_pt in zip(*markers_[::-1]):
+        #     x = upper_left_pt[0] + int(tw / 2)
+        #     y = upper_left_pt[1] + int(th / 2)
+        #     markers.append((x, y))
 
-    markers = all_values[global_max_val]
+        threshold = threshold - 0.01
+
+        # if results.max() > global_max:
+        #     print("New global Max", results.max(), "Theta: ", theta)
+        #     global_max_val = theta
+        #     global_max = results.max()
+        #     all_values[theta] = markers
+
+    # markers = all_values[global_max_val]
+    # TODO cluster and select based on compactness. I'm going to sleep now/.
 
     return markers
 
 
 def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.99):
-    # dst = cv2.cornerHarris(image, block_size, k_size, k) # (image, 3, 5, k)
-    print("block_size:{}; k_size:{}; k:{}".format(block_size, k_size, k))
-    dst = cv2.cornerHarris(image, 3, 5, k) # (image, 3, 5, k)
+    harris_image = np.float32(image)
 
-    results = np.where(dst >= harris_threshold)
+    # dst = cv2.cornerHarris(harris_image, 2, 3, 0.04)
+    dst = cv2.cornerHarris(harris_image, 5, 7, 0.04)
+    # print(dst.shape)
+
+    # threshold = 0.95
+    results = np.where(dst > 0.3 * dst.max())
+    # print("results: ", results)
 
     markers = []
     for marker in zip(*results[::-1]):
@@ -92,13 +102,7 @@ def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.99
         y = marker[1]
         markers.append((x, y))
 
-    # markers = np.array(markers, dtype='float32')
-
-    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    #
-    # ret, label, markers_ = cv2.kmeans(markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-    # markers = [tuple(x) for x in markers.astype(np.uint8).tolist()]
+    # print("length: ", len(markers))
 
     return markers
 
@@ -134,13 +138,25 @@ def _color_filter_hsv(img_in, hsv, tolerance):
 
 
 def _cluster_markers(markers):
-    _markers = np.array(markers, dtype='float32')
+    # _markers = np.array(markers, dtype='float32')
+    #
+    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    #
+    # compactness, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    #
+    # markers_clustered = [tuple(x) for x in markers_.astype(np.uint16).tolist()]
+    #
+    # return markers_clustered, compactness
+
+    markers_float32 = np.array(markers, dtype='float32')
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-    ret, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    flags = cv2.KMEANS_RANDOM_CENTERS
 
-    markers_clustered = [tuple(x) for x in markers_.astype(np.uint16).tolist()]
+    compactness, labels, centers = cv2.kmeans(markers_float32, 4, None, criteria, 10, flags)
+
+    markers_clustered = [tuple(x) for x in centers.astype(np.uint16).tolist()]
 
     return markers_clustered
 
@@ -231,44 +247,14 @@ def find_markers(image, template=None):
         return new_image.astype(dtype=np.uint8)
 
     def compute_values(template_threshold, block_size, k, harris_threshold, rotation_angle):
-        # Denoise while preserving edges
-        denoised_image = _denoise_img(image)
-        # gray_template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
-        # canny_template = cv2.Canny(template, 50, 200)
-        # denoised_template = _denoise_img(gray_template)
-
-        # Gray-scale
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        cv2.imshow('gray_image', gray_image)
 
-
-        # Average Gray
-        # img_avg = np.average(image, axis=2).astype(np.uint8)
-        # threshed = cv2.adaptiveThreshold(
-        #     img_avg, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 3, 0
-        # )
-
-        # cv2.imshow('avg_image', threshed)
-        # cv2.waitKey(0)
-
-        # Find markers
-        markers_positions = _template_match(
-            gray_image, template[:, :, 1], threshold=template_threshold, rotation_angle=rotation_angle
+        markers_positions = _harris_corners(
+            gray_image, block_size, k_size= 3, k=k, harris_threshold=harris_threshold
         )
-        # markers_positions = _harris_corners(
-        #     gray_image, block_size, k_size= 3, k=k, harris_threshold=harris_threshold
-        # )
-        match_count = len(markers_positions)
 
-
-        # Cluster and sort
-        try:
-            markers_positions = _cluster_markers(markers_positions)
-            markers_positions = _order_markers(markers_positions)
-        except:
-            print("*"*80)
-            print(markers_positions, match_count)
-            print("*" * 80)
+        markers_positions = _cluster_markers(markers_positions)
+        markers_positions = _order_markers(markers_positions)
 
         return markers_positions
 
