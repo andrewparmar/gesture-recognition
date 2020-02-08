@@ -85,15 +85,16 @@ def _template_match(image, template, threshold=0.99, rotation_angle=0):
     return markers
 
 
-def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.99):
+def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.3):
     harris_image = np.float32(image)
 
     # dst = cv2.cornerHarris(harris_image, 2, 3, 0.04)
-    dst = cv2.cornerHarris(harris_image, 5, 7, 0.04)
-    # print(dst.shape)
+    # dst = cv2.cornerHarris(harris_image, 5, 7, 0.04)
+    # dst = cv2.cornerHarris(harris_image, 10, 11, 0.137)
+    dst = cv2.cornerHarris(harris_image, 9, 9, 0.180)
+    # dst = cv2.cornerHarris(harris_image, block_size, k_size, k)
 
-    # threshold = 0.95
-    results = np.where(dst > 0.3 * dst.max())
+    results = np.where(dst > 0.1 * dst.max())
     # print("results: ", results)
 
     markers = []
@@ -150,11 +151,11 @@ def _cluster_markers(markers):
 
     markers_float32 = np.array(markers, dtype='float32')
 
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 0.5)
 
     flags = cv2.KMEANS_RANDOM_CENTERS
 
-    compactness, labels, centers = cv2.kmeans(markers_float32, 4, None, criteria, 10, flags)
+    compactness, labels, centers = cv2.kmeans(markers_float32, 4, 10, criteria, 20, flags)
 
     markers_clustered = [tuple(x) for x in centers.astype(np.uint16).tolist()]
 
@@ -210,7 +211,7 @@ def get_corners_list(image):
         list: List of four (x, y) tuples
             in the order [top-left, bottom-left, top-right, bottom-right].
     """
-
+    # import pdb; pdb.set_trace()
     raise NotImplementedError
 
 
@@ -263,9 +264,9 @@ def find_markers(image, template=None):
     #     draw_image,
     #     compute_values,
     #     template_threshold=param(100, 80, lambda x: x / 100),
-    #     block_size=param(20, 3),
-    #     k=param(3000, 2199, lambda x: x / 10000),
-    #     harris_threshold=param(100, 56, lambda x: x / 100),
+    #     block_size=param(10, 5),
+    #     k=param(300, 40, lambda x: x / 1000),
+    #     harris_threshold=param(100, 30, lambda x: x / 100),
     #     rotation_angle=param(360, 0)
     # )
 
