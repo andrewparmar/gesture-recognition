@@ -211,9 +211,17 @@ def get_corners_list(image):
         list: List of four (x, y) tuples
             in the order [top-left, bottom-left, top-right, bottom-right].
     """
-    # import pdb; pdb.set_trace()
-    raise NotImplementedError
+    if len(image.shape) == 3:
+        h, w, _ = image.shape
+    else:
+        h, w = image.shape
 
+    top_left = (0, 0)
+    top_right = ( w -1, 0)
+    bottom_left = (0, h - 1)
+    bottom_right = (w - 1, h - 1)
+
+    return [top_left, bottom_left, top_right, bottom_right]
 
 def find_markers(image, template=None):
     """Finds four corner markers.
@@ -346,9 +354,33 @@ def find_four_point_transform(src_points, dst_points):
     Returns:
         numpy.array: 3 by 3 homography matrix of floating point values.
     """
+    sets = list(zip(src_points, dst_points))
 
-    raise NotImplementedError
+    H = np.zeros((3, 3))
+    A = np.zeros((8, 8))
+    b = np.zeros(8)
 
+    index = 0
+    for i in range(0, 8, 2):
+        x_s, y_s = sets[index][0]
+        x_d, y_d = sets[index][1]
+
+        A[i, :] = [x_s, y_s, 1, 0, 0, 0, -x_s*x_d, -y_s*x_d]
+        A[i+1,:] = [0, 0, 0, x_s, y_s, 1, -x_s*y_d, -y_s*y_d]
+        b[i] = x_d
+        b[i+1] = y_d
+
+        index += 1
+
+    # Am = b solving for m.
+    m = np.linalg.solve(A, b)
+
+    H[0,:] = m[:3]
+    H[1,:] = m[3:6]
+    H[2,0:2] = m[6:9]
+    H[2,2] = 1
+
+    return H
 
 def video_frame_generator(filename):
     """A generator function that returns a frame on each 'next()' call.
