@@ -8,7 +8,7 @@ import scipy.ndimage
 ##########################################################################################
 # Experimental
 ##########################################################################################
-from trackbar import display_trackbar_window, param, scale
+# from trackbar import display_trackbar_window, param, scale
 
 def mark_location(image, pt):
     """Draws a dot on the marker center and writes the location as text nearby.
@@ -223,6 +223,7 @@ def get_corners_list(image):
 
     return [top_left, bottom_left, top_right, bottom_right]
 
+
 def find_markers(image, template=None):
     """Finds four corner markers.
 
@@ -308,10 +309,10 @@ def draw_box(image, markers, thickness=1):
     img = np.copy(image)
     tl, bl, tr, br = markers
 
-    cv2.line(img, tl, tr, (255, 0, 0), thickness)
-    cv2.line(img, tr, br, (0, 0, 255), thickness)
-    cv2.line(img, br, bl, (0, 0, 0), thickness)
-    cv2.line(img, bl, tl, (0, 255, 0), thickness)
+    cv2.line(img, tl, tr, (230, 101, 230), thickness)
+    cv2.line(img, tr, br, (230, 101, 230), thickness)
+    cv2.line(img, br, bl, (230, 101, 230), thickness)
+    cv2.line(img, bl, tl, (230, 101, 230), thickness)
 
     return img
 
@@ -331,8 +332,33 @@ def project_imageA_onto_imageB(imageA, imageB, homography):
     Returns:
         numpy.array: combined image
     """
+    # import pdb; pdb.set_trace()
 
-    raise NotImplementedError
+    # create indices of the destination image and linearize them
+    h, w = imageB.shape[:2]
+    indy, indx = np.indices((h, w), dtype=np.float32)
+    lin_homg_ind = np.array([indx.ravel(), indy.ravel(), np.ones_like(indx).ravel()])
+
+    homography_inv = np.linalg.inv(homography)
+    map_ind = homography_inv.dot(lin_homg_ind)
+    map_x, map_y = map_ind[:-1] / map_ind[-1]  # ensure homogeneity
+
+    map_x = map_x.reshape(h, w).astype(np.float32)
+    map_y = map_y.reshape(h, w).astype(np.float32)
+
+    # remap!
+    dst = cv2.remap(
+        imageA, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT
+    )
+    # cv2.imwrite(, image)
+    # import pdb; pdb.set_trace()
+    # blended = cv2.addWeighted(imageB, 1, dst, 1, 0)
+    # cv2.imshow('blended', blended)
+    # cv2.imshow('dst_only', dst)
+    # cv2.waitKey()
+    # cv2.imwrite(, image)
+
+    return dst
 
 
 def find_four_point_transform(src_points, dst_points):
