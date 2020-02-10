@@ -164,21 +164,19 @@ def _cluster_markers(markers):
 
 def _order_markers(markers):
     """
-
-    :param markers:
-    :return:
+    Input markers have the format (x, y).
     """
     if len(markers) < 4:
         return markers
 
-    markers.sort(key=lambda x: x[1])
-    top = markers[:2]
-    top.sort(key=lambda x: x[0])
-    bottom = markers[2:]
-    bottom.sort(key=lambda x: x[0])
+    markers.sort(key=lambda x: x[0])
+    left = markers[:2]
+    left.sort(key=lambda x: x[1])
+    right = markers[2:]
+    right.sort(key=lambda x: x[1])
 
-    top_left, top_right = top
-    bottom_left, bottom_right = bottom
+    top_left, bottom_left = left
+    top_right, bottom_right = right
 
     return (top_left, bottom_left, top_right, bottom_right)
 
@@ -333,7 +331,8 @@ def project_imageA_onto_imageB(imageA, imageB, homography):
         numpy.array: combined image
     """
     # import pdb; pdb.set_trace()
-
+    # src = np.copy(imageA)
+    dst_img = np.copy(imageB)
     # create indices of the destination image and linearize them
     h, w = imageB.shape[:2]
     indy, indx = np.indices((h, w), dtype=np.float32)
@@ -348,17 +347,15 @@ def project_imageA_onto_imageB(imageA, imageB, homography):
 
     # remap!
     dst = cv2.remap(
-        imageA, map_x, map_y, cv2.INTER_LINEAR, borderMode=cv2.BORDER_TRANSPARENT
+        imageA, map_x, map_y, cv2.INTER_LINEAR,
+        dst=dst_img, borderMode=cv2.BORDER_TRANSPARENT
     )
-    # cv2.imwrite(, image)
-    # import pdb; pdb.set_trace()
-    # blended = cv2.addWeighted(imageB, 1, dst, 1, 0)
-    # cv2.imshow('blended', blended)
-    # cv2.imshow('dst_only', dst)
-    # cv2.waitKey()
-    # cv2.imwrite(, image)
+    # cv2.imshow('dst', dst)
+    # cv2.imshow('imageA', imageA)
+    # cv2.imshow('imageB', imageB)
+    # cv2.waitKey(0)
 
-    return dst
+    return dst.astype(np.uint8)
 
 
 def find_four_point_transform(src_points, dst_points):
