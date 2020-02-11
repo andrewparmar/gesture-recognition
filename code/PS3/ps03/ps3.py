@@ -416,8 +416,7 @@ def video_frame_generator(filename):
     Returns:
         None.
     """
-    # Todo: Open file with VideoCapture and set result to 'video'. Replace None
-    video = None
+    video = cv2.VideoCapture(filename)
 
     # Do not edit this while loop
     while video.isOpened():
@@ -429,4 +428,5 @@ def video_frame_generator(filename):
             break
 
     # Todo: Close video (release) and yield a 'None' value. (add 2 lines)
-    raise NotImplementedError
+    video.release()
+    yield None
