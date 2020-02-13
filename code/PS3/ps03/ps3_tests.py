@@ -82,9 +82,6 @@ class AssignmentTests(unittest.TestCase):
             np.array(self.marker_positions, 'float32'))
         self.homography.setflags(write=False)  # Copies will be writeable
 
-    def setUp(self):
-        print("In method ", self._testMethodName)
-
     def test_get_corners_list(self):
         clist = ps3.get_corners_list(np.zeros((self.height, self.width)))
         self.assertEqual(len(clist), 4, msg="List should have a length of 4.")
@@ -117,18 +114,24 @@ class AssignmentTests(unittest.TestCase):
 
             ret_markers = ps3.find_markers(test_image, template)
 
+            self.assertTrue(len(markers_pos) == len(ret_markers),
+                            msg='Not found exact number of markers. '
+                                'Returned: {}. Expected: {}'
+                                ''.format(len(ret_markers), len(markers_pos)))
+
+
             for act_pt, ret_pt in zip(markers_pos, ret_markers):
 
                 x_dist_test = abs(ret_pt[0] - act_pt[0]) <= thresh
                 self.assertTrue(x_dist_test,
                                 msg='X point is too far from reference. '
-                                    'Expected: {}. Returned: {}'
+                                    'Returned: {}. Expected: {}'
                                     ''.format(ret_pt[0], act_pt[0]))
 
                 y_dist_test = abs(ret_pt[1] - act_pt[1]) <= thresh
                 self.assertTrue(y_dist_test,
                                 msg='Y point is too far from reference. '
-                                    'Expected: {}. Returned: {}'
+                                    'Returned: {}. Expected: {}'
                                     ''.format(ret_pt[1], act_pt[1]))
 
     def test_find_markers_wall_image(self):
@@ -148,18 +151,24 @@ class AssignmentTests(unittest.TestCase):
 
             ret_markers = ps3.find_markers(test_image, template)
 
+
+            self.assertTrue(len(markers_pos) == len(ret_markers),
+                            msg='Not found exact number of markers. '
+                                'Returned: {}. Expected: {}'
+                                ''.format(len(ret_markers), len(markers_pos)))
+
             for act_pt, ret_pt in zip(markers_pos, ret_markers):
 
                 x_dist_test = abs(ret_pt[0] - act_pt[0]) <= thresh
                 self.assertTrue(x_dist_test,
                                 msg='X point is too far from reference. '
-                                    'Expected: {}. Returned: {}'
+                                    'Returned: {}. Expected: {}'
                                     ''.format(ret_pt[0], act_pt[0]))
 
                 y_dist_test = abs(ret_pt[1] - act_pt[1]) <= thresh
                 self.assertTrue(y_dist_test,
                                 msg='Y point is too far from reference. '
-                                    'Expected: {}. Returned: {}'
+                                    'Returned: {}. Expected: {}'
                                     ''.format(ret_pt[1], act_pt[1]))
 
     def test_solving_for_homography(self):
