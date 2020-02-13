@@ -1,6 +1,6 @@
 """
 CS6476: Problem Set 3 Experiment file
-This script consists in a series of function calls that run the ps3 
+This script consists in a series of function calls that run the ps3
 implementation and output images so you can verify your results.
 """
 
@@ -52,7 +52,7 @@ def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
             image = ps3.project_imageA_onto_imageB(advert, image, homography)
 
         else:
-            
+
             for marker in markers:
                 mark_location(image, marker)
 
@@ -66,6 +66,56 @@ def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
         video_out.write(image)
 
         image = image_gen.__next__()
+
+        frame_num += 1
+
+    video_out.release()
+
+
+def helper_for_part_6(videoA_name, videoB_name, fps, frame_ids, output_prefix,
+                      counter_init, is_part5):
+
+    overlay_video = os.path.join(VID_DIR, videoA_name)
+    overlay_image_gen = ps3.video_frame_generator(overlay_video)
+    overlay_image = overlay_image_gen.__next__()
+
+    env_video = os.path.join(VID_DIR, videoB_name)
+    env_image_gen = ps3.video_frame_generator(env_video)
+    env_image = env_image_gen.__next__()
+    h, w, d = env_image.shape
+
+    out_path = "par6_video.mp4"
+    video_out = mp4_video_writer(out_path, (w, h), fps)
+
+    src_points = ps3.get_corners_list(overlay_image)
+
+    output_counter = counter_init
+
+    frame_num = 1
+
+    while env_image is not None:
+
+        print("Processing fame {}".format(frame_num))
+
+        markers = ps3.find_markers(env_image, template=None)
+
+        homography = ps3.find_four_point_transform(src_points, markers)
+        image = ps3.project_imageA_onto_imageB(overlay_image, env_image, homography)
+
+        frame_id = frame_ids[(output_counter - 1) % 3]
+
+        if frame_num == frame_id:
+            out_str = output_prefix + "-{}.png".format(output_counter)
+            save_image(out_str, image)
+            output_counter += 1
+
+        video_out.write(image)
+
+        env_image = env_image_gen.__next__()
+        overlay_image = overlay_image_gen.__next__()
+        if overlay_image is None:
+            overlay_image_gen = ps3.video_frame_generator(overlay_video)
+            overlay_image = overlay_image_gen.__next__()
 
         frame_num += 1
 
@@ -265,7 +315,7 @@ def part_6():
     frame_ids = [355, 555, 725]
     fps = 40
 
-    # Todo: Complete this part on your own.
+    helper_for_part_6(my_video, video_file, fps, frame_ids, "ps3-6-a", 1, True)
 
 
 if __name__ == '__main__':
