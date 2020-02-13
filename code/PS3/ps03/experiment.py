@@ -59,7 +59,7 @@ def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
         frame_id = frame_ids[(output_counter - 1) % 3]
 
         if frame_num == frame_id:
-            out_str = output_prefix + "-{}.png".format(output_counter)
+            out_str = output_prefix + "-{}.jpg".format(output_counter)
             save_image(out_str, image)
             output_counter += 1
 
@@ -105,7 +105,7 @@ def helper_for_part_6(videoA_name, videoB_name, fps, frame_ids, output_prefix,
         frame_id = frame_ids[(output_counter - 1) % 3]
 
         if frame_num == frame_id:
-            out_str = output_prefix + "-{}.png".format(output_counter)
+            out_str = output_prefix + "-{}.jpg".format(output_counter)
             save_image(out_str, image)
             output_counter += 1
 
@@ -154,7 +154,46 @@ def mark_location(image, pt):
     color = (0, 50, 255)
     cv2.circle(image, pt, 3, color, -1)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(image, "(x:{}, y:{})".format(*pt), (pt[0]+15, pt[1]), font, 0.5, color, 1)
+
+    # font = cv2.FONT_ITALIC
+    fontScale = 0.5
+    color_outline = (255, 255, 255)
+    color_text = (255, 0, 0)
+    thickness_outline = 2
+    thickness_text = 1
+
+    text = "(x:{}, y:{})".format(*pt)
+    h, w, _ = image.shape
+    x, y = org = (pt[0]+15, pt[1]-10)
+
+    text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
+    # org = (x - int(text_width / 2), y)
+    while (org[0] + text_width + 15) > w:
+        org = (org[0] - 1, org[1])
+
+    while (org[1] - text_height - 10 ) < 0:
+        org = (org[0], org[1] + 1)
+
+    cv2.putText(image, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
+    cv2.putText(image, text, org, font, fontScale, color_text,    thickness_text, cv2.LINE_AA)
+
+    # font = cv2.FONT_ITALIC
+    # fontScale = 0.6
+    # color_outline = (0, 0, 0)
+    # color_text = (0, 0, 0)
+    # thickness_outline = 2
+    # thickness_text = 1
+
+    # text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
+    # org = (x - int(text_width/2), y + 30)
+    # while (org[0] + text_width) > w:
+    #     org = (org[0] - 1, org[1])
+
+    # cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
+    # cv2.putText(image, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
+    # # cv2.putText(img, text, org, font, fontScale, color_text, thickness_text, cv2.LINE_AA)
+    # cv2.putText(image, "(x:{}, y:{})".format(*pt), (pt[0] + 15, pt[1]), font, fontScale, color_text, thickness_text, cv2.LINE_AA)
+
 
 
 def part_1():
@@ -163,7 +202,7 @@ def part_1():
 
     input_images = ['sim_clear_scene.jpg', 'sim_noisy_scene_1.jpg',
                     'sim_noisy_scene_2.jpg']
-    output_images = ['ps3-1-a-1.png', 'ps3-1-a-2.png', 'ps3-1-a-3.png']
+    output_images = ['ps3-1-a-1.jpg', 'ps3-1-a-2.jpg', 'ps3-1-a-3.jpg']
 
     # Optional template image
     template = cv2.imread(os.path.join(IMG_DIR, "template.jpg"))
@@ -189,8 +228,8 @@ def part_2():
 
     input_images = ['ps3-2-a_base.jpg', 'ps3-2-b_base.jpg',
                     'ps3-2-c_base.jpg', 'ps3-2-d_base.jpg', 'ps3-2-e_base.jpg']
-    output_images = ['ps3-2-a-1.png', 'ps3-2-a-2.png', 'ps3-2-a-3.png',
-                     'ps3-2-a-4.png', 'ps3-2-a-5.png']
+    output_images = ['ps3-2-a-1.jpg', 'ps3-2-a-2.jpg', 'ps3-2-a-3.jpg',
+                     'ps3-2-a-4.jpg', 'ps3-2-a-5.jpg']
 
     # Optional template image
     template = cv2.imread(os.path.join(IMG_DIR, "template.jpg"))
@@ -213,7 +252,7 @@ def part_3():
     print("\nPart 3:")
 
     input_images = ['ps3-3-a_base.jpg', 'ps3-3-b_base.jpg', 'ps3-3-c_base.jpg']
-    output_images = ['ps3-3-a-1.png', 'ps3-3-a-2.png', 'ps3-3-a-3.png']
+    output_images = ['ps3-3-a-1.jpg', 'ps3-3-a-2.jpg', 'ps3-3-a-3.jpg']
 
     # Advertisement image
     advert = cv2.imread(os.path.join(IMG_DIR, "img-3-a-1.png"))
