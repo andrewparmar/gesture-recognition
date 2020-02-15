@@ -3,99 +3,20 @@ CS6476 Problem Set 3 imports. Only Numpy and cv2 are allowed.
 """
 import cv2
 import numpy as np
-import scipy.ndimage
-
-##########################################################################################
-# Experimental
-##########################################################################################
-# from trackbar import display_trackbar_window, param, scale
-
-def mark_location(image, pt):
-    """Draws a dot on the marker center and writes the location as text nearby.
-
-    Args:
-        image (numpy.array): Image to draw on
-        pt (tuple): (x, y) coordinate of marker center
-    """
-    color = (0, 50, 255)
-    cv2.circle(image, pt, 3, color, -1)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(image, "(x:{}, y:{})".format(*pt), (pt[0]+15, pt[1]), font, 0.5, color, 1)
-
-##########################################################################################
 
 
 ##########################################################################################
 # Helper Functions
 ##########################################################################################
-def _denoise_img(image):
+def _harris_corners(image):
     """
-    Denoise images while preserving edges.
+    Based on examples from https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_feature2d/py_features_harris/py_features_harris.html
     """
-    temp_img = np.copy(image)
-    d, sigma_color, sigma_space = (30, 70, 70)
-    denoised_img = cv2.bilateralFilter(temp_img, d, sigma_color, sigma_space)
-
-    return denoised_img
-
-
-def _template_match(image, template, threshold=0.99, rotation_angle=0):
-    """
-    Returns list of tuples of template match coordinates.
-    Coordinate are center-point of template match.
-    """
-    # global_max = 0
-    # global_max_val = 0
-    all_values = {}
-
-    for theta in range(0, 360):
-    # for theta in range(172, 180):
-
-        template_rotation = scipy.ndimage.rotate(template, theta)
-        threshold = 0.5
-
-        results = cv2.matchTemplate(image, template_rotation, method=cv2.TM_CCORR_NORMED)
-        markers = []
-        # while len(markers) < 16 and threshold > 0.70:
-        markers = []
-        markers_ = np.where(results >= threshold)
-
-        markers_ = zip(*markers_[::-1])
-
-        all_values[theta] = _cluster_markers(markers)
-
-        th, tw = template.shape
-
-        # for upper_left_pt in zip(*markers_[::-1]):
-        #     x = upper_left_pt[0] + int(tw / 2)
-        #     y = upper_left_pt[1] + int(th / 2)
-        #     markers.append((x, y))
-
-        threshold = threshold - 0.01
-
-        # if results.max() > global_max:
-        #     print("New global Max", results.max(), "Theta: ", theta)
-        #     global_max_val = theta
-        #     global_max = results.max()
-        #     all_values[theta] = markers
-
-    # markers = all_values[global_max_val]
-    # TODO cluster and select based on compactness. I'm going to sleep now/.
-
-    return markers
-
-
-def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.3):
     harris_image = np.float32(image)
 
-    # dst = cv2.cornerHarris(harris_image, 2, 3, 0.04)
-    # dst = cv2.cornerHarris(harris_image, 5, 7, 0.04)
-    # dst = cv2.cornerHarris(harris_image, 10, 11, 0.137)
     dst = cv2.cornerHarris(harris_image, 9, 9, 0.180)
-    # dst = cv2.cornerHarris(harris_image, block_size, k_size, k)
 
     results = np.where(dst > 0.1 * dst.max())
-    # print("results: ", results)
 
     markers = []
     for marker in zip(*results[::-1]):
@@ -103,52 +24,13 @@ def _harris_corners(image, block_size=3, k_size=5, k=0.04, harris_threshold=0.3)
         y = marker[1]
         markers.append((x, y))
 
-    # print("length: ", len(markers))
-
     return markers
 
 
-def _color_filter_bgr(img_in, bgr, tolerance):
-    """
-    Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
-    """
-    min_bgr = np.array([bgr[0] - tolerance, bgr[1] - tolerance, bgr[2] - tolerance])
-    max_bgr = np.array([bgr[0] + tolerance, bgr[1] + tolerance, bgr[2] + tolerance])
-
-    mask_bgr = cv2.inRange(img_in, min_bgr, max_bgr)
-    # if bgr == [0, 0, 0]:
-    #     return mask_bgr
-
-    # img_binary = cv2.bitwise_and(img_in, img_in, mask=mask_bgr)
-    return mask_bgr
-
-
-def _color_filter_hsv(img_in, hsv, tolerance):
-    """
-    Inspired from https://www.learnopencv.com/color-spaces-in-opencv-cpp-python/
-    """
-    # minHSV = np.array([hsv[0] - tolerance, hsv[1], hsv[2]])
-    # maxHSV = np.array([hsv[0] + tolerance, hsv[1], hsv[2]])
-
-    minHSV = np.array([0, 0, 0])
-    maxHSV = np.array([180, 255, 50])
-
-    maskHSV = cv2.inRange(img_in, minHSV, maxHSV)
-    # resultHSV = cv2.bitwise_and(img_in, img_in, mask=maskHSV)
-    return maskHSV
-
-
 def _cluster_markers(markers):
-    # _markers = np.array(markers, dtype='float32')
-    #
-    # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    #
-    # compactness, label, markers_ = cv2.kmeans(_markers, 4, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-    #
-    # markers_clustered = [tuple(x) for x in markers_.astype(np.uint16).tolist()]
-    #
-    # return markers_clustered, compactness
-
+    """
+    Based on examples from https://docs.opencv.org/3.4/d1/d5c/tutorial_py_kmeans_opencv.html
+    """
     markers_float32 = np.array(markers, dtype='float32')
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 0.5)
@@ -237,48 +119,13 @@ def find_markers(image, template=None):
             in the order [top-left, bottom-left, top-right, bottom-right].
     """
     ######################################################################################
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    def draw_image(marker_positions):
-        new_image = np.copy(image)
+    markers_positions = _harris_corners(gray_image)
 
-        if marker_positions is None:
-            return new_image
+    markers_positions = _cluster_markers(markers_positions)
 
-        try:
-            for marker in marker_positions:
-                mark_location(new_image, marker)
-
-            new_image = draw_box(new_image, marker_positions, 3)
-        except:
-            return new_image.astype(dtype=np.uint8)
-
-        return new_image.astype(dtype=np.uint8)
-
-    def compute_values(template_threshold, block_size, k, harris_threshold, rotation_angle):
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        markers_positions = _harris_corners(
-            gray_image, block_size, k_size= 3, k=k, harris_threshold=harris_threshold
-        )
-
-        markers_positions = _cluster_markers(markers_positions)
-        markers_positions = _order_markers(markers_positions)
-
-        return markers_positions
-
-    # result = display_trackbar_window(
-    #     'find_markers',
-    #     draw_image,
-    #     compute_values,
-    #     template_threshold=param(100, 80, lambda x: x / 100),
-    #     block_size=param(10, 5),
-    #     k=param(300, 40, lambda x: x / 1000),
-    #     harris_threshold=param(100, 30, lambda x: x / 100),
-    #     rotation_angle=param(360, 0)
-    # )
-
-    markers_positions = compute_values(0.95, block_size=3, k=0.04, harris_threshold=0.99, rotation_angle=0)
-
+    markers_positions = _order_markers(markers_positions)
 
     return markers_positions
 
@@ -329,31 +176,41 @@ def project_imageA_onto_imageB(imageA, imageB, homography):
 
     Returns:
         numpy.array: combined image
+
+    Solution based on techniques shown in
+    https://stackoverflow.com/questions/46520123/how-do-i-use-opencvs-remap-function
     """
-    # import pdb; pdb.set_trace()
-    # src = np.copy(imageA)
     dst_img = np.copy(imageB)
+
     # create indices of the destination image and linearize them
     h, w = imageB.shape[:2]
-    indy, indx = np.indices((h, w), dtype=np.float32)
-    lin_homg_ind = np.array([indx.ravel(), indy.ravel(), np.ones_like(indx).ravel()])
+    row_indices, col_indices = np.indices((h, w), dtype=np.float32)
 
+    # Create array where each column is a (x, y, 1) homogeneous coordinate.
+    lin_homg_ind = np.array(
+        [col_indices.ravel(),
+         row_indices.ravel(),
+         np.ones_like(col_indices).ravel()]
+    )
+
+    # Convert to inverse as we are doing backward warping.
     homography_inv = np.linalg.inv(homography)
+
+    # Do a matrix multiplication of each homogeneous coordinate with
+    #  the inverse homography.
     map_ind = homography_inv.dot(lin_homg_ind)
-    map_x, map_y = map_ind[:-1] / map_ind[-1]  # ensure homogeneity
+
+    # Convert to non homogeneous coordinates
+    map_x, map_y = map_ind[:-1] / map_ind[-1]
 
     map_x = map_x.reshape(h, w).astype(np.float32)
     map_y = map_y.reshape(h, w).astype(np.float32)
 
-    # remap!
+    # Apply pixel values form imageA to imageB based on backward warping.
     dst = cv2.remap(
         imageA, map_x, map_y, cv2.INTER_LINEAR,
         dst=dst_img, borderMode=cv2.BORDER_TRANSPARENT
     )
-    # cv2.imshow('dst', dst)
-    # cv2.imshow('imageA', imageA)
-    # cv2.imshow('imageB', imageB)
-    # cv2.waitKey(0)
 
     return dst.astype(np.uint8)
 
@@ -405,6 +262,7 @@ def find_four_point_transform(src_points, dst_points):
 
     return H
 
+
 def video_frame_generator(filename):
     """A generator function that returns a frame on each 'next()' call.
 
@@ -427,6 +285,5 @@ def video_frame_generator(filename):
         else:
             break
 
-    # Todo: Close video (release) and yield a 'None' value. (add 2 lines)
     video.release()
     yield None

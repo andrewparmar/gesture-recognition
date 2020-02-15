@@ -73,7 +73,7 @@ def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
 
 
 def helper_for_part_6(videoA_name, videoB_name, fps, frame_ids, output_prefix,
-                      counter_init, is_part5):
+                      counter_init):
 
     overlay_video = os.path.join(VID_DIR, videoA_name)
     overlay_image_gen = ps3.video_frame_generator(overlay_video)
@@ -153,9 +153,8 @@ def mark_location(image, pt):
     """
     color = (0, 50, 255)
     cv2.circle(image, pt, 3, color, -1)
-    font = cv2.FONT_HERSHEY_SIMPLEX
 
-    # font = cv2.FONT_ITALIC
+    font = cv2.FONT_HERSHEY_SIMPLEX
     fontScale = 0.5
     color_outline = (255, 255, 255)
     color_text = (255, 0, 0)
@@ -164,36 +163,16 @@ def mark_location(image, pt):
 
     text = "(x:{}, y:{})".format(*pt)
     h, w, _ = image.shape
-    x, y = org = (pt[0]+15, pt[1]-10)
+    org = (pt[0]+15, pt[1]-10)
 
     text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
-    # org = (x - int(text_width / 2), y)
     while (org[0] + text_width + 15) > w:
         org = (org[0] - 1, org[1])
-
     while (org[1] - text_height - 10 ) < 0:
         org = (org[0], org[1] + 1)
 
     cv2.putText(image, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
     cv2.putText(image, text, org, font, fontScale, color_text,    thickness_text, cv2.LINE_AA)
-
-    # font = cv2.FONT_ITALIC
-    # fontScale = 0.6
-    # color_outline = (0, 0, 0)
-    # color_text = (0, 0, 0)
-    # thickness_outline = 2
-    # thickness_text = 1
-
-    # text_width, text_height = cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
-    # org = (x - int(text_width/2), y + 30)
-    # while (org[0] + text_width) > w:
-    #     org = (org[0] - 1, org[1])
-
-    # cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
-    # cv2.putText(image, text, org, font, fontScale, color_outline, thickness_outline, cv2.LINE_AA)
-    # # cv2.putText(img, text, org, font, fontScale, color_text, thickness_text, cv2.LINE_AA)
-    # cv2.putText(image, "(x:{}, y:{})".format(*pt), (pt[0] + 15, pt[1]), font, fontScale, color_text, thickness_text, cv2.LINE_AA)
-
 
 
 def part_1():
@@ -354,7 +333,7 @@ def part_6():
     frame_ids = [355, 555, 725]
     fps = 40
 
-    helper_for_part_6(my_video, video_file, fps, frame_ids, "ps3-6-a", 1, True)
+    helper_for_part_6(my_video, video_file, fps, frame_ids, "ps3-6-a", 1)
 
 
 if __name__ == '__main__':
