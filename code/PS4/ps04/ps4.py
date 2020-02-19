@@ -41,7 +41,9 @@ def gradient_x(image):
                      from cv2.Sobel.
     """
 
-    raise NotImplementedError
+    sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3, scale=(float(1)/8))
+
+    return sobel_x
 
 
 def gradient_y(image):
@@ -59,7 +61,9 @@ def gradient_y(image):
                      Output from cv2.Sobel.
     """
 
-    raise NotImplementedError
+    sobel_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3, scale=(float(1)/8))
+
+    return sobel_y
 
 
 def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
@@ -101,7 +105,59 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
                              Y-axis, same size and type as U.
     """
 
-    raise NotImplementedError
+    It = img_b - img_a
+    Ix = gradient_x(img_a)
+    Iy = gradient_y(img_a)
+
+    assert k_size % 2 == 1, "Even k_size, should be odd."
+
+    IxIx = np.multiply(Ix, Ix)
+    IxIy = np.multiply(Ix, Iy)
+    IyIy = np.multiply(Iy, Iy)
+    IxIt = np.multiply(Ix, It)
+    IyIt = np.multiply(Iy, It)
+
+    # smoothing kernel
+    kernel = np.ones((k_size, k_size))/(k_size**2)
+
+    sum_IxIx = cv2.filter2D(IxIx, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+    sum_IxIy = cv2.filter2D(IxIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+    sum_IyIy = cv2.filter2D(IyIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+    sum_IxIt = cv2.filter2D(IxIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+    sum_IyIt = cv2.filter2D(IyIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+
+    A = np.array([[sum_IxIx, sum_IxIy],
+                  [sum_IxIy, sum_IyIy]])
+    A = A.transpose([2, 3, 0, 1]) # new shape: (M, N, 2, 2)
+
+    b_ = np.array([sum_IxIt, sum_IyIt])
+    b_ = -1*b_.transpose(1, 2, 0) # new shape: (M, N, 2)
+
+
+    # print([sum_IxIx[0, 0], sum_IxIy[0,0]])
+    # pr int([sum_IxIy[0, 0], sum_IyIy[0, 0]])
+
+    # np.linalg.solve(A, b_)
+    det = np.linalg.det(A)
+    indices = np.where(det > 0.0000001)
+    indices = zip(*indices)
+
+    w, h = A.shape[:2]
+    U = np.zeros((w, h))
+    V = np.zeros((w, h))
+
+    for loc in indices:
+        # try:
+        print(loc)
+        u, v = np.linalg.solve(A[loc], b_[loc])
+        # except:
+        #     import pdb; pdb.set_trace()
+        U[loc] = u
+        V[loc] = v
+
+    # import pdb; pdb.set_trace()
+
+    return U, V
 
 
 def reduce_image(image):

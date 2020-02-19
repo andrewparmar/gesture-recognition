@@ -30,21 +30,21 @@ def quiver(u, v, scale, stride, color=(0, 255, 0)):
 # Functions you need to complete:
 
 def scale_u_and_v(u, v, level, pyr):
-    """Scales up U and V arrays to match the image dimensions assigned 
+    """Scales up U and V arrays to match the image dimensions assigned
     to the first pyramid level: pyr[0].
 
-    You will use this method in part 3. In this section you are asked 
-    to select a level in the gaussian pyramid which contains images 
-    that are smaller than the one located in pyr[0]. This function 
-    should take the U and V arrays computed from this lower level and 
+    You will use this method in part 3. In this section you are asked
+    to select a level in the gaussian pyramid which contains images
+    that are smaller than the one located in pyr[0]. This function
+    should take the U and V arrays computed from this lower level and
     expand them to match a the size of pyr[0].
 
-    This function consists of a sequence of ps4.expand_image operations 
-    based on the pyramid level used to obtain both U and V. Multiply 
-    the result of expand_image by 2 to scale the vector values. After 
-    each expand_image operation you should adjust the resulting arrays 
-    to match the current level shape 
-    i.e. U.shape == pyr[current_level].shape and 
+    This function consists of a sequence of ps4.expand_image operations
+    based on the pyramid level used to obtain both U and V. Multiply
+    the result of expand_image by 2 to scale the vector values. After
+    each expand_image operation you should adjust the resulting arrays
+    to match the current level shape
+    i.e. U.shape == pyr[current_level].shape and
     V.shape == pyr[current_level].shape. In case they don't, adjust
     the U and V arrays by removing the extra rows and columns.
 
@@ -55,16 +55,16 @@ def scale_u_and_v(u, v, level, pyr):
     Args:
         u: U array obtained from ps4.optic_flow_lk
         v: V array obtained from ps4.optic_flow_lk
-        level: level value used in the gaussian pyramid to obtain U 
+        level: level value used in the gaussian pyramid to obtain U
                and V (see part_3)
-        pyr: gaussian pyramid used to verify the shapes of U and V at 
+        pyr: gaussian pyramid used to verify the shapes of U and V at
              each iteration until the level 0 has been met.
 
     Returns:
         tuple: two-element tuple containing:
-            u (numpy.array): scaled U array of shape equal to 
+            u (numpy.array): scaled U array of shape equal to
                              pyr[0].shape
-            v (numpy.array): scaled V array of shape equal to 
+            v (numpy.array): scaled V array of shape equal to
                              pyr[0].shape
     """
 
@@ -76,13 +76,13 @@ def part_1a():
 
     shift_0 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                       'Shift0.png'), 0) / 255.
-    shift_r2 = cv2.imread(os.path.join(input_dir, 'TestSeq', 
+    shift_r2 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                        'ShiftR2.png'), 0) / 255.
-    shift_r5_u5 = cv2.imread(os.path.join(input_dir, 'TestSeq', 
+    shift_r5_u5 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                           'ShiftR5U5.png'), 0) / 255.
 
     # Optional: smooth the images if LK doesn't work well on raw images
-    k_size = 0  # TODO: Select a kernel size
+    k_size = 5  # TODO: Select a kernel size
     k_type = ""  # TODO: Select a kernel type
     sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma)
@@ -94,7 +94,7 @@ def part_1a():
     # Now let's try with ShiftR5U5. You may want to try smoothing the
     # input images first.
 
-    k_size = 0 # TODO: Select a kernel size
+    k_size = 5 # TODO: Select a kernel size
     k_type = ""  # TODO: Select a kernel type
     sigma = 0 # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)
@@ -316,12 +316,12 @@ def part_6():
 
 if __name__ == '__main__':
     part_1a()
-    part_1b()
-    part_2()
-    part_3a_1()
-    part_3a_2()
-    part_4a()
-    part_4b()
-    part_5a()
-    part_5b()
-    part_6()
+    # part_1b()
+    # part_2()
+    # part_3a_1()
+    # part_3a_2()
+    # part_4a()
+    # part_4b()
+    # part_5a()
+    # part_5b()
+    # part_6()
