@@ -82,7 +82,7 @@ def part_1a():
                                           'ShiftR5U5.png'), 0) / 255.
 
     # Optional: smooth the images if LK doesn't work well on raw images
-    k_size = 5  # TODO: Select a kernel size
+    k_size = 51  # TODO: Select a kernel size
     k_type = ""  # TODO: Select a kernel type
     sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma)
@@ -94,7 +94,7 @@ def part_1a():
     # Now let's try with ShiftR5U5. You may want to try smoothing the
     # input images first.
 
-    k_size = 5 # TODO: Select a kernel size
+    k_size = 51 # TODO: Select a kernel size
     k_type = ""  # TODO: Select a kernel type
     sigma = 0 # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)

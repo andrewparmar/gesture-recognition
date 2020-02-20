@@ -148,7 +148,7 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
 
     for loc in indices:
         # try:
-        print(loc)
+        # print(loc)
         u, v = np.linalg.solve(A[loc], b_[loc])
         # except:
         #     import pdb; pdb.set_trace()
