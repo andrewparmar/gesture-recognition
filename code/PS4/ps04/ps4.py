@@ -3,7 +3,26 @@
 import numpy as np
 import cv2
 import os
+from trackbar import display_trackbar_window, param, scale
 
+##########################################################################################
+# Experimental
+##########################################################################################
+def quiver(u, v, scale, stride, color=(0, 255, 0)):
+
+    img_out = np.zeros((v.shape[0], u.shape[1], 3), dtype=np.uint8)
+
+    for y in range(0, v.shape[0], stride):
+
+        for x in range(0, u.shape[1], stride):
+
+            cv2.line(img_out, (x, y), (x + int(u[y, x] * scale),
+                                       y + int(v[y, x] * scale)), color, 1)
+            cv2.circle(img_out, (x + int(u[y, x] * scale),
+                                 y + int(v[y, x] * scale)), 1, color, 1)
+    return img_out
+
+##########################################################################################
 
 # Utility function
 def normalize_and_scale(image_in, scale_range=(0, 255)):
@@ -104,61 +123,103 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
             V (numpy.array): raw displacement (in pixels) along
                              Y-axis, same size and type as U.
     """
-
-    It = img_b - img_a
-    Ix = gradient_x(img_a)
-    Iy = gradient_y(img_a)
-
-    assert k_size % 2 == 1, "Even k_size, should be odd."
-
-    IxIx = np.multiply(Ix, Ix)
-    IxIy = np.multiply(Ix, Iy)
-    IyIy = np.multiply(Iy, Iy)
-    IxIt = np.multiply(Ix, It)
-    IyIt = np.multiply(Iy, It)
-
-    # smoothing kernel
-    kernel = np.ones((k_size, k_size))/(k_size**2)
-
-    sum_IxIx = cv2.filter2D(IxIx, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
-    sum_IxIy = cv2.filter2D(IxIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
-    sum_IyIy = cv2.filter2D(IyIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
-    sum_IxIt = cv2.filter2D(IxIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
-    sum_IyIt = cv2.filter2D(IyIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
-
-    A = np.array([[sum_IxIx, sum_IxIy],
-                  [sum_IxIy, sum_IyIy]])
-    A = A.transpose([2, 3, 0, 1]) # new shape: (M, N, 2, 2)
-
-    b_ = np.array([sum_IxIt, sum_IyIt])
-    b_ = -1*b_.transpose(1, 2, 0) # new shape: (M, N, 2)
-
-
-    # print([sum_IxIx[0, 0], sum_IxIy[0,0]])
-    # pr int([sum_IxIy[0, 0], sum_IyIy[0, 0]])
-
-    # np.linalg.solve(A, b_)
-    det = np.linalg.det(A)
-    indices = np.where(det > 0.0000001)
-    indices = zip(*indices)
-
-    w, h = A.shape[:2]
-    U = np.zeros((w, h))
-    V = np.zeros((w, h))
-
-    for loc in indices:
-        # try:
-        # print(loc)
-        u, v = np.linalg.solve(A[loc], b_[loc])
-        # except:
-        #     import pdb; pdb.set_trace()
-        U[loc] = u
-        V[loc] = v
-
+    # pre-filtering
     # import pdb; pdb.set_trace()
+    # img_a = cv2.medianBlur(img_a.astype(np.float32), 9)
+    # img_b = cv2.medianBlur(img_b.astype(np.float32), 9)
+    # gauss_k_size = 9
+    # gauss_sigma = 10
+    # img_a = cv2.GaussianBlur(img_a, (gauss_k_size, gauss_k_size), gauss_sigma)
+    # img_b = cv2.GaussianBlur(img_b, (gauss_k_size, gauss_k_size), gauss_sigma)
+    #
+    # It = img_b - img_a
+    # Ix = gradient_x(img_a)
+    # Iy = gradient_y(img_a)
+    #
+    # # assert k_size % 2 == 1, "Even k_size, should be odd."
+    #
+    # IxIx = np.multiply(Ix, Ix)
+    # IxIy = np.multiply(Ix, Iy)
+    # IyIy = np.multiply(Iy, Iy)
+    # IxIt = np.multiply(Ix, It)
+    # IyIt = np.multiply(Iy, It)
 
-    return U, V
+    def draw_image(input_points):
+        u, v = input_points
+        u_v = quiver(u, v, scale=2.5, stride=8)
 
+        return u_v
+
+    def compute_values(kSize, sigmaGaus, det_scale, gauss_k_size=1, gauss_sigma=1):
+        # gauss_k_size = 9
+        # gauss_sigma = 10
+        img_a_blur = cv2.GaussianBlur(img_a, (gauss_k_size, gauss_k_size), gauss_sigma)
+        img_b_blur = cv2.GaussianBlur(img_b, (gauss_k_size, gauss_k_size), gauss_sigma)
+
+        It = img_b_blur - img_a_blur
+        Ix = gradient_x(img_a_blur)
+        Iy = gradient_y(img_a_blur)
+
+        # assert k_size % 2 == 1, "Even k_size, should be odd."
+
+        IxIx = np.multiply(Ix, Ix)
+        IxIy = np.multiply(Ix, Iy)
+        IyIy = np.multiply(Iy, Iy)
+        IxIt = np.multiply(Ix, It)
+        IyIt = np.multiply(Iy, It)
+
+
+        k_size = kSize
+        sigma = sigmaGaus
+        # smoothing kernel
+        if k_type == 'uniform':
+            kernel = np.ones((k_size, k_size))/(k_size**2)
+        elif k_type == 'gaussian':
+            kernel = cv2.getGaussianKernel(k_size, sigma)
+
+        sum_IxIx = cv2.filter2D(IxIx, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+        sum_IxIy = cv2.filter2D(IxIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+        sum_IyIy = cv2.filter2D(IyIy, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+        sum_IxIt = cv2.filter2D(IxIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+        sum_IyIt = cv2.filter2D(IyIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
+
+        A = np.array([[sum_IxIx, sum_IxIy],
+                      [sum_IxIy, sum_IyIy]])
+        A = A.transpose([2, 3, 0, 1]) # new shape: (M, N, 2, 2)
+
+        b_ = np.array([sum_IxIt, sum_IyIt])
+        b_ = -1*b_.transpose(1, 2, 0) # new shape: (M, N, 2)
+
+        ## Trying Vectorization Technique
+        det_threshold = 1 /(10**det_scale)
+        det = sum_IxIx*sum_IyIy - sum_IxIy*sum_IxIy
+        gt_idx = det > det_threshold
+        lt_idx = det <= det_threshold
+
+        U_tmp = (sum_IyIy * -sum_IxIt + -sum_IxIy * -sum_IyIt)
+        U_tmp[gt_idx] /= det[gt_idx]
+        U_tmp[lt_idx] = 0
+        U = U_tmp
+
+        V_tmp = (-sum_IxIy * -sum_IxIt + sum_IxIx * -sum_IyIt)
+        V_tmp[gt_idx] /= det[gt_idx]
+        V_tmp[lt_idx] = 0
+        V = V_tmp
+
+        return (U, V)
+
+    # result = display_trackbar_window(
+    #     'find_markers',
+    #     draw_image,
+    #     compute_values,
+    #     kSize=param(100, 51, lambda x: x if x % 2 != 0 else x + 1),
+    #     sigmaGaus=param(50, 10),
+    #     det_scale=param(15, 8),
+    #     gauss_sigma=param(50, 10),
+    #     gauss_k_size=param(100, 9, lambda x: x if x % 2 != 0 else x + 1)
+    # )
+
+    return compute_values(k_size, sigma, det_scale=11)
 
 def reduce_image(image):
     """Reduces an image to half its shape.
