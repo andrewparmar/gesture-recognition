@@ -81,11 +81,11 @@ class Part2(unittest.TestCase):
             f1 = input_imgs[i]
             f2 = ref_imgs[i]
 
-            test_array = np.load(INPUT_DIR + f1,encoding = 'latin1')
+            test_array = np.load(INPUT_DIR + f1,encoding = 'latin1', allow_pickle=True)
 
             reduced = ps4.reduce_image(test_array.copy())
 
-            ref_reduced = np.load(INPUT_DIR + f2,encoding = 'latin1')
+            ref_reduced = np.load(INPUT_DIR + f2,encoding = 'latin1', allow_pickle=True)
 
             correct = np.allclose(reduced, ref_reduced, atol=0.05)
 
@@ -125,11 +125,11 @@ class Part2(unittest.TestCase):
             f2 = ref_imgs[i]
             l = levels[i]
 
-            test_array = np.load(INPUT_DIR + f1,encoding = 'latin1')
+            test_array = np.load(INPUT_DIR + f1,encoding = 'latin1', allow_pickle=True)
 
             g_pyr = ps4.gaussian_pyramid(test_array.copy(), levels=l)
 
-            g_pyr_ref = np.load(INPUT_DIR + f2,encoding = 'latin1')
+            g_pyr_ref = np.load(INPUT_DIR + f2,encoding = 'latin1', allow_pickle=True)
 
             for l in range(len(g_pyr)):
                 correct = np.allclose(g_pyr[l], g_pyr_ref[l], atol=0.1)

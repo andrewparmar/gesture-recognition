@@ -2,8 +2,7 @@
 
 import numpy as np
 import cv2
-import os
-from trackbar import display_trackbar_window, param, scale
+# from trackbar import display_trackbar_window, param, scale
 
 ##########################################################################################
 # Experimental
@@ -37,8 +36,11 @@ def normalize_and_scale(image_in, scale_range=(0, 255)):
     Returns:
         numpy.array: output image.
     """
-    image_out = np.zeros(image_in.shape)
-    cv2.normalize(image_in, image_out, alpha=scale_range[0],
+    # image_out = np.zeros(image_in.shape)
+    # cv2.normalize(image_in, image_out, alpha=scale_range[0],
+    #               beta=scale_range[1], norm_type=cv2.NORM_MINMAX)
+
+    image_out = cv2.normalize(image_in, dst=None, alpha=scale_range[0],
                   beta=scale_range[1], norm_type=cv2.NORM_MINMAX)
 
     return image_out
@@ -221,6 +223,7 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
 
     return compute_values(k_size, sigma, det_scale=11)
 
+
 def reduce_image(image):
     """Reduces an image to half its shape.
 
@@ -245,8 +248,15 @@ def reduce_image(image):
         numpy.array: output image with half the shape, same type as the
                      input image.
     """
+    kernel =  np.array([1, 4, 6, 4, 1]) / 16
 
-    raise NotImplementedError
+    filtered_image = cv2.sepFilter2D(np.float32(image), ddepth=-1, kernelX=kernel, kernelY=kernel)
+
+    reduced_image = filtered_image[::2, ::2]
+    half = tuple(x/2 for x in image.shape)
+    print(f'OG:{image.shape}, Half:{half}, New:{reduced_image.shape}')
+
+    return reduced_image
 
 
 def gaussian_pyramid(image, levels):
@@ -269,8 +279,14 @@ def gaussian_pyramid(image, levels):
     Returns:
         list: Gaussian pyramid, list of numpy.arrays.
     """
+    pyramid = []
+    pyramid.append(image)
 
-    raise NotImplementedError
+    for _ in range(levels-1):
+        reduced_image = reduce_image(pyramid[-1])
+        pyramid.append(reduced_image)
+
+    return pyramid
 
 
 def create_combined_img(img_list):
@@ -291,8 +307,25 @@ def create_combined_img(img_list):
         numpy.array: output image with the pyramid images stacked
                      from left to right.
     """
+    h = img_list[0].shape[0]
+    w = sum([img.shape[1] for img in img_list])
 
-    raise NotImplementedError
+    combined_img = np.zeros((h, w))
+
+    i = 0
+    j = 0
+    for img in img_list:
+        # print(f"Max: {img.max()}")
+        norm_img = normalize_and_scale(img)
+        # print(f"Max Normed: {norm_img.max()}")
+        p, q = norm_img.shape
+        combined_img[j:j+p, i:i+q] = normalize_and_scale(norm_img)
+        # print(f'Before i:{i}, j:{j}, p:{p}, q:{q}')
+        i = i + q
+        # print(f'After i:{i}, j:{j}, p:{p}, q:{q}')
+        # cv2.imshow(f'{p}, {q}', img)
+
+    return combined_img.astype(np.uint8)
 
 
 def expand_image(image):
@@ -315,8 +348,16 @@ def expand_image(image):
         numpy.array: same type as 'image' with the doubled height and
                      width.
     """
+    w, h = image.shape
+    tmp_expanded_image = np.zeros((w*2, h*2))
+    tmp_expanded_image[::2, ::2] = image
 
-    raise NotImplementedError
+    kernel = np.array([1, 4, 6, 4, 1]) / 8.
+
+    expanded_image = cv2.sepFilter2D(np.float32(tmp_expanded_image), ddepth=-1,
+                                         kernelX=kernel, kernelY=kernel)
+
+    return expanded_image
 
 
 def laplacian_pyramid(g_pyr):
@@ -330,8 +371,21 @@ def laplacian_pyramid(g_pyr):
     Returns:
         list: Laplacian pyramid, with l_pyr[-1] = g_pyr[-1].
     """
+    l_pyr = list(range(len(g_pyr)))
+    print(l_pyr)
+    print('*'*80)
+    for i in l_pyr[:-1]:
+        # import pdb; pdb.set_trace()
+        # print(i)
+        expanded = expand_image(g_pyr[i + 1])
+        double = tuple(x*2 for x in g_pyr[i+1].shape)
+        print(f'OG:{g_pyr[i+1].shape}, Double:{double}, New:{expanded.shape}')
+        h, w = g_pyr[i].shape
+        l_pyr[i] = g_pyr[i] - expanded[:h, :w]
 
-    raise NotImplementedError
+    l_pyr[-1] = g_pyr[-1]
+
+    return l_pyr
 
 
 def warp(image, U, V, interpolation, border_mode):

@@ -327,8 +327,8 @@ def part_6():
 
 if __name__ == '__main__':
     # part_1a()
-    part_1b()
-    # part_2()
+    # part_1b()
+    part_2()
     # part_3a_1()
     # part_3a_2()
     # part_4a()
