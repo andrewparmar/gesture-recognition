@@ -2,7 +2,7 @@
 
 import numpy as np
 import cv2
-from trackbar import display_trackbar_window, param, scale
+# from trackbar import display_trackbar_window, param, scale
 
 ##########################################################################################
 # Experimental

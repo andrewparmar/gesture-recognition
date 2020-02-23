@@ -187,7 +187,7 @@ class Part3(unittest.TestCase):
             f2 = self.input_imgs_2[i]
             f3 = self.input_flows[i]
 
-            img1 = np.load(INPUT_DIR + f1,encoding = 'latin1')  # Not used
+            img1 = np.load(INPUT_DIR + f1,encoding = 'latin1', allow_pickle=True)  # Not used
             img2 = np.load(INPUT_DIR + f2,encoding = 'latin1', allow_pickle=True)
             u_v = np.load(INPUT_DIR + f3,encoding = 'latin1', allow_pickle=True)
 
