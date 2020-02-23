@@ -67,10 +67,25 @@ def scale_u_and_v(u, v, level, pyr):
             v (numpy.array): scaled V array of shape equal to
                              pyr[0].shape
     """
+    print(f'**** Starting Shape:{u.shape}')
+    print(f'**** Final Goal Shape:{pyr[0].shape}')
+    for i in range(level, 0, -1):
+        tmp_shape = u.shape
+        u_tmp = ps4.expand_image(u)
+        v_tmp = ps4.expand_image(v)
 
-    # TODO: Your code here
-    raise NotImplementedError
+        u_tmp *= 2
+        v_tmp *= 2
 
+        next_level = i-1
+        next_image = pyr[next_level]
+        h, w = next_image.shape
+        u = u_tmp[:h, :w]
+        v = v_tmp[:h, :w]
+        print(f'Level:{i}; Before {tmp_shape};\tGoal h:{h},w:{w},\tAfter u:{u.shape}, v:{v.shape}')
+    print(f'**** Final Shape:{u.shape}')
+
+    return u, v
 
 def part_1a():
 
@@ -100,7 +115,7 @@ def part_1a():
     u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)
 
     # Flow image
-    u_v = quiver(u, v, scale=3, stride=10)
+    u_v = quiver(u, v, scale=2, stride=5)
     cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.png"), u_v)
 
 
@@ -178,21 +193,32 @@ def part_3a_1():
     yos_img_01_g_pyr = ps4.gaussian_pyramid(yos_img_01, levels)
     yos_img_02_g_pyr = ps4.gaussian_pyramid(yos_img_02, levels)
 
-    level_id = 0  # TODO: Select the level number (or id) you wish to use
-    k_size = 0 # TODO: Select a kernel size
-    k_type = ""  # TODO: Select a kernel type
-    sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
+    level_id = 1  # TODO: Select the level number (or id) you wish to use
+    k_size = 51 # TODO: Select a kernel size
+    k_type = "gaussian"  # TODO: Select a kernel type
+    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
     u, v = ps4.optic_flow_lk(yos_img_01_g_pyr[level_id],
                              yos_img_02_g_pyr[level_id],
                              k_size, k_type, sigma)
+    # u_v = quiver(u, v, scale=1, stride=10)
+    # print(f'Shape of u_v: {u_v.shape}')
+    # cv2.imwrite('part_3a_quiver_u_v.png', u_v)
+    # cv2.resizeWindow('image', 600, 600)
+    # cv2.imshow('part_3a_1', yos_img_01_g_pyr[level_id])
+    # cv2.imshow('part_3a_2', yos_img_02_g_pyr[level_id])
+    # cv2.waitKey(0)
 
     u, v = scale_u_and_v(u, v, level_id, yos_img_02_g_pyr)
+    # u_v_scaled = quiver(u, v, scale=3, stride=8)
+    # cv2.imwrite('part_3a_quiver_u_v_scaled.png', u_v_scaled)
 
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
     yos_img_02_warped = ps4.warp(yos_img_02, u, v, interpolation, border_mode)
-
-    diff_yos_img_01_02 = yos_img_01 - yos_img_02_warped
+    # cv2.imshow('yos_img_02_warped', yos_img_02_warped)
+    # cv2.imshow('yos_img_01', yos_img_01)
+    # cv2.waitKey(0)
+    diff_yos_img = yos_img_01 - yos_img_02_warped
     cv2.imwrite(os.path.join(output_dir, "ps4-3-a-1.png"),
                 ps4.normalize_and_scale(diff_yos_img))
 
@@ -328,8 +354,8 @@ def part_6():
 if __name__ == '__main__':
     # part_1a()
     # part_1b()
-    part_2()
-    # part_3a_1()
+    # part_2()
+    part_3a_1()
     # part_3a_2()
     # part_4a()
     # part_4b()

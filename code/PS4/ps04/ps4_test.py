@@ -150,11 +150,11 @@ class Part2(unittest.TestCase):
             f1 = input_imgs[i]
             f2 = ref_imgs[i]
 
-            test_array = np.load(INPUT_DIR + f1 , encoding = 'latin1')
+            test_array = np.load(INPUT_DIR + f1 , encoding = 'latin1', allow_pickle=True)
 
             l_pyr = ps4.laplacian_pyramid(test_array)
 
-            l_pyr_ref = np.load(INPUT_DIR + f2,encoding = 'latin1')
+            l_pyr_ref = np.load(INPUT_DIR + f2,encoding = 'latin1', allow_pickle=True)
 
             for l in range(levels[i]):
                 correct = np.allclose(l_pyr[l], l_pyr_ref[l], atol=0.1)
@@ -188,8 +188,8 @@ class Part3(unittest.TestCase):
             f3 = self.input_flows[i]
 
             img1 = np.load(INPUT_DIR + f1,encoding = 'latin1')  # Not used
-            img2 = np.load(INPUT_DIR + f2,encoding = 'latin1')
-            u_v = np.load(INPUT_DIR + f3,encoding = 'latin1')
+            img2 = np.load(INPUT_DIR + f2,encoding = 'latin1', allow_pickle=True)
+            u_v = np.load(INPUT_DIR + f3,encoding = 'latin1', allow_pickle=True)
 
             u = u_v[:, :, 0]
             v = u_v[:, :, 1]
