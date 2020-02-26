@@ -2,9 +2,7 @@
 
 import numpy as np
 import cv2
-# from trackpipe import pipeline
-# from trackpipe.transforms import GaussianBlur
-from trackbar import display_trackbar_window, param, scale
+# from trackbar import display_trackbar_window, param, scale
 
 ##########################################################################################
 # Experimental
@@ -127,26 +125,6 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
             V (numpy.array): raw displacement (in pixels) along
                              Y-axis, same size and type as U.
     """
-    # pre-filtering
-    # import pdb; pdb.set_trace()
-    # img_a = cv2.medianBlur(img_a.astype(np.float32), 9)
-    # img_b = cv2.medianBlur(img_b.astype(np.float32), 9)
-    # gauss_k_size = 9
-    # gauss_sigma = 10
-    # img_a = cv2.GaussianBlur(img_a, (gauss_k_size, gauss_k_size), gauss_sigma)
-    # img_b = cv2.GaussianBlur(img_b, (gauss_k_size, gauss_k_size), gauss_sigma)
-    #
-    # It = img_b - img_a
-    # Ix = gradient_x(img_a)
-    # Iy = gradient_y(img_a)
-    #
-    # # assert k_size % 2 == 1, "Even k_size, should be odd."
-    #
-    # IxIx = np.multiply(Ix, Ix)
-    # IxIy = np.multiply(Ix, Iy)
-    # IyIy = np.multiply(Iy, Iy)
-    # IxIt = np.multiply(Ix, It)
-    # IyIt = np.multiply(Iy, It)
 
     def draw_image(input):
         input_points = input[0]
@@ -159,9 +137,19 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
                        gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
                        quiver_scale=1, quiver_stride=10):
 
-        It = img_b - img_a
-        Ix = gradient_x(img_a)
-        Iy = gradient_y(img_a)
+        # img_a_blur = cv2.GaussianBlur(img_a,
+        #                          (gauss_k_size, gauss_k_size),
+        #                          sigmaX=gauss_sigma_x,
+        #                          sigmaY=gauss_sigma_y)
+        # img_b_blur = cv2.GaussianBlur(img_b,
+        #                               (gauss_k_size, gauss_k_size),
+        #                               sigmaX=gauss_sigma_x,
+        #                               sigmaY=gauss_sigma_y)
+        img_a_blur = img_a
+        img_b_blur = img_b
+        It = img_b_blur - img_a_blur
+        Ix = gradient_x(img_a_blur)
+        Iy = gradient_y(img_a_blur)
 
         if use_img_smoothing:
             It = cv2.GaussianBlur(It,
@@ -208,8 +196,8 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
         V_tmp[lt_idx] = 0
         V = V_tmp
 
-        # U = cv2.GaussianBlur(U, (3, 3), 3)
-        # V = cv2.GaussianBlur(V, (3, 3), 3)
+        # U = cv2.GaussianBlur(U, (kSize, kSize), sigmaGauss)
+        # V = cv2.GaussianBlur(V, (kSize, kSize), sigmaGauss)
 
         return ((U, V), quiver_scale, quiver_stride)
 
@@ -228,8 +216,8 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
     # )
 
     # print(result)
-    U, V = compute_values(k_size, sigma, gauss_k_size=9,
-                   gauss_sigma_x=10, gauss_sigma_y=10)[0]
+    U, V = compute_values(k_size, sigma, gauss_k_size=15,
+                   gauss_sigma_x=24, gauss_sigma_y=1)[0]
 
     return U, V
 
@@ -399,7 +387,6 @@ def laplacian_pyramid(g_pyr):
     # print(l_pyr)
     # print('*'*80)
     for i in l_pyr[:-1]:
-        # import pdb; pdb.set_trace()
         # print(i)
         expanded = expand_image(g_pyr[i + 1])
         double = tuple(x*2 for x in g_pyr[i+1].shape)
@@ -437,11 +424,11 @@ def warp(image, U, V, interpolation, border_mode):
     """
     h, w = image.shape[:2]
     row_indices, col_indices = np.indices((h, w), dtype=np.float32)
-    # import pdb; pdb.set_trace()
+
     map_x = col_indices + U
     map_y = row_indices + V
 
-    # import pdb; pdb.set_trace()
+
     warped_image = cv2.remap(
         image.astype(np.float32),
         map_x.astype(np.float32),
@@ -449,10 +436,6 @@ def warp(image, U, V, interpolation, border_mode):
         interpolation,
         borderMode=border_mode
     )
-    # import pdb; pdb.set_trace()
-    # cv2.imshow('remap_src_image', image)
-    # cv2.imshow('remap_dst_image', warped_image)
-    # cv2.waitKey(0)
 
     return warped_image
 
@@ -509,15 +492,15 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
 
             level -= 1
             #2 Use expanded U, V to warp next level of img_a into img_b. (old_velocity)
-            warped_img = warp(img_a_pyr[level], u_exp, v_exp, interpolation, border_mode)
+            warped_img_b_to_img_a = warp(img_b_pyr[level], u_exp, v_exp, interpolation, border_mode)
 
             #3 Run warped_image and same level from img_2 into Lk
-            u_corr, v_corr = optic_flow_lk(warped_img, img_b_pyr[level], k_size,
+            u_corr, v_corr = optic_flow_lk(img_a_pyr[level], warped_img_b_to_img_a, k_size,
                                            k_type, sigma)
 
             #4 Add correction terms to old_velocity
-            u = u_exp - u_corr
-            v = v_exp - v_corr
+            u = u_exp + u_corr
+            v = v_exp + v_corr
 
             # goto #1
 
