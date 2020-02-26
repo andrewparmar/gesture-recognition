@@ -2,7 +2,9 @@
 
 import numpy as np
 import cv2
-# from trackbar import display_trackbar_window, param, scale
+# from trackpipe import pipeline
+# from trackpipe.transforms import GaussianBlur
+from trackbar import display_trackbar_window, param, scale
 
 ##########################################################################################
 # Experimental
@@ -146,23 +148,31 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
     # IxIt = np.multiply(Ix, It)
     # IyIt = np.multiply(Iy, It)
 
-    def draw_image(input_points):
+    def draw_image(input):
+        input_points = input[0]
         u, v = input_points
-        u_v = quiver(u, v, scale=0.9, stride=8)
+        u_v = quiver(u, v, scale=input[1], stride=input[2])
 
         return u_v
 
-    def compute_values(kSize, sigmaGauss, det_scale, gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1):
-        # gauss_k_size = 9
-        # gauss_sigma = 10
-        img_a_blur = cv2.GaussianBlur(img_a, (gauss_k_size, gauss_k_size), sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
-        img_b_blur = cv2.GaussianBlur(img_b, (gauss_k_size, gauss_k_size), sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+    def compute_values(kSize, sigmaGauss, use_img_smoothing=1,
+                       gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
+                       quiver_scale=1, quiver_stride=10):
 
-        It = img_b_blur - img_a_blur
-        Ix = gradient_x(img_a_blur)
-        Iy = gradient_y(img_a_blur)
+        It = img_b - img_a
+        Ix = gradient_x(img_a)
+        Iy = gradient_y(img_a)
 
-        # assert k_size % 2 == 1, "Even k_size, should be odd."
+        if use_img_smoothing:
+            It = cv2.GaussianBlur(It,
+                                  (gauss_k_size, gauss_k_size),
+                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+            Ix = cv2.GaussianBlur(Ix,
+                                  (gauss_k_size, gauss_k_size),
+                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+            Iy = cv2.GaussianBlur(Iy,
+                                  (gauss_k_size, gauss_k_size),
+                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
 
         IxIx = np.multiply(Ix, Ix)
         IxIy = np.multiply(Ix, Iy)
@@ -182,15 +192,8 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
         sum_IxIt = cv2.filter2D(IxIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
         sum_IyIt = cv2.filter2D(IyIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
 
-        # A = np.array([[sum_IxIx, sum_IxIy],
-        #               [sum_IxIy, sum_IyIy]])
-        # A = A.transpose([2, 3, 0, 1]) # new shape: (M, N, 2, 2)
-        #
-        # b_ = np.array([sum_IxIt, sum_IyIt])
-        # b_ = -1*b_.transpose(1, 2, 0) # new shape: (M, N, 2)
-
         ## Trying Vectorization Technique
-        det_threshold = 1 /(10**det_scale)
+        det_threshold = 1 /(10**15)
         det = sum_IxIx*sum_IyIy - sum_IxIy*sum_IxIy
         gt_idx = det > det_threshold
         lt_idx = det <= det_threshold
@@ -205,28 +208,45 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
         V_tmp[lt_idx] = 0
         V = V_tmp
 
-        U = cv2.GaussianBlur(U, (kSize, kSize), sigmaGauss)
-        V = cv2.GaussianBlur(V, (kSize, kSize), sigmaGauss)
+        # U = cv2.GaussianBlur(U, (3, 3), 3)
+        # V = cv2.GaussianBlur(V, (3, 3), 3)
 
-        return (U, V)
+        return ((U, V), quiver_scale, quiver_stride)
 
     # result = display_trackbar_window(
-    #     'find_markers',
+    #     'part1_lk_quiver',
     #     draw_image,
     #     compute_values,
     #     kSize=param(100, 51, lambda x: x if x % 2 != 0 else x + 1),
     #     sigmaGauss=param(50, 30),
-    #     det_scale=param(15, 15),
-    #     gauss_k_size=param(100, 15, lambda x: x if x % 2 != 0 else x + 1),
+    #     use_img_smoothing=param(1, 0),
+    #     gauss_k_size=param(100, 35, lambda x: x if x % 2 != 0 else x + 1),
     #     gauss_sigma_x=param(50, 24),
     #     gauss_sigma_y=param(50, 1),
+    #     quiver_scale = param(30, 10, lambda x: x/10),
+    #     quiver_stride = param(15, 10)
     # )
 
-    # k_size=51, sigmaGauss=30, det_scale=15, gauss_k_size=15, gauss_sigma_x=24, gauss_sigma_y=1
-    return compute_values(
-        k_size, sigma, det_scale=15, gauss_k_size=15, gauss_sigma_x=24, gauss_sigma_y=1
-    )
+    # print(result)
+    U, V = compute_values(k_size, sigma, gauss_k_size=9,
+                   gauss_sigma_x=10, gauss_sigma_y=10)[0]
 
+    return U, V
+
+# 1a 1
+# {'kSize': 51, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 10, 'gauss_sigma_y': 1, 'quiver_scale': 3.0, 'quiver_stride': 10}
+
+# 1a 2
+# {'kSize': 51, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 15, 'gauss_sigma_y': 7, 'quiver_scale': 1.0, 'quiver_stride': 10}
+
+# 1b 1
+# {'kSize': 67, 'sigmaGauss': 29, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.9, 'quiver_stride': 10}
+
+# 1b 2
+# {'kSize': 69, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.9, 'quiver_stride': 10}
+
+# 1b 2
+# {'kSize': 75, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 87, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.7, 'quiver_stride': 10}
 
 def reduce_image(image):
     """Reduces an image to half its shape.
@@ -465,4 +485,64 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
                              same size and type as U.
     """
 
-    raise NotImplementedError
+    def compute_values(k_size, sigma, levels, quiver_scale=1, quiver_stride=10):
+                       # det_scale, gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
+
+        # create pyramids
+        img_a_pyr = gaussian_pyramid(img_a, levels)
+        img_b_pyr = gaussian_pyramid(img_b, levels)
+
+        # cv2.imshow('imga', img_a_pyr[-2])
+        # cv2.imshow('imgb', img_b_pyr[-2])
+        # cv2.imshow('imga', img_a_pyr[-3])
+        # cv2.imshow('imgb', img_b_pyr[-3])
+        # cv2.waitKey(0)
+
+        #0 start with smallest pyramid images and feed into lk
+        level = levels - 1
+        u, v = optic_flow_lk(img_a_pyr[level], img_b_pyr[level], k_size, k_type, sigma)
+
+        while level > 0:
+            #1 expand optic flow U, V matrices.
+            u_exp = expand_image(u) * 2
+            v_exp = expand_image(v) * 2
+
+            level -= 1
+            #2 Use expanded U, V to warp next level of img_a into img_b. (old_velocity)
+            warped_img = warp(img_a_pyr[level], u_exp, v_exp, interpolation, border_mode)
+
+            #3 Run warped_image and same level from img_2 into Lk
+            u_corr, v_corr = optic_flow_lk(warped_img, img_b_pyr[level], k_size,
+                                           k_type, sigma)
+
+            #4 Add correction terms to old_velocity
+            u = u_exp - u_corr
+            v = v_exp - v_corr
+
+            # goto #1
+
+        return ((u, v), quiver_scale, quiver_stride)
+
+    def draw_image(input):
+        input_points = input[0]
+        u, v = input_points
+        u_v = quiver(u, v, scale=input[1], stride=input[2])
+
+        return u_v
+
+    # result = display_trackbar_window(
+    #     'find_markers',
+    #     draw_image,
+    #     compute_values,
+    #     levels=param(6, 4),
+    #     k_size=param(100, 51, lambda x: x if x % 2 != 0 else x + 1),
+    #     sigma=param(50, 30),
+    #     # det_scale=param(15, 15),
+    #     # gauss_k_size=param(100, 15, lambda x: x if x % 2 != 0 else x + 1),
+    #     # gauss_sigma_x=param(50, 24),
+    #     # gauss_sigma_y=param(50, 1),
+    #     quiver_scale = param(30, 10, lambda x: x/10),
+    #     quiver_stride = param(15, 10)
+    # )
+
+    return compute_values(k_size, sigma, levels)[0]

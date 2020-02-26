@@ -98,8 +98,9 @@ def part_1a():
 
     # Optional: smooth the images if LK doesn't work well on raw images
     k_size = 51  # TODO: Select a kernel size
-    k_type = "uniform"  # TODO: Select a kernel type
-    sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
+    k_type = "gaussian"  # TODO: Select a kernel type
+    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
+
     u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma)
 
     # Flow image
@@ -110,12 +111,13 @@ def part_1a():
     # input images first.
 
     k_size = 51 # TODO: Select a kernel size
-    k_type = "uniform"  # TODO: Select a kernel type
-    sigma = 0 # TODO: Select a sigma value if you are using a gaussian kernel
+    k_type = "gaussian"  # TODO: Select a kernel type
+    sigma = 30 # TODO: Select a sigma value if you are using a gaussian kernel
+    # smooth input images
     u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)
 
     # Flow image
-    u_v = quiver(u, v, scale=2, stride=5)
+    u_v = quiver(u, v, scale=1.5, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.png"), u_v)
 
 
@@ -153,13 +155,13 @@ def part_1b():
     file_names = ['ps4-1-b-1.png', 'ps4-1-b-2.png', 'ps4-1-b-3.png']
 
 
-    k_size = 47  # TODO: Select a kernel size
+    k_size = 51  # TODO: Select a kernel size
     k_type = "gaussian"  # TODO: Select a kernel type
     sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
 
     for image, file_name in zip(images, file_names):
         u, v = ps4.optic_flow_lk(shift_0, image, k_size, k_type, sigma)
-        u_v = quiver(u, v, scale=3, stride=10)
+        u_v = quiver(u, v, scale=0.9, stride=10)
         cv2.imwrite(os.path.join(output_dir, file_name), u_v)
 
 
@@ -262,10 +264,10 @@ def part_4a():
     shift_r40 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                         'ShiftR40.png'), 0) / 255.
 
-    levels = 1  # TODO: Define the number of levels
-    k_size = 0  # TODO: Select a kernel size
-    k_type = ""  # TODO: Select a kernel type
-    sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
+    levels = 5  # TODO: Define the number of levels
+    k_size = 5  # TODO: Select a kernel size
+    k_type = "gaussian"  # TODO: Select a kernel type
+    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
 
@@ -280,12 +282,12 @@ def part_4a():
     u20, v20 = ps4.hierarchical_lk(shift_0, shift_r20, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
 
-    u_v = quiver(u20, v20, scale=3, stride=10)
+    u_v = quiver(u20, v20, scale=2, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-2.png"), u_v)
 
     u40, v40 = ps4.hierarchical_lk(shift_0, shift_r40, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
-    u_v = quiver(u40, v40, scale=3, stride=10)
+    u_v = quiver(u40, v40, scale=1, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-3.png"), u_v)
 
 
@@ -295,17 +297,17 @@ def part_4b():
     urban_img_02 = cv2.imread(
         os.path.join(input_dir, 'Urban2', 'urban02.png'), 0) / 255.
 
-    levels = 1  # TODO: Define the number of levels
-    k_size = 0  # TODO: Select a kernel size
-    k_type = ""  # TODO: Select a kernel type
-    sigma = 0  # TODO: Select a sigma value if you are using a gaussian kernel
+    levels = 4  # TODO: Define the number of levels
+    k_size = 51  # TODO: Select a kernel size
+    k_type = "gaussian"  # TODO: Select a kernel type
+    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
 
     u, v = ps4.hierarchical_lk(urban_img_01, urban_img_02, levels, k_size,
                                k_type, sigma, interpolation, border_mode)
 
-    u_v = quiver(u, v, scale=3, stride=10)
+    u_v = quiver(u, v, scale=1, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-b-1.png"), u_v)
 
     interpolation = cv2.INTER_CUBIC  # You may try different values
@@ -352,9 +354,9 @@ def part_6():
 
 
 if __name__ == '__main__':
-    # part_1a()
-    # part_1b()
-    # part_2()
+    part_1a()
+    part_1b()
+    part_2()
     part_3a_1()
     part_3a_2()
     # part_4a()

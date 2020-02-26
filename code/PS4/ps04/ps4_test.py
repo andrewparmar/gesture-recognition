@@ -267,6 +267,8 @@ class Part4(unittest.TestCase):
                              c:c + center_box[1]])
 
             max_diff = abs(d_c) * .1 +.21
+            print(f'Max diff allowed: {max_diff}')
+            print(f'computed diff: {abs(u_mean - d_r)}')
             check_u = abs(u_mean - d_c) <= max_diff
 
             error_msg = "Average of U values in the area where there is " \
@@ -278,6 +280,8 @@ class Part4(unittest.TestCase):
                              c:c + center_box[1]])
 
             max_diff = abs(d_r) * .1 + .21
+            print(f'Max diff allowed: {max_diff}')
+            print(f'computed diff: {abs(v_mean - d_r)}')
             check_v = abs(v_mean - d_r) <= max_diff
 
             error_msg = "Average of V values in the area where there is " \
