@@ -2,7 +2,7 @@
 
 import numpy as np
 import cv2
-# from trackbar import display_trackbar_window, param, scale
+from trackbar import display_trackbar_window, param, scale
 
 ##########################################################################################
 # Experimental
@@ -87,7 +87,9 @@ def gradient_y(image):
     return sobel_y
 
 
-def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
+# def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
+def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
+                  gauss_k_size=3, gauss_sigma_x=3, gauss_sigma_y=3):
     """Computes optic flow using the Lucas-Kanade method.
 
     For efficiency, you should apply a convolution-based method.
@@ -216,11 +218,11 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
     # )
 
     # print(result)
-    U, V = compute_values(k_size, sigma, gauss_k_size=15,
-                   gauss_sigma_x=24, gauss_sigma_y=1)[0]
+    U, V = compute_values(k_size, sigma,
+                          # gauss_k_size=15, gauss_sigma_x=24, gauss_sigma_y=1)[0]
+                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x, gauss_sigma_y=gauss_sigma_y)[0]
 
     return U, V
-
 # 1a 1
 # {'kSize': 51, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 10, 'gauss_sigma_y': 1, 'quiver_scale': 3.0, 'quiver_stride': 10}
 
@@ -468,22 +470,22 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
                              same size and type as U.
     """
 
-    def compute_values(k_size, sigma, levels, quiver_scale=1, quiver_stride=10):
-                       # det_scale, gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
-
+    # def compute_values(levels, k_size, sigma, quiver_scale=1, quiver_stride=10):
+    #                    # det_scale, gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
+    def compute_values(levels, k_size, sigma,
+                      gauss_k_size=1, gauss_sigma_x=1,
+                      gauss_sigma_y=1,
+                      quiver_scale=1, quiver_stride=10,
+                      ):
         # create pyramids
         img_a_pyr = gaussian_pyramid(img_a, levels)
         img_b_pyr = gaussian_pyramid(img_b, levels)
 
-        # cv2.imshow('imga', img_a_pyr[-2])
-        # cv2.imshow('imgb', img_b_pyr[-2])
-        # cv2.imshow('imga', img_a_pyr[-3])
-        # cv2.imshow('imgb', img_b_pyr[-3])
-        # cv2.waitKey(0)
-
         #0 start with smallest pyramid images and feed into lk
         level = levels - 1
-        u, v = optic_flow_lk(img_a_pyr[level], img_b_pyr[level], k_size, k_type, sigma)
+        u, v = optic_flow_lk(img_a_pyr[level], img_b_pyr[level], k_size, k_type, sigma,
+                             gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
+                             gauss_sigma_y=gauss_sigma_y)
 
         while level > 0:
             #1 expand optic flow U, V matrices.
@@ -496,7 +498,10 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
 
             #3 Run warped_image and same level from img_2 into Lk
             u_corr, v_corr = optic_flow_lk(img_a_pyr[level], warped_img_b_to_img_a, k_size,
-                                           k_type, sigma)
+                                           k_type, sigma,
+                                           gauss_k_size=gauss_k_size,
+                                           gauss_sigma_x=gauss_sigma_x,
+                                           gauss_sigma_y=gauss_sigma_y)
 
             #4 Add correction terms to old_velocity
             u = u_exp + u_corr
@@ -520,12 +525,22 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
     #     levels=param(6, 4),
     #     k_size=param(100, 51, lambda x: x if x % 2 != 0 else x + 1),
     #     sigma=param(50, 30),
-    #     # det_scale=param(15, 15),
-    #     # gauss_k_size=param(100, 15, lambda x: x if x % 2 != 0 else x + 1),
-    #     # gauss_sigma_x=param(50, 24),
-    #     # gauss_sigma_y=param(50, 1),
-    #     quiver_scale = param(30, 10, lambda x: x/10),
-    #     quiver_stride = param(15, 10)
+    #     gauss_k_size=param(100, 15, lambda x: x if x % 2 != 0 else x + 1),
+    #     gauss_sigma_x=param(50, 24),
+    #     gauss_sigma_y=param(50, 1),
+    #     quiver_scale=param(30, 10, lambda x: x/10),
+    #     quiver_stride=param(15, 10)
     # )
+    # print(result)
+    # return compute_values(levels, k_size, sigma ,gauss_k_size=19, gauss_sigma_x=13,
+    #                   gauss_sigma_y=1)[0]
+    return compute_values(levels, k_size, sigma ,gauss_k_size=11, gauss_sigma_x=19,
+                      gauss_sigma_y=1)[0]
 
-    return compute_values(k_size, sigma, levels)[0]
+# 4a
+# {'levels': 2, 'k_size': 45, 'sigma': 11, 'quiver_scale': 1.0, 'quiver_stride': 10}
+# {'levels': 3, 'k_size': 49, 'sigma': 9, 'quiver_scale': 0.4, 'quiver_stride': 10}
+# {'levels': 3, 'k_size': 29, 'sigma': 28, 'quiver_scale': 0.3, 'quiver_stride': 10}
+
+# 5a
+# {'levels': 2, 'k_size': 41, 'sigma': 21, 'gauss_k_size': 19, 'gauss_sigma_x': 13, 'gauss_sigma_y': 1, 'quiver_scale': 1.0, 'quiver_stride': 10}
