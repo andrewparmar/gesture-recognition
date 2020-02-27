@@ -89,7 +89,7 @@ def gradient_y(image):
 
 # def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
 def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
-                  gauss_k_size=3, gauss_sigma_x=3, gauss_sigma_y=3):
+                  gauss_k_size=1, gauss_sigma_x=3, gauss_sigma_y=3):
     """Computes optic flow using the Lucas-Kanade method.
 
     For efficiency, you should apply a convolution-based method.
@@ -139,30 +139,20 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
                        gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
                        quiver_scale=1, quiver_stride=10):
 
-        # img_a_blur = cv2.GaussianBlur(img_a,
-        #                          (gauss_k_size, gauss_k_size),
-        #                          sigmaX=gauss_sigma_x,
-        #                          sigmaY=gauss_sigma_y)
-        # img_b_blur = cv2.GaussianBlur(img_b,
-        #                               (gauss_k_size, gauss_k_size),
-        #                               sigmaX=gauss_sigma_x,
-        #                               sigmaY=gauss_sigma_y)
-        img_a_blur = img_a
-        img_b_blur = img_b
-        It = img_b_blur - img_a_blur
-        Ix = gradient_x(img_a_blur)
-        Iy = gradient_y(img_a_blur)
+        It = img_b - img_a
+        Ix = gradient_x(img_a)
+        Iy = gradient_y(img_b)
 
-        if use_img_smoothing:
-            It = cv2.GaussianBlur(It,
-                                  (gauss_k_size, gauss_k_size),
-                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
-            Ix = cv2.GaussianBlur(Ix,
-                                  (gauss_k_size, gauss_k_size),
-                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
-            Iy = cv2.GaussianBlur(Iy,
-                                  (gauss_k_size, gauss_k_size),
-                                  sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+        # if use_img_smoothing:
+        It = cv2.GaussianBlur(It,
+                              (gauss_k_size, gauss_k_size),
+                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+        Ix = cv2.GaussianBlur(Ix,
+                              (gauss_k_size, gauss_k_size),
+                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+        Iy = cv2.GaussianBlur(Iy,
+                              (gauss_k_size, gauss_k_size),
+                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
 
         IxIx = np.multiply(Ix, Ix)
         IxIy = np.multiply(Ix, Iy)
@@ -198,8 +188,8 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
         V_tmp[lt_idx] = 0
         V = V_tmp
 
-        # U = cv2.GaussianBlur(U, (kSize, kSize), sigmaGauss)
-        # V = cv2.GaussianBlur(V, (kSize, kSize), sigmaGauss)
+        U = cv2.GaussianBlur(U, (k_size, k_size), sigmaGauss)
+        V = cv2.GaussianBlur(V, (k_size, k_size), sigmaGauss)
 
         return ((U, V), quiver_scale, quiver_stride)
 
@@ -214,13 +204,17 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
     #     gauss_sigma_x=param(50, 24),
     #     gauss_sigma_y=param(50, 1),
     #     quiver_scale = param(30, 10, lambda x: x/10),
-    #     quiver_stride = param(15, 10)
+    #     quiver_stride = param(15, 10),
+    #     k_size_=param(100, 35, lambda x: x if x % 2 != 0 else x + 1),
     # )
-
+    #
     # print(result)
+
+    # print(k_size, sigma, gauss_k_size, gauss_sigma_x, gauss_sigma_y)
+
     U, V = compute_values(k_size, sigma,
-                          # gauss_k_size=15, gauss_sigma_x=24, gauss_sigma_y=1)[0]
-                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x, gauss_sigma_y=gauss_sigma_y)[0]
+                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
+                          gauss_sigma_y=gauss_sigma_y)[0]
 
     return U, V
 # 1a 1

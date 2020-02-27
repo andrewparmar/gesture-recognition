@@ -97,27 +97,29 @@ def part_1a():
                                           'ShiftR5U5.png'), 0) / 255.
 
     # Optional: smooth the images if LK doesn't work well on raw images
-    k_size = 51  # TODO: Select a kernel size
-    k_type = "gaussian"  # TODO: Select a kernel type
-    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
+    k_size = 51
+    k_type = "gaussian"
+    sigma = 30
 
-    u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma)
+    u, v = ps4.optic_flow_lk(shift_0, shift_r2, k_size, k_type, sigma,
+                             gauss_k_size=5, gauss_sigma_x=10, gauss_sigma_y=1)
 
     # Flow image
-    u_v = quiver(u, v, scale=3, stride=10)
+    u_v = quiver(u, v, scale=4, stride=9)
     cv2.imwrite(os.path.join(output_dir, "ps4-1-a-1.png"), u_v)
 
     # Now let's try with ShiftR5U5. You may want to try smoothing the
     # input images first.
 
-    k_size = 51 # TODO: Select a kernel size
-    k_type = "gaussian"  # TODO: Select a kernel type
-    sigma = 30 # TODO: Select a sigma value if you are using a gaussian kernel
+    k_size = 49
+    k_type = "gaussian"
+    sigma = 31
     # smooth input images
-    u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma)
+    u, v = ps4.optic_flow_lk(shift_0, shift_r5_u5, k_size, k_type, sigma,
+                             gauss_k_size=51, gauss_sigma_x=10, gauss_sigma_y=10)
 
     # Flow image
-    u_v = quiver(u, v, scale=1.5, stride=10)
+    u_v = quiver(u, v, scale=1, stride=9)
     cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.png"), u_v)
 
 
@@ -155,13 +157,14 @@ def part_1b():
     file_names = ['ps4-1-b-1.png', 'ps4-1-b-2.png', 'ps4-1-b-3.png']
 
 
-    k_size = 51  # TODO: Select a kernel size
+    k_size = 49  # TODO: Select a kernel size
     k_type = "gaussian"  # TODO: Select a kernel type
     sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
 
     for image, file_name in zip(images, file_names):
-        u, v = ps4.optic_flow_lk(shift_0, image, k_size, k_type, sigma)
-        u_v = quiver(u, v, scale=0.9, stride=10)
+        u, v = ps4.optic_flow_lk(shift_0, image, k_size, k_type, sigma,
+                                 gauss_k_size=49, gauss_sigma_x=22, gauss_sigma_y=1)
+        u_v = quiver(u, v, scale=1, stride=10)
         cv2.imwrite(os.path.join(output_dir, file_name), u_v)
 
 
@@ -195,31 +198,20 @@ def part_3a_1():
     yos_img_01_g_pyr = ps4.gaussian_pyramid(yos_img_01, levels)
     yos_img_02_g_pyr = ps4.gaussian_pyramid(yos_img_02, levels)
 
-    level_id = 1   # TODO: Select the level number (or id) you wish to use
-    k_size = 51 # TODO: Select a kernel size
-    k_type = "gaussian"  # TODO: Select a kernel type
-    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
-    u, v = ps4.optic_flow_lk(yos_img_01_g_pyr[level_id],
-                             yos_img_02_g_pyr[level_id],
-                             k_size, k_type, sigma)
-    # u_v = quiver(u, v, scale=1, stride=10)
-    # print(f'Shape of u_v: {u_v.shape}')
-    # cv2.imwrite('part_3a_quiver_u_v.png', u_v)
-    # cv2.resizeWindow('image', 600, 600)
-    # cv2.imshow('part_3a_1', yos_img_01_g_pyr[level_id])
-    # cv2.imshow('part_3a_2', yos_img_02_g_pyr[level_id])
-    # cv2.waitKey(0)
+    level_id = 1
+    k_size = 51
+    k_type = "gaussian"
+    sigma = 30
+    u, v = ps4.optic_flow_lk(yos_img_01_g_pyr[level_id], yos_img_02_g_pyr[level_id],
+                             k_size, k_type, sigma,
+                             gauss_k_size=51, gauss_sigma_x=22, gauss_sigma_y=1)
 
     u, v = scale_u_and_v(u, v, level_id, yos_img_02_g_pyr)
-    # u_v_scaled = quiver(u, v, scale=3, stride=8)
-    # cv2.imwrite('part_3a_quiver_u_v_scaled.png', u_v_scaled)
 
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
     yos_img_02_warped = ps4.warp(yos_img_02, u, v, interpolation, border_mode)
-    # cv2.imshow('yos_img_02_warped', yos_img_02_warped)
-    # cv2.imshow('yos_img_01', yos_img_01)
-    # cv2.waitKey(0)
+
     diff_yos_img = yos_img_01 - yos_img_02_warped
     cv2.imwrite(os.path.join(output_dir, "ps4-3-a-1.png"),
                 ps4.normalize_and_scale(diff_yos_img))
@@ -231,22 +223,22 @@ def part_3a_2():
     yos_img_03 = cv2.imread(
         os.path.join(input_dir, 'DataSeq1', 'yos_img_03.jpg'), 0) / 255.
 
-    levels = 2  # Define the number of pyramid levels
+    levels = 5  # Define the number of pyramid levels
     yos_img_02_g_pyr = ps4.gaussian_pyramid(yos_img_02, levels)
     yos_img_03_g_pyr = ps4.gaussian_pyramid(yos_img_03, levels)
 
-    level_id = 1 # TODO: Select the level number (or id) you wish to use
-    k_size = 51 # TODO: Select a kernel size
-    k_type = "gaussian"  # TODO: Select a kernel type
-    sigma = 30 # TODO: Select a sigma value if you are using a gaussian kernel
-    u, v = ps4.optic_flow_lk(yos_img_02_g_pyr[level_id],
-                             yos_img_03_g_pyr[level_id],
-                             k_size, k_type, sigma)
+    level_id = 1
+    k_size = 51
+    k_type = "gaussian"
+    sigma = 30
+    u, v = ps4.optic_flow_lk(yos_img_02_g_pyr[level_id], yos_img_03_g_pyr[level_id],
+                             k_size, k_type, sigma,
+                             gauss_k_size=51, gauss_sigma_x=22, gauss_sigma_y=1)
 
     u, v = scale_u_and_v(u, v, level_id, yos_img_03_g_pyr)
 
-    interpolation = cv2.INTER_CUBIC  # You may try different values
-    border_mode = cv2.BORDER_REFLECT101  # You may try different values
+    interpolation = cv2.INTER_CUBIC
+    border_mode = cv2.BORDER_REFLECT101
     yos_img_03_warped = ps4.warp(yos_img_03, u, v, interpolation, border_mode)
 
     diff_yos_img = yos_img_02 - yos_img_03_warped
@@ -286,7 +278,7 @@ def part_4a():
     u20, v20 = ps4.hierarchical_lk(shift_0, shift_r20, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
 
-    u_v = quiver(u20, v20, scale=0.4, stride=10)
+    u_v = quiver(u20, v20, scale=1, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-2.png"), u_v)
 
     levels = 3
@@ -295,7 +287,7 @@ def part_4a():
     sigma = 28
     u40, v40 = ps4.hierarchical_lk(shift_0, shift_r40, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
-    u_v = quiver(u40, v40, scale=0.3, stride=10)
+    u_v = quiver(u40, v40, scale=1, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-3.png"), u_v)
 
 
@@ -457,13 +449,13 @@ def part_6():
 
 
 if __name__ == '__main__':
-    # part_1a()
-    # part_1b()
-    # part_2()
-    # part_3a_1()
-    # part_3a_2()
-    # part_4a()
-    # part_4b()
+    part_1a()
+    part_1b()
+    part_2()
+    part_3a_1()
+    part_3a_2()
+    part_4a()
+    part_4b()
     # part_5a()
-    part_5b()
+    # part_5b()
     # part_6()
