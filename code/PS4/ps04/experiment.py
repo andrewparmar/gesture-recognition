@@ -338,11 +338,13 @@ def part_5a():
     border_mode = cv2.BORDER_REFLECT101
 
     u, v = ps4.hierarchical_lk(shift_0, shift_r10, levels, k_size,
-                               k_type, sigma, interpolation, border_mode)
+                               k_type, sigma, interpolation, border_mode,
+                               gauss_k_size=k_size, gauss_sigma_x=22,
+                               gauss_sigma_y=1)
     # u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
 
     u_v = quiver(u, v, scale=1, stride=10)
-    cv2.imshow(f'part 5 quiver', u_v)
+    # cv2.imshow(f'part 5 quiver', u_v)
 
     frames = [shift_0]
 
@@ -358,10 +360,8 @@ def part_5a():
 
     frames.append(shift_r10)
 
-    for i, frame in enumerate(frames):
-        # cv2.imshow(f'new_img_{i}', frame)
-        cv2.imwrite(f'part5_new_img_{i}.png', ps4.normalize_and_scale(frame))
-    # cv2.waitKey(0)
+    # for i, frame in enumerate(frames):
+    #     cv2.imwrite(f'part5_new_img_{i}.png', ps4.normalize_and_scale(frame))
 
     h, w = shift_0.shape
     output_img = np.zeros((2*h, 3*w))
@@ -375,8 +375,9 @@ def part_5a():
             output_img[row:row+h, col:col+w] = frames[counter]
             counter += 1
 
-    cv2.imshow(f'part5_montage.png', output_img)
-    cv2.waitKey(0)
+    cv2.imwrite('ps4-5-a-1.png',
+                ps4.normalize_and_scale(output_img))
+
 
 def part_5b():
     """Frame interpolation
@@ -387,54 +388,60 @@ def part_5b():
     """
 
     mc_01 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
-                                      'mc02.png'), 0) / 255.
+                                      'mc01.png'), 0) / 255.
     mc_02 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
+                                    'mc02.png'), 0) / 255.
+    mc_03 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
                                     'mc03.png'), 0) / 255.
+
+    images = [mc_01, mc_02, mc_03]
 
     levels, k_size, k_type, sigma = 2, 95, 'gaussian', 41
     interpolation = cv2.INTER_CUBIC
     border_mode = cv2.BORDER_REFLECT101
 
-    u, v = ps4.hierarchical_lk(mc_01, mc_02, levels, k_size,
-                               k_type, sigma, interpolation, border_mode)
-    # u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
+    for k in range(1, 2):
 
-    u_v = quiver(u, v, scale=1, stride=10)
-    cv2.imshow(f'part 5 quiver', u_v)
+        u, v = ps4.hierarchical_lk(images[k], images[k+1], levels, k_size,
+                                   k_type, sigma, interpolation, border_mode,
+                                   gauss_k_size=k_size, gauss_sigma_x=22, gauss_sigma_y=1)
+        # u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
 
-    frames = [mc_01]
+        # u_v = quiver(u, v, scale=1, stride=10)
+        # cv2.imshow(f'part 5 quiver', u_v)
 
-    for t in [0.2, 0.4, 0.6, 0.8]:
-        # user warp
-        # giving warp the full U, V from lk will give you back shift_0.
-        # We want to give it (1-t)*U and (1-t)*V velocities.
-        # map_x and map_y are grids. Each cell in each of these grids contains the
-        # coordinates of where that cells values should come from.
-        frame_tmp = ps4.warp(mc_02, (1-t)*u, (1-t)*v, interpolation, border_mode)
+        frames = [images[k]]
 
-        frames.append(frame_tmp)
+        for t in [0.2, 0.4, 0.6, 0.8]:
+            # user warp
+            # giving warp the full U, V from lk will give you back shift_0.
+            # We want to give it (1-t)*U and (1-t)*V velocities.
+            # map_x and map_y are grids. Each cell in each of these grids contains the
+            # coordinates of where that cells values should come from.
+            frame_tmp = ps4.warp(images[k+1], (1-t)*u, (1-t)*v, interpolation, border_mode)
 
-    frames.append(mc_02)
+            frames.append(frame_tmp)
 
-    for i, frame in enumerate(frames):
-        # cv2.imshow(f'new_img_{i}', frame)
-        cv2.imwrite(f'part5_new_img_{i}.png', ps4.normalize_and_scale(frame))
-    # cv2.waitKey(0)
+        frames.append(images[k+1])
 
-    h, w = mc_01.shape
-    output_img = np.zeros((2*h, 3*w))
+        for l, frame in enumerate(frames):
+            cv2.imwrite(f'part5_new_img_{k}_{l}.png', ps4.normalize_and_scale(frame))
 
-    counter = 0
+        h, w = images[k].shape
+        output_img = np.zeros((2*h, 3*w))
 
-    for j in range(2):
-        for i in range(3):
-            row = j*h
-            col = i*w
-            output_img[row:row+h, col:col+w] = frames[counter]
-            counter += 1
+        counter = 0
 
-    cv2.imshow(f'part5_montage.png', output_img)
-    cv2.waitKey(0)
+        for j in range(2):
+            for i in range(3):
+                row = j*h
+                col = i*w
+                output_img[row:row+h, col:col+w] = frames[counter]
+                counter += 1
+
+        print("K:{}".format(k))
+        cv2.imwrite('ps4-5-b-{}.png'.format(k+1),
+                    ps4.normalize_and_scale(output_img))
 
 
 def part_6():
@@ -449,13 +456,13 @@ def part_6():
 
 
 if __name__ == '__main__':
-    part_1a()
-    part_1b()
-    part_2()
-    part_3a_1()
-    part_3a_2()
-    part_4a()
-    part_4b()
+    # part_1a()
+    # part_1b()
+    # part_2()
+    # part_3a_1()
+    # part_3a_2()
+    # part_4a()
+    # part_4b()
     # part_5a()
-    # part_5b()
+    part_5b()
     # part_6()

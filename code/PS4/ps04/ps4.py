@@ -437,7 +437,9 @@ def warp(image, U, V, interpolation, border_mode):
 
 
 def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
-                    border_mode):
+                    border_mode,
+                    gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
+                    ):
     """Computes the optic flow using Hierarchical Lucas-Kanade.
 
     This method should use reduce_image(), expand_image(), warp(),
@@ -528,8 +530,11 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
     # print(result)
     # return compute_values(levels, k_size, sigma ,gauss_k_size=19, gauss_sigma_x=13,
     #                   gauss_sigma_y=1)[0]
-    return compute_values(levels, k_size, sigma ,gauss_k_size=11, gauss_sigma_x=19,
-                      gauss_sigma_y=1)[0]
+    return compute_values(levels, k_size, sigma,
+                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
+                          gauss_sigma_y=gauss_sigma_y)[0]
+
+    # gauss_k_size=11, gauss_sigma_x=19, gauss_sigma_y=1)[0]
 
 # 4a
 # {'levels': 2, 'k_size': 45, 'sigma': 11, 'quiver_scale': 1.0, 'quiver_stride': 10}
