@@ -13,13 +13,11 @@ output_dir = "./"
 
 # Utility code
 def quiver(u, v, scale, stride, color=(0, 255, 0)):
-
     img_out = np.zeros((v.shape[0], u.shape[1], 3), dtype=np.uint8)
 
     for y in range(0, v.shape[0], stride):
 
         for x in range(0, u.shape[1], stride):
-
             cv2.line(img_out, (x, y), (x + int(u[y, x] * scale),
                                        y + int(v[y, x] * scale)), color, 1)
             cv2.circle(img_out, (x + int(u[y, x] * scale),
@@ -67,8 +65,8 @@ def scale_u_and_v(u, v, level, pyr):
             v (numpy.array): scaled V array of shape equal to
                              pyr[0].shape
     """
-    print(f'**** Starting Shape:{u.shape}')
-    print(f'**** Final Goal Shape:{pyr[0].shape}')
+    # print(f'**** Starting Shape:{u.shape}')
+    # print(f'**** Final Goal Shape:{pyr[0].shape}')
     for i in range(level, 0, -1):
         tmp_shape = u.shape
         u_tmp = ps4.expand_image(u)
@@ -77,18 +75,18 @@ def scale_u_and_v(u, v, level, pyr):
         u_tmp *= 2
         v_tmp *= 2
 
-        next_level = i-1
+        next_level = i - 1
         next_image = pyr[next_level]
         h, w = next_image.shape
         u = u_tmp[:h, :w]
         v = v_tmp[:h, :w]
-        print(f'Level:{i}; Before {tmp_shape};\tGoal h:{h},w:{w},\tAfter u:{u.shape}, v:{v.shape}')
-    print(f'**** Final Shape:{u.shape}')
+    #     print(f'Level:{i}; Before {tmp_shape};\tGoal h:{h},w:{w},\tAfter u:{u.shape}, v:{v.shape}')
+    # print(f'**** Final Shape:{u.shape}')
 
     return u, v
 
-def part_1a():
 
+def part_1a():
     shift_0 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                       'Shift0.png'), 0) / 255.
     shift_r2 = cv2.imread(os.path.join(input_dir, 'TestSeq',
@@ -156,7 +154,6 @@ def part_1b():
     images = [shift_r10, shift_r20, shift_r40]
     file_names = ['ps4-1-b-1.png', 'ps4-1-b-2.png', 'ps4-1-b-3.png']
 
-
     k_size = 49  # TODO: Select a kernel size
     k_type = "gaussian"  # TODO: Select a kernel type
     sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
@@ -169,7 +166,6 @@ def part_1b():
 
 
 def part_2():
-
     yos_img_01 = cv2.imread(os.path.join(input_dir, 'DataSeq1',
                                          'yos_img_01.jpg'), 0) / 255.
 
@@ -266,7 +262,7 @@ def part_4a():
     u10, v10 = ps4.hierarchical_lk(shift_0, shift_r10, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
 
-    u_v = quiver(u10, v10, scale=1, stride=10)
+    u_v = quiver(u10, v10, scale=1.5, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-1.png"), u_v)
 
     # You may want to try different parameters for the remaining function
@@ -278,7 +274,7 @@ def part_4a():
     u20, v20 = ps4.hierarchical_lk(shift_0, shift_r20, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
 
-    u_v = quiver(u20, v20, scale=1, stride=10)
+    u_v = quiver(u20, v20, scale=1.5, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-2.png"), u_v)
 
     levels = 3
@@ -287,7 +283,7 @@ def part_4a():
     sigma = 28
     u40, v40 = ps4.hierarchical_lk(shift_0, shift_r40, levels, k_size, k_type,
                                    sigma, interpolation, border_mode)
-    u_v = quiver(u40, v40, scale=1, stride=10)
+    u_v = quiver(u40, v40, scale=1.5, stride=10)
     cv2.imwrite(os.path.join(output_dir, "ps4-4-a-3.png"), u_v)
 
 
@@ -327,7 +323,6 @@ def part_5a():
 
     Place all your work in this file and this section.
     """
-
     shift_0 = cv2.imread(os.path.join(input_dir, 'TestSeq',
                                       'Shift0.png'), 0) / 255.
     shift_r10 = cv2.imread(os.path.join(input_dir, 'TestSeq',
@@ -336,25 +331,16 @@ def part_5a():
     levels, k_size, k_type, sigma = 2, 41, 'gaussian', 21
     interpolation = cv2.INTER_CUBIC
     border_mode = cv2.BORDER_REFLECT101
-
     u, v = ps4.hierarchical_lk(shift_0, shift_r10, levels, k_size,
                                k_type, sigma, interpolation, border_mode,
                                gauss_k_size=k_size, gauss_sigma_x=22,
                                gauss_sigma_y=1)
-    # u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
-
-    u_v = quiver(u, v, scale=1, stride=10)
-    # cv2.imshow(f'part 5 quiver', u_v)
 
     frames = [shift_0]
 
     for t in [0.2, 0.4, 0.6, 0.8]:
-        # user warp
-        # giving warp the full U, V from lk will give you back shift_0.
-        # We want to give it (1-t)*U and (1-t)*V velocities.
-        # map_x and map_y are grids. Each cell in each of these grids contains the
-        # coordinates of where that cells values should come from.
-        frame_tmp = ps4.warp(shift_r10, (1-t)*u, (1-t)*v, interpolation, border_mode)
+        frame_tmp = ps4.warp(shift_r10, (1 - t) * u, (1 - t) * v, interpolation,
+                             border_mode)
 
         frames.append(frame_tmp)
 
@@ -364,19 +350,18 @@ def part_5a():
     #     cv2.imwrite(f'part5_new_img_{i}.png', ps4.normalize_and_scale(frame))
 
     h, w = shift_0.shape
-    output_img = np.zeros((2*h, 3*w))
+    output_img = np.zeros((2 * h, 3 * w))
 
     counter = 0
 
     for j in range(2):
         for i in range(3):
-            row = j*h
-            col = i*w
-            output_img[row:row+h, col:col+w] = frames[counter]
+            row = j * h
+            col = i * w
+            output_img[row:row + h, col:col + w] = frames[counter]
             counter += 1
-
-    cv2.imwrite('ps4-5-a-1.png',
-                ps4.normalize_and_scale(output_img))
+    # import pdb; [pdb.set_trace()]
+    cv2.imwrite('ps4-5-a-1.png', ps4.normalize_and_scale(output_img))
 
 
 def part_5b():
@@ -386,9 +371,8 @@ def part_5b():
 
     Place all your work in this file and this section.
     """
-
     mc_01 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
-                                      'mc01.png'), 0) / 255.
+                                    'mc01.png'), 0) / 255.
     mc_02 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
                                     'mc02.png'), 0) / 255.
     mc_03 = cv2.imread(os.path.join(input_dir, 'MiniCooper',
@@ -400,48 +384,51 @@ def part_5b():
     interpolation = cv2.INTER_CUBIC
     border_mode = cv2.BORDER_REFLECT101
 
-    for k in range(1, 2):
+    def _frame_interpolation(img_a, img_b, u, v, t_list):
+        I_0 = img_a
+        I_1 = img_b
+        I_1_warped = ps4.warp(I_1, u, v, interpolation, border_mode)
 
-        u, v = ps4.hierarchical_lk(images[k], images[k+1], levels, k_size,
-                                   k_type, sigma, interpolation, border_mode,
-                                   gauss_k_size=k_size, gauss_sigma_x=22, gauss_sigma_y=1)
-        # u, v = ps4.optic_flow_lk(shift_0, shift_r10, k_size, k_type, sigma)
+        frames = [I_0]
 
-        # u_v = quiver(u, v, scale=1, stride=10)
-        # cv2.imshow(f'part 5 quiver', u_v)
+        for t in t_list:
+            I_prime = (1 - t) * I_0 + t * I_1_warped
+            I_t = ps4.warp(I_prime, -t * u, -t * v, interpolation, border_mode)
 
-        frames = [images[k]]
+            frames.append(I_t)
 
-        for t in [0.2, 0.4, 0.6, 0.8]:
-            # user warp
-            # giving warp the full U, V from lk will give you back shift_0.
-            # We want to give it (1-t)*U and (1-t)*V velocities.
-            # map_x and map_y are grids. Each cell in each of these grids contains the
-            # coordinates of where that cells values should come from.
-            frame_tmp = ps4.warp(images[k+1], (1-t)*u, (1-t)*v, interpolation, border_mode)
+        frames.append(I_1)
 
-            frames.append(frame_tmp)
+        # for l, frame in enumerate(frames):
+        #     cv2.imwrite(f'part5b_{l}.png', ps4.normalize_and_scale(frame))
 
-        frames.append(images[k+1])
-
-        for l, frame in enumerate(frames):
-            cv2.imwrite(f'part5_new_img_{k}_{l}.png', ps4.normalize_and_scale(frame))
-
-        h, w = images[k].shape
-        output_img = np.zeros((2*h, 3*w))
+        h, w = img_a.shape
+        output_img = np.zeros((2 * h, 3 * w))
 
         counter = 0
 
         for j in range(2):
             for i in range(3):
-                row = j*h
-                col = i*w
-                output_img[row:row+h, col:col+w] = frames[counter]
+                row = j * h
+                col = i * w
+                output_img[row:row + h, col:col + w] = frames[counter]
                 counter += 1
 
-        print("K:{}".format(k))
-        cv2.imwrite('ps4-5-b-{}.png'.format(k+1),
-                    ps4.normalize_and_scale(output_img))
+        return output_img
+
+    for i in range(len(images) - 1):
+        u, v = ps4.hierarchical_lk(images[i], images[i + 1], levels, k_size,
+                                   k_type, sigma, interpolation, border_mode,
+                                   gauss_k_size=k_size, gauss_sigma_x=22, gauss_sigma_y=1)
+
+        # u_v = quiver(u, v, scale=0.9, stride=10)
+        # cv2.imshow(f'part 5 quiver {i}', u_v)
+        # cv2.waitKey(0)
+
+        output_img = _frame_interpolation(images[i], images[i + 1], u, v,
+                                          [0.2, 0.4, 0.6, 0.8])
+
+        cv2.imwrite(f'ps4-5-b-{i+1}.png', ps4.normalize_and_scale(output_img))
 
 
 def part_6():
@@ -456,13 +443,13 @@ def part_6():
 
 
 if __name__ == '__main__':
-    # part_1a()
-    # part_1b()
-    # part_2()
-    # part_3a_1()
-    # part_3a_2()
-    # part_4a()
-    # part_4b()
-    # part_5a()
+    part_1a()
+    part_1b()
+    part_2()
+    part_3a_1()
+    part_3a_2()
+    part_4a()
+    part_4b()
+    part_5a()
     part_5b()
     # part_6()
