@@ -510,9 +510,18 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
     def draw_image(input):
         input_points = input[0]
         u, v = input_points
-        u_v = quiver(u, v, scale=input[1], stride=input[2])
+        # u_v = quiver(u, v, scale=input[1], stride=input[2])
 
-        return u_v
+        interpolation = cv2.INTER_CUBIC  # You may try different values
+        border_mode = cv2.BORDER_REFLECT101  # You may try different values
+        urban_img_02_warped = warp(img_b, u, v, interpolation,
+                                       border_mode)
+
+        diff_img = img_a - urban_img_02_warped
+        # cv2.imwrite(os.path.join(output_dir, "ps4-4-b-2.png"),
+        #             ps4.normalize_and_scale(diff_img))
+
+        return diff_img
 
     # result = display_trackbar_window(
     #     'find_markers',
