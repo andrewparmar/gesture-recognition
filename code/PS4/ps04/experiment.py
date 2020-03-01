@@ -154,9 +154,9 @@ def part_1b():
     images = [shift_r10, shift_r20, shift_r40]
     file_names = ['ps4-1-b-1.png', 'ps4-1-b-2.png', 'ps4-1-b-3.png']
 
-    k_size = 49  # TODO: Select a kernel size
-    k_type = "gaussian"  # TODO: Select a kernel type
-    sigma = 30  # TODO: Select a sigma value if you are using a gaussian kernel
+    k_size = 49
+    k_type = "gaussian"
+    sigma = 30
 
     for image, file_name in zip(images, file_names):
         u, v = ps4.optic_flow_lk(shift_0, image, k_size, k_type, sigma,
@@ -447,13 +447,13 @@ def part_6():
 
 
 if __name__ == '__main__':
-    # part_1a()
-    # part_1b()
-    # part_2()
-    # part_3a_1()
-    # part_3a_2()
-    # part_4a()
+    part_1a()
+    part_1b()
+    part_2()
+    part_3a_1()
+    part_3a_2()
+    part_4a()
     part_4b()
-    # part_5a()
-    # part_5b()
+    part_5a()
+    part_5b()
     # part_6()
