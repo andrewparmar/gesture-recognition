@@ -1,8 +1,10 @@
 """Problem Set 4: Motion Detection"""
 
-import numpy as np
 import cv2
-from trackbar import display_trackbar_window, param, scale
+import numpy as np
+
+# from trackbar import display_trackbar_window, param, scale
+
 
 ##########################################################################################
 # Experimental
@@ -15,11 +17,22 @@ def quiver(u, v, scale, stride, color=(0, 255, 0)):
 
         for x in range(0, u.shape[1], stride):
 
-            cv2.line(img_out, (x, y), (x + int(u[y, x] * scale),
-                                       y + int(v[y, x] * scale)), color, 1)
-            cv2.circle(img_out, (x + int(u[y, x] * scale),
-                                 y + int(v[y, x] * scale)), 1, color, 1)
+            cv2.line(
+                img_out,
+                (x, y),
+                (x + int(u[y, x] * scale), y + int(v[y, x] * scale)),
+                color,
+                1,
+            )
+            cv2.circle(
+                img_out,
+                (x + int(u[y, x] * scale), y + int(v[y, x] * scale)),
+                1,
+                color,
+                1,
+            )
     return img_out
+
 
 ##########################################################################################
 
@@ -40,8 +53,13 @@ def normalize_and_scale(image_in, scale_range=(0, 255)):
     # cv2.normalize(image_in, image_out, alpha=scale_range[0],
     #               beta=scale_range[1], norm_type=cv2.NORM_MINMAX)
 
-    image_out = cv2.normalize(image_in, dst=None, alpha=scale_range[0],
-                  beta=scale_range[1], norm_type=cv2.NORM_MINMAX)
+    image_out = cv2.normalize(
+        image_in,
+        dst=None,
+        alpha=scale_range[0],
+        beta=scale_range[1],
+        norm_type=cv2.NORM_MINMAX,
+    )
 
     return image_out
 
@@ -62,7 +80,7 @@ def gradient_x(image):
                      from cv2.Sobel.
     """
 
-    sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3, scale=(float(1)/8))
+    sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3, scale=(float(1) / 8))
 
     return sobel_x
 
@@ -82,14 +100,22 @@ def gradient_y(image):
                      Output from cv2.Sobel.
     """
 
-    sobel_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3, scale=(float(1)/8))
+    sobel_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3, scale=(float(1) / 8))
 
     return sobel_y
 
 
 # def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1):
-def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
-                  gauss_k_size=1, gauss_sigma_x=3, gauss_sigma_y=3):
+def optic_flow_lk(
+    img_a,
+    img_b,
+    k_size,
+    k_type,
+    sigma=1,
+    gauss_k_size=1,
+    gauss_sigma_x=3,
+    gauss_sigma_y=3,
+):
     """Computes optic flow using the Lucas-Kanade method.
 
     For efficiency, you should apply a convolution-based method.
@@ -135,24 +161,31 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
 
         return u_v
 
-    def compute_values(kSize, sigmaGauss, use_img_smoothing=1,
-                       gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
-                       quiver_scale=1, quiver_stride=10):
+    def compute_values(
+        kSize,
+        sigmaGauss,
+        use_img_smoothing=1,
+        gauss_k_size=1,
+        gauss_sigma_x=1,
+        gauss_sigma_y=1,
+        quiver_scale=1,
+        quiver_stride=10,
+    ):
 
         It = img_b - img_a
         Ix = gradient_x(img_a)
         Iy = gradient_y(img_b)
 
         # if use_img_smoothing:
-        It = cv2.GaussianBlur(It,
-                              (gauss_k_size, gauss_k_size),
-                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
-        Ix = cv2.GaussianBlur(Ix,
-                              (gauss_k_size, gauss_k_size),
-                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
-        Iy = cv2.GaussianBlur(Iy,
-                              (gauss_k_size, gauss_k_size),
-                              sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y)
+        It = cv2.GaussianBlur(
+            It, (gauss_k_size, gauss_k_size), sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y
+        )
+        Ix = cv2.GaussianBlur(
+            Ix, (gauss_k_size, gauss_k_size), sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y
+        )
+        Iy = cv2.GaussianBlur(
+            Iy, (gauss_k_size, gauss_k_size), sigmaX=gauss_sigma_x, sigmaY=gauss_sigma_y
+        )
 
         IxIx = np.multiply(Ix, Ix)
         IxIy = np.multiply(Ix, Iy)
@@ -161,9 +194,9 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
         IyIt = np.multiply(Iy, It)
 
         # smoothing kernel
-        if k_type == 'uniform':
-            kernel = np.ones((kSize, kSize))/(kSize**2)
-        elif k_type == 'gaussian':
+        if k_type == "uniform":
+            kernel = np.ones((kSize, kSize)) / (kSize ** 2)
+        elif k_type == "gaussian":
             kernel = cv2.getGaussianKernel(kSize, sigmaGauss)
 
         sum_IxIx = cv2.filter2D(IxIx, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
@@ -173,17 +206,17 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
         sum_IyIt = cv2.filter2D(IyIt, -1, kernel, borderType=cv2.BORDER_REFLECT_101)
 
         ## Trying Vectorization Technique
-        det_threshold = 1 /(10**15)
-        det = sum_IxIx*sum_IyIy - sum_IxIy*sum_IxIy
+        det_threshold = 1 / (10 ** 15)
+        det = sum_IxIx * sum_IyIy - sum_IxIy * sum_IxIy
         gt_idx = det > det_threshold
         lt_idx = det <= det_threshold
 
-        U_tmp = (sum_IyIy * -sum_IxIt + -sum_IxIy * -sum_IyIt)
+        U_tmp = sum_IyIy * -sum_IxIt + -sum_IxIy * -sum_IyIt
         U_tmp[gt_idx] /= det[gt_idx]
         U_tmp[lt_idx] = 0
         U = U_tmp
 
-        V_tmp = (-sum_IxIy * -sum_IxIt + sum_IxIx * -sum_IyIt)
+        V_tmp = -sum_IxIy * -sum_IxIt + sum_IxIx * -sum_IyIt
         V_tmp[gt_idx] /= det[gt_idx]
         V_tmp[lt_idx] = 0
         V = V_tmp
@@ -207,30 +240,17 @@ def optic_flow_lk(img_a, img_b, k_size, k_type, sigma=1,
     #     quiver_stride = param(15, 10),
     #     k_size_=param(100, 35, lambda x: x if x % 2 != 0 else x + 1),
     # )
-    #
-    # print(result)
 
-    # print(k_size, sigma, gauss_k_size, gauss_sigma_x, gauss_sigma_y)
-
-    U, V = compute_values(k_size, sigma,
-                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
-                          gauss_sigma_y=gauss_sigma_y)[0]
+    U, V = compute_values(
+        k_size,
+        sigma,
+        gauss_k_size=gauss_k_size,
+        gauss_sigma_x=gauss_sigma_x,
+        gauss_sigma_y=gauss_sigma_y,
+    )[0]
 
     return U, V
-# 1a 1
-# {'kSize': 51, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 10, 'gauss_sigma_y': 1, 'quiver_scale': 3.0, 'quiver_stride': 10}
 
-# 1a 2
-# {'kSize': 51, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 15, 'gauss_sigma_y': 7, 'quiver_scale': 1.0, 'quiver_stride': 10}
-
-# 1b 1
-# {'kSize': 67, 'sigmaGauss': 29, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.9, 'quiver_stride': 10}
-
-# 1b 2
-# {'kSize': 69, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 35, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.9, 'quiver_stride': 10}
-
-# 1b 2
-# {'kSize': 75, 'sigmaGauss': 30, 'use_img_smoothing': 1, 'gauss_k_size': 87, 'gauss_sigma_x': 24, 'gauss_sigma_y': 1, 'quiver_scale': 0.7, 'quiver_stride': 10}
 
 def reduce_image(image):
     """Reduces an image to half its shape.
@@ -256,13 +276,13 @@ def reduce_image(image):
         numpy.array: output image with half the shape, same type as the
                      input image.
     """
-    kernel =  np.array([1, 4, 6, 4, 1]) / 16
+    kernel = np.array([1, 4, 6, 4, 1]) / 16
 
-    filtered_image = cv2.sepFilter2D(np.float32(image), ddepth=-1, kernelX=kernel, kernelY=kernel)
+    filtered_image = cv2.sepFilter2D(
+        np.float32(image), ddepth=-1, kernelX=kernel, kernelY=kernel
+    )
 
     reduced_image = filtered_image[::2, ::2]
-    half = tuple(x/2 for x in image.shape)
-    # print(f'OG:{image.shape}, Half:{half}, New:{reduced_image.shape}')
 
     return reduced_image
 
@@ -290,7 +310,7 @@ def gaussian_pyramid(image, levels):
     pyramid = []
     pyramid.append(image)
 
-    for _ in range(levels-1):
+    for _ in range(levels - 1):
         reduced_image = reduce_image(pyramid[-1])
         pyramid.append(reduced_image)
 
@@ -323,15 +343,10 @@ def create_combined_img(img_list):
     i = 0
     j = 0
     for img in img_list:
-        # print(f"Max: {img.max()}")
         norm_img = normalize_and_scale(img)
-        # print(f"Max Normed: {norm_img.max()}")
         p, q = norm_img.shape
-        combined_img[j:j+p, i:i+q] = normalize_and_scale(norm_img)
-        # print(f'Before i:{i}, j:{j}, p:{p}, q:{q}')
+        combined_img[j : j + p, i : i + q] = normalize_and_scale(norm_img)
         i = i + q
-        # print(f'After i:{i}, j:{j}, p:{p}, q:{q}')
-        # cv2.imshow(f'{p}, {q}', img)
 
     return combined_img.astype(np.uint8)
 
@@ -357,13 +372,14 @@ def expand_image(image):
                      width.
     """
     w, h = image.shape
-    tmp_expanded_image = np.zeros((w*2, h*2))
+    tmp_expanded_image = np.zeros((w * 2, h * 2))
     tmp_expanded_image[::2, ::2] = image
 
-    kernel = np.array([1, 4, 6, 4, 1]) / 8.
+    kernel = np.array([1, 4, 6, 4, 1]) / 8.0
 
-    expanded_image = cv2.sepFilter2D(np.float32(tmp_expanded_image), ddepth=-1,
-                                         kernelX=kernel, kernelY=kernel)
+    expanded_image = cv2.sepFilter2D(
+        np.float32(tmp_expanded_image), ddepth=-1, kernelX=kernel, kernelY=kernel
+    )
 
     return expanded_image
 
@@ -380,13 +396,8 @@ def laplacian_pyramid(g_pyr):
         list: Laplacian pyramid, with l_pyr[-1] = g_pyr[-1].
     """
     l_pyr = list(range(len(g_pyr)))
-    # print(l_pyr)
-    # print('*'*80)
     for i in l_pyr[:-1]:
-        # print(i)
         expanded = expand_image(g_pyr[i + 1])
-        double = tuple(x*2 for x in g_pyr[i+1].shape)
-        # print(f'OG:{g_pyr[i+1].shape}, Double:{double}, New:{expanded.shape}')
         h, w = g_pyr[i].shape
         l_pyr[i] = g_pyr[i] - expanded[:h, :w]
 
@@ -424,22 +435,30 @@ def warp(image, U, V, interpolation, border_mode):
     map_x = col_indices + U
     map_y = row_indices + V
 
-
     warped_image = cv2.remap(
         image.astype(np.float32),
         map_x.astype(np.float32),
         map_y.astype(np.float32),
         interpolation,
-        borderMode=border_mode
+        borderMode=border_mode,
     )
 
     return warped_image
 
 
-def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
-                    border_mode,
-                    gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
-                    ):
+def hierarchical_lk(
+    img_a,
+    img_b,
+    levels,
+    k_size,
+    k_type,
+    sigma,
+    interpolation,
+    border_mode,
+    gauss_k_size=1,
+    gauss_sigma_x=1,
+    gauss_sigma_y=1,
+):
     """Computes the optic flow using Hierarchical Lucas-Kanade.
 
     This method should use reduce_image(), expand_image(), warp(),
@@ -466,60 +485,71 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
                              same size and type as U.
     """
 
-    # def compute_values(levels, k_size, sigma, quiver_scale=1, quiver_stride=10):
-    #                    # det_scale, gauss_k_size=1, gauss_sigma_x=1, gauss_sigma_y=1,
-    def compute_values(levels, k_size, sigma,
-                      gauss_k_size=1, gauss_sigma_x=1,
-                      gauss_sigma_y=1,
-                      quiver_scale=1, quiver_stride=10,
-                      ):
+    def compute_values(
+        levels,
+        k_size,
+        sigma,
+        gauss_k_size=1,
+        gauss_sigma_x=1,
+        gauss_sigma_y=1,
+        quiver_scale=1,
+        quiver_stride=10,
+    ):
         # create pyramids
         img_a_pyr = gaussian_pyramid(img_a, levels)
         img_b_pyr = gaussian_pyramid(img_b, levels)
 
-        #0 start with smallest pyramid images and feed into lk
+        # 0 start with smallest pyramid images and feed into lk
         level = levels - 1
-        u, v = optic_flow_lk(img_a_pyr[level], img_b_pyr[level], k_size, k_type, sigma,
-                             gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
-                             gauss_sigma_y=gauss_sigma_y)
+        u, v = optic_flow_lk(
+            img_a_pyr[level],
+            img_b_pyr[level],
+            k_size,
+            k_type,
+            sigma,
+            gauss_k_size=gauss_k_size,
+            gauss_sigma_x=gauss_sigma_x,
+            gauss_sigma_y=gauss_sigma_y,
+        )
 
         while level > 0:
-            #1 expand optic flow U, V matrices.
+            # 1 expand optic flow U, V matrices.
             u_exp = expand_image(u) * 2
             v_exp = expand_image(v) * 2
 
             level -= 1
-            #2 Use expanded U, V to warp next level of img_a into img_b. (old_velocity)
-            warped_img_b_to_img_a = warp(img_b_pyr[level], u_exp, v_exp, interpolation, border_mode)
+            # 2 Use expanded U, V to warp next level of img_a into img_b. (old_velocity)
+            warped_img_b_to_img_a = warp(
+                img_b_pyr[level], u_exp, v_exp, interpolation, border_mode
+            )
 
-            #3 Run warped_image and same level from img_2 into Lk
-            u_corr, v_corr = optic_flow_lk(img_a_pyr[level], warped_img_b_to_img_a, k_size,
-                                           k_type, sigma,
-                                           gauss_k_size=gauss_k_size,
-                                           gauss_sigma_x=gauss_sigma_x,
-                                           gauss_sigma_y=gauss_sigma_y)
+            # 3 Run warped_image and same level from img_2 into Lk
+            u_corr, v_corr = optic_flow_lk(
+                img_a_pyr[level],
+                warped_img_b_to_img_a,
+                k_size,
+                k_type,
+                sigma,
+                gauss_k_size=gauss_k_size,
+                gauss_sigma_x=gauss_sigma_x,
+                gauss_sigma_y=gauss_sigma_y,
+            )
 
-            #4 Add correction terms to old_velocity
+            # 4 Add correction terms to old_velocity
             u = u_exp + u_corr
             v = v_exp + v_corr
-
-            # goto #1
 
         return ((u, v), quiver_scale, quiver_stride)
 
     def draw_image(input):
         input_points = input[0]
         u, v = input_points
-        # u_v = quiver(u, v, scale=input[1], stride=input[2])
 
         interpolation = cv2.INTER_CUBIC  # You may try different values
         border_mode = cv2.BORDER_REFLECT101  # You may try different values
-        urban_img_02_warped = warp(img_b, u, v, interpolation,
-                                       border_mode)
+        urban_img_02_warped = warp(img_b, u, v, interpolation, border_mode)
 
         diff_img = img_a - urban_img_02_warped
-        # cv2.imwrite(os.path.join(output_dir, "ps4-4-b-2.png"),
-        #             ps4.normalize_and_scale(diff_img))
 
         return diff_img
 
@@ -536,19 +566,12 @@ def hierarchical_lk(img_a, img_b, levels, k_size, k_type, sigma, interpolation,
     #     quiver_scale=param(30, 10, lambda x: x/10),
     #     quiver_stride=param(15, 10)
     # )
-    # print(result)
-    # return compute_values(levels, k_size, sigma ,gauss_k_size=19, gauss_sigma_x=13,
-    #                   gauss_sigma_y=1)[0]
-    return compute_values(levels, k_size, sigma,
-                          gauss_k_size=gauss_k_size, gauss_sigma_x=gauss_sigma_x,
-                          gauss_sigma_y=gauss_sigma_y)[0]
 
-    # gauss_k_size=11, gauss_sigma_x=19, gauss_sigma_y=1)[0]
-
-# 4a
-# {'levels': 2, 'k_size': 45, 'sigma': 11, 'quiver_scale': 1.0, 'quiver_stride': 10}
-# {'levels': 3, 'k_size': 49, 'sigma': 9, 'quiver_scale': 0.4, 'quiver_stride': 10}
-# {'levels': 3, 'k_size': 29, 'sigma': 28, 'quiver_scale': 0.3, 'quiver_stride': 10}
-
-# 5a
-# {'levels': 2, 'k_size': 41, 'sigma': 21, 'gauss_k_size': 19, 'gauss_sigma_x': 13, 'gauss_sigma_y': 1, 'quiver_scale': 1.0, 'quiver_stride': 10}
+    return compute_values(
+        levels,
+        k_size,
+        sigma,
+        gauss_k_size=gauss_k_size,
+        gauss_sigma_x=gauss_sigma_x,
+        gauss_sigma_y=gauss_sigma_y,
+    )[0]
