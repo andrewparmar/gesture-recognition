@@ -69,10 +69,7 @@ def scale_u_and_v(u, v, level, pyr):
             v (numpy.array): scaled V array of shape equal to
                              pyr[0].shape
     """
-    # print(f'**** Starting Shape:{u.shape}')
-    # print(f'**** Final Goal Shape:{pyr[0].shape}')
     for i in range(level, 0, -1):
-        tmp_shape = u.shape
         u_tmp = ps4.expand_image(u)
         v_tmp = ps4.expand_image(v)
 
@@ -84,8 +81,6 @@ def scale_u_and_v(u, v, level, pyr):
         h, w = next_image.shape
         u = u_tmp[:h, :w]
         v = v_tmp[:h, :w]
-    #     print(f'Level:{i}; Before {tmp_shape};\tGoal h:{h},w:{w},\tAfter u:{u.shape}, v:{v.shape}')
-    # print(f'**** Final Shape:{u.shape}')
 
     return u, v
 
@@ -354,9 +349,6 @@ def part_5a():
 
     frames.append(shift_r10)
 
-    # for i, frame in enumerate(frames):
-    #     cv2.imwrite(f'part5_new_img_{i}.png', ps4.normalize_and_scale(frame))
-
     h, w = shift_0.shape
     output_img = np.zeros((2 * h, 3 * w))
 
@@ -368,7 +360,7 @@ def part_5a():
             col = i * w
             output_img[row:row + h, col:col + w] = frames[counter]
             counter += 1
-    # import pdb; [pdb.set_trace()]
+
     cv2.imwrite('ps4-5-a-1.jpg', ps4.normalize_and_scale(output_img))
 
 
@@ -406,9 +398,6 @@ def part_5b():
             frames.append(I_t)
 
         frames.append(I_1)
-
-        # for l, frame in enumerate(frames):
-        #     cv2.imwrite(f'part5b_{l}.png', ps4.normalize_and_scale(frame))
 
         h, w = img_a.shape
         output_img = np.zeros((2 * h, 3 * w))
@@ -451,6 +440,8 @@ def mp4_video_writer(filename, frame_size, fps=20):
         fps (int): Frames per second
     Returns:
         VideoWriter: Instance of VideoWriter ready for writing
+
+    Source: Reusing snippet form PS3.
     """
     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
     return cv2.VideoWriter(filename, fourcc, fps, frame_size)
@@ -466,10 +457,11 @@ def video_frame_generator(filename):
 
     Returns:
         None.
+
+    Source: Reusing snippet form PS3.
     """
     video = cv2.VideoCapture(filename)
 
-    # Do not edit this while loop
     while video.isOpened():
         ret, frame = video.read()
 
@@ -483,12 +475,14 @@ def video_frame_generator(filename):
 
 
 def save_image(filename, image):
-    """Convenient wrapper for writing images to the output directory."""
+    """Convenient wrapper for writing images to the output directory.
+
+    Source: Reusing snippet form PS3.
+    """
     cv2.imwrite(os.path.join(output_dir, filename), image)
 
 
 def helper_for_part_6(video, fps, frame_ids):
-
     motion_video = os.path.join(video_dir, video)
     overlay_image_gen = video_frame_generator(motion_video)
     img_a = overlay_image_gen.__next__()
@@ -519,7 +513,8 @@ def helper_for_part_6(video, fps, frame_ids):
 
         u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size, k_type,
                                    sigma, interpolation, border_mode,
-                                   gauss_k_size=k_size, gauss_sigma_x=10, gauss_sigma_y=10)
+                                   gauss_k_size=k_size, gauss_sigma_x=10,
+                                   gauss_sigma_y=10)
 
         u_v = quiver(u, v, scale=3, stride=20, img_in=img_a)
 
@@ -546,9 +541,9 @@ def part_6():
 
     Place all your work in this file and this section.
     """
-    print("\nPart 6:")
+    # print("\nPart 6:")
 
-    video_file = "golf_ps4-my-video.mp4"
+    video_file = "ps4-my-video.mp4"
     frame_ids = [50, 150]
     fps = 25
 

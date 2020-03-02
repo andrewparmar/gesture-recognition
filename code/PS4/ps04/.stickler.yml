@@ -1,0 +1,17 @@
+linters:
+    flake8:
+        config: './setup.cfg'
+        python: 3
+        isort: true
+        fixer: false
+        plugins:
+            - flake8-bugbear
+            - flake8-tidy-imports
+    black:
+        config: './pyproject.toml'
+        fixer: false
+fixers:
+    enable: false
+
+files:
+    ignore: ['**/migrations/*']
