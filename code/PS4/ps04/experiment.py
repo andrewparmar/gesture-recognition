@@ -108,7 +108,7 @@ def part_1a():
 
     # Flow image
     u_v = quiver(u, v, scale=4, stride=9)
-    cv2.imwrite(os.path.join(output_dir, "ps4-1-a-1.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-1-a-1.jpg"), u_v)
 
     # Now let's try with ShiftR5U5. You may want to try smoothing the
     # input images first.
@@ -122,7 +122,7 @@ def part_1a():
 
     # Flow image
     u_v = quiver(u, v, scale=1, stride=9)
-    cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-1-a-2.jpg"), u_v)
 
 
 def part_1b():
@@ -156,7 +156,7 @@ def part_1b():
                                         'ShiftR40.png'), 0) / 255.
 
     images = [shift_r10, shift_r20, shift_r40]
-    file_names = ['ps4-1-b-1.png', 'ps4-1-b-2.png', 'ps4-1-b-3.png']
+    file_names = ['ps4-1-b-1.jpg', 'ps4-1-b-2.jpg', 'ps4-1-b-3.jpg']
 
     k_size = 49
     k_type = "gaussian"
@@ -177,14 +177,14 @@ def part_2():
     levels = 4
     yos_img_01_g_pyr = ps4.gaussian_pyramid(yos_img_01, levels)
     yos_img_01_g_pyr_img = ps4.create_combined_img(yos_img_01_g_pyr)
-    cv2.imwrite(os.path.join(output_dir, "ps4-2-a-1.png"),
+    cv2.imwrite(os.path.join(output_dir, "ps4-2-a-1.jpg"),
                 yos_img_01_g_pyr_img)
 
     # 2b
     yos_img_01_l_pyr = ps4.laplacian_pyramid(yos_img_01_g_pyr)
 
     yos_img_01_l_pyr_img = ps4.create_combined_img(yos_img_01_l_pyr)
-    cv2.imwrite(os.path.join(output_dir, "ps4-2-b-1.png"),
+    cv2.imwrite(os.path.join(output_dir, "ps4-2-b-1.jpg"),
                 yos_img_01_l_pyr_img)
 
 
@@ -213,7 +213,7 @@ def part_3a_1():
     yos_img_02_warped = ps4.warp(yos_img_02, u, v, interpolation, border_mode)
 
     diff_yos_img = yos_img_01 - yos_img_02_warped
-    cv2.imwrite(os.path.join(output_dir, "ps4-3-a-1.png"),
+    cv2.imwrite(os.path.join(output_dir, "ps4-3-a-1.jpg"),
                 ps4.normalize_and_scale(diff_yos_img))
 
 
@@ -242,7 +242,7 @@ def part_3a_2():
     yos_img_03_warped = ps4.warp(yos_img_03, u, v, interpolation, border_mode)
 
     diff_yos_img = yos_img_02 - yos_img_03_warped
-    cv2.imwrite(os.path.join(output_dir, "ps4-3-a-2.png"),
+    cv2.imwrite(os.path.join(output_dir, "ps4-3-a-2.jpg"),
                 ps4.normalize_and_scale(diff_yos_img))
 
 
@@ -268,7 +268,7 @@ def part_4a():
                                    gauss_k_size=k_size, gauss_sigma_x=24, gauss_sigma_y=1)
 
     u_v = quiver(u10, v10, scale=1.5, stride=10)
-    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-1.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-1.jpg"), u_v)
 
     # You may want to try different parameters for the remaining function
     # calls.
@@ -281,7 +281,7 @@ def part_4a():
                                    gauss_k_size=k_size, gauss_sigma_x=24, gauss_sigma_y=1)
 
     u_v = quiver(u20, v20, scale=0.5, stride=10)
-    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-2.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-2.jpg"), u_v)
 
     levels = 3
     k_size = 67
@@ -291,7 +291,7 @@ def part_4a():
                                    sigma, interpolation, border_mode,
                                    gauss_k_size=17, gauss_sigma_x=14, gauss_sigma_y=1)
     u_v = quiver(u40, v40, scale=0.6, stride=10)
-    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-3.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-4-a-3.jpg"), u_v)
 
 
 def part_4b():
@@ -312,7 +312,7 @@ def part_4b():
                                gauss_k_size=k_size, gauss_sigma_x=6, gauss_sigma_y=2)
 
     u_v = quiver(u, v, scale=0.5, stride=10)
-    cv2.imwrite(os.path.join(output_dir, "ps4-4-b-1.png"), u_v)
+    cv2.imwrite(os.path.join(output_dir, "ps4-4-b-1.jpg"), u_v)
 
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
@@ -320,7 +320,7 @@ def part_4b():
                                    border_mode)
 
     diff_img = urban_img_01 - urban_img_02_warped
-    cv2.imwrite(os.path.join(output_dir, "ps4-4-b-2.png"),
+    cv2.imwrite(os.path.join(output_dir, "ps4-4-b-2.jpg"),
                 ps4.normalize_and_scale(diff_img))
 
 
@@ -369,7 +369,7 @@ def part_5a():
             output_img[row:row + h, col:col + w] = frames[counter]
             counter += 1
     # import pdb; [pdb.set_trace()]
-    cv2.imwrite('ps4-5-a-1.png', ps4.normalize_and_scale(output_img))
+    cv2.imwrite('ps4-5-a-1.jpg', ps4.normalize_and_scale(output_img))
 
 
 def part_5b():
@@ -436,7 +436,7 @@ def part_5b():
         output_img = _frame_interpolation(images[i], images[i + 1], u, v,
                                           [0.2, 0.4, 0.6, 0.8])
 
-        cv2.imwrite(f'ps4-5-b-{i+1}.png', ps4.normalize_and_scale(output_img))
+        cv2.imwrite(f'ps4-5-b-{i+1}.jpg', ps4.normalize_and_scale(output_img))
 
 # def video_frame_generator(filename):
 #     """A generator function that returns a frame on each 'next()' call.
@@ -582,10 +582,10 @@ def helper_for_part_6(video, fps, frame_ids):
     out_path = "part6_video.mp4"
     video_out = mp4_video_writer(out_path, (w, h), fps)
 
-    levels = 5
+    levels = 4
     k_size = 51
     k_type = "gaussian"
-    sigma = 11
+    sigma = 30
     interpolation = cv2.INTER_CUBIC  # You may try different values
     border_mode = cv2.BORDER_REFLECT101  # You may try different values
 
@@ -601,15 +601,17 @@ def helper_for_part_6(video, fps, frame_ids):
 
         u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size, k_type,
                                    sigma, interpolation, border_mode,
-                                   gauss_k_size=k_size, gauss_sigma_x=24,gauss_sigma_y=1)
+                                   gauss_k_size=k_size, gauss_sigma_x=10, gauss_sigma_y=10)
+        # u, v = ps4.optic_flow_lk(gray_img_a, gray_img_b, k_size, k_type, sigma,
+        #                          gauss_k_size=51, gauss_sigma_x=22, gauss_sigma_y=1)
 
-        u_v = quiver(u, v, scale=10, stride=30, img_in=img_a)
+        u_v = quiver(u, v, scale=3, stride=20, img_in=img_a)
 
         video_out.write(u_v)
         print(img_a.shape, img_b.shape)
 
         if frame_num in frame_ids:
-            out_str = f'ps4-6-a-{frame_counter}.png'
+            out_str = f'ps4-6-a-{frame_counter}.jpg'
             save_image(out_str, u_v)
             frame_counter += 1
 
@@ -630,11 +632,11 @@ def part_6():
     """
     print("\nPart 6:")
 
-    video_file = "ps4-my-video.mp4"
+    video_file = "golf_ps4-my-video.mp4"
     frame_ids = [50, 150]
-    fps = 40
+    fps = 25
 
-    helper_for_part_6(video_file, fps, None,  None, None)
+    helper_for_part_6(video_file, fps, frame_ids)
 
 
 if __name__ == '__main__':
