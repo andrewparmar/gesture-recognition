@@ -13,8 +13,11 @@ output_dir = "./"
 
 
 # Utility code
-def quiver(u, v, scale, stride, color=(0, 255, 0)):
-    img_out = np.zeros((v.shape[0], u.shape[1], 3), dtype=np.uint8)
+def quiver(u, v, scale, stride, color=(0, 255, 0), img_in=None):
+    if img_in is not None:
+        img_out = img_in
+    else:
+        img_out = np.zeros((v.shape[0], u.shape[1], 3), dtype=np.uint8)
 
     for y in range(0, v.shape[0], stride):
 
@@ -435,6 +438,106 @@ def part_5b():
 
         cv2.imwrite(f'ps4-5-b-{i+1}.png', ps4.normalize_and_scale(output_img))
 
+# def video_frame_generator(filename):
+#     """A generator function that returns a frame on each 'next()' call.
+#
+#     Will return 'None' when there are no frames left.
+#
+#     Args:
+#         filename (string): Filename.
+#
+#     Returns:
+#         None.
+#     """
+#     video = cv2.VideoCapture(filename)
+#
+#     # Do not edit this while loop
+#     while video.isOpened():
+#         ret, frame = video.read()
+#
+#         if ret:
+#             yield frame
+#         else:
+#             break
+#
+#     video.release()
+#     yield None
+#
+# def mp4_video_writer(filename, frame_size, fps=20):
+#     """Opens and returns a video for writing.
+#
+#     Use the VideoWriter's `write` method to save images.
+#     Remember to 'release' when finished.
+#
+#     Args:
+#         filename (string): Filename for saved video
+#         frame_size (tuple): Width, height tuple of output video
+#         fps (int): Frames per second
+#     Returns:
+#         VideoWriter: Instance of VideoWriter ready for writing
+#     """
+#     fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+#     return cv2.VideoWriter(filename, fourcc, fps, frame_size)
+#
+# def helper_for_part_6(video_name, fps):
+#
+#     video = os.path.join(video_dir, video_name)
+#     image_gen = video_frame_generator(video)
+#     img_a = image_gen.__next__()
+#     img_b = image_gen.__next__()
+#
+#     h, w, d = img_a.shape
+#
+#     out_path = "ps4-my-video.mp4"
+#     video_out = mp4_video_writer(out_path, (w, h), fps)
+#
+#     levels, k_size, k_type, sigma = 2, 41, 'gaussian', 21
+#     interpolation = cv2.INTER_CUBIC
+#     border_mode = cv2.BORDER_REFLECT101
+#
+#     frame_num = 1
+#
+#     while img_a is not None and img_b is not None:
+#
+#         print("Processing fame {}".format(frame_num))
+#
+#         gray_img_a = cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY)
+#         gray_img_b = cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY)
+#
+#         u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size,
+#                                    k_type, sigma, interpolation, border_mode,
+#                                    gauss_k_size=k_size, gauss_sigma_x=22,
+#                                    gauss_sigma_y=1)
+#
+#         u_v = quiver(u, v, scale=1, stride=20)
+#
+#         video_out.write(u_v)
+#
+#         img_a = image_gen.__next__()
+#         img_b = image_gen.__next__()
+#
+#         frame_num += 1
+#
+#     video_out.release()
+
+
+def mp4_video_writer(filename, frame_size, fps=20):
+    """Opens and returns a video for writing.
+
+    Use the VideoWriter's `write` method to save images.
+    Remember to 'release' when finished.
+
+    Args:
+        filename (string): Filename for saved video
+        frame_size (tuple): Width, height tuple of output video
+        fps (int): Frames per second
+    Returns:
+        VideoWriter: Instance of VideoWriter ready for writing
+    """
+    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    return cv2.VideoWriter(filename, fourcc, fps, frame_size)
+
+
 def video_frame_generator(filename):
     """A generator function that returns a frame on each 'next()' call.
 
@@ -460,39 +563,34 @@ def video_frame_generator(filename):
     video.release()
     yield None
 
-def mp4_video_writer(filename, frame_size, fps=20):
-    """Opens and returns a video for writing.
 
-    Use the VideoWriter's `write` method to save images.
-    Remember to 'release' when finished.
+def save_image(filename, image):
+    """Convenient wrapper for writing images to the output directory."""
+    cv2.imwrite(os.path.join(output_dir, filename), image)
 
-    Args:
-        filename (string): Filename for saved video
-        frame_size (tuple): Width, height tuple of output video
-        fps (int): Frames per second
-    Returns:
-        VideoWriter: Instance of VideoWriter ready for writing
-    """
-    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-    return cv2.VideoWriter(filename, fourcc, fps, frame_size)
 
-def helper_for_part_6(video_name, fps):
+def helper_for_part_6(video, fps, frame_ids):
 
-    video = os.path.join(video_dir, video_name)
-    image_gen = video_frame_generator(video)
-    img_a = image_gen.__next__()
-    img_b = image_gen.__next__()
+    motion_video = os.path.join(video_dir, video)
+    overlay_image_gen = video_frame_generator(motion_video)
+    img_a = overlay_image_gen.__next__()
+    img_b = overlay_image_gen.__next__()
 
     h, w, d = img_a.shape
+    print(img_a.shape)
 
-    out_path = "ps4-my-video.mp4"
+    out_path = "part6_video.mp4"
     video_out = mp4_video_writer(out_path, (w, h), fps)
 
-    levels, k_size, k_type, sigma = 2, 41, 'gaussian', 21
-    interpolation = cv2.INTER_CUBIC
-    border_mode = cv2.BORDER_REFLECT101
+    levels = 5
+    k_size = 51
+    k_type = "gaussian"
+    sigma = 11
+    interpolation = cv2.INTER_CUBIC  # You may try different values
+    border_mode = cv2.BORDER_REFLECT101  # You may try different values
 
     frame_num = 1
+    frame_counter = 1
 
     while img_a is not None and img_b is not None:
 
@@ -501,17 +599,22 @@ def helper_for_part_6(video_name, fps):
         gray_img_a = cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY)
         gray_img_b = cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY)
 
-        u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size,
-                                   k_type, sigma, interpolation, border_mode,
-                                   gauss_k_size=k_size, gauss_sigma_x=22,
-                                   gauss_sigma_y=1)
+        u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size, k_type,
+                                   sigma, interpolation, border_mode,
+                                   gauss_k_size=k_size, gauss_sigma_x=24,gauss_sigma_y=1)
 
-        u_v = quiver(u, v, scale=1, stride=20)
+        u_v = quiver(u, v, scale=10, stride=30, img_in=img_a)
 
         video_out.write(u_v)
+        print(img_a.shape, img_b.shape)
 
-        img_a = image_gen.__next__()
-        img_b = image_gen.__next__()
+        if frame_num in frame_ids:
+            out_str = f'ps4-6-a-{frame_counter}.png'
+            save_image(out_str, u_v)
+            frame_counter += 1
+
+        img_a = img_b
+        img_b = overlay_image_gen.__next__()
 
         frame_num += 1
 
@@ -525,8 +628,13 @@ def part_6():
 
     Place all your work in this file and this section.
     """
+    print("\nPart 6:")
 
-    raise NotImplementedError
+    video_file = "ps4-my-video.mp4"
+    frame_ids = [50, 150]
+    fps = 40
+
+    helper_for_part_6(video_file, fps, None,  None, None)
 
 
 if __name__ == '__main__':
@@ -539,4 +647,4 @@ if __name__ == '__main__':
     part_4b()
     part_5a()
     part_5b()
-    # part_6()
+    part_6()
