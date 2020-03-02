@@ -8,6 +8,7 @@ import ps4
 
 # I/O directories
 input_dir = "input_images"
+video_dir = "input_videos"
 output_dir = "./"
 
 
@@ -433,6 +434,88 @@ def part_5b():
                                           [0.2, 0.4, 0.6, 0.8])
 
         cv2.imwrite(f'ps4-5-b-{i+1}.png', ps4.normalize_and_scale(output_img))
+
+def video_frame_generator(filename):
+    """A generator function that returns a frame on each 'next()' call.
+
+    Will return 'None' when there are no frames left.
+
+    Args:
+        filename (string): Filename.
+
+    Returns:
+        None.
+    """
+    video = cv2.VideoCapture(filename)
+
+    # Do not edit this while loop
+    while video.isOpened():
+        ret, frame = video.read()
+
+        if ret:
+            yield frame
+        else:
+            break
+
+    video.release()
+    yield None
+
+def mp4_video_writer(filename, frame_size, fps=20):
+    """Opens and returns a video for writing.
+
+    Use the VideoWriter's `write` method to save images.
+    Remember to 'release' when finished.
+
+    Args:
+        filename (string): Filename for saved video
+        frame_size (tuple): Width, height tuple of output video
+        fps (int): Frames per second
+    Returns:
+        VideoWriter: Instance of VideoWriter ready for writing
+    """
+    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    return cv2.VideoWriter(filename, fourcc, fps, frame_size)
+
+def helper_for_part_6(video_name, fps):
+
+    video = os.path.join(video_dir, video_name)
+    image_gen = video_frame_generator(video)
+    img_a = image_gen.__next__()
+    img_b = image_gen.__next__()
+
+    h, w, d = img_a.shape
+
+    out_path = "ps4-my-video.mp4"
+    video_out = mp4_video_writer(out_path, (w, h), fps)
+
+    levels, k_size, k_type, sigma = 2, 41, 'gaussian', 21
+    interpolation = cv2.INTER_CUBIC
+    border_mode = cv2.BORDER_REFLECT101
+
+    frame_num = 1
+
+    while img_a is not None and img_b is not None:
+
+        print("Processing fame {}".format(frame_num))
+
+        gray_img_a = cv2.cvtColor(img_a, cv2.COLOR_BGR2GRAY)
+        gray_img_b = cv2.cvtColor(img_b, cv2.COLOR_BGR2GRAY)
+
+        u, v = ps4.hierarchical_lk(gray_img_a, gray_img_b, levels, k_size,
+                                   k_type, sigma, interpolation, border_mode,
+                                   gauss_k_size=k_size, gauss_sigma_x=22,
+                                   gauss_sigma_y=1)
+
+        u_v = quiver(u, v, scale=1, stride=20)
+
+        video_out.write(u_v)
+
+        img_a = image_gen.__next__()
+        img_b = image_gen.__next__()
+
+        frame_num += 1
+
+    video_out.release()
 
 
 def part_6():
