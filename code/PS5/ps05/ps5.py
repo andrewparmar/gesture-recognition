@@ -1,8 +1,9 @@
 """
 CS6476 Problem Set 5 imports. Only Numpy and cv2 are allowed.
 """
-import cv2
+# import cv2
 import numpy as np
+from numpy.linalg import multi_dot
 
 
 # Assignment code
@@ -19,13 +20,34 @@ class KalmanFilter(object):
             R (numpy.array): Measurement noise array.
         """
         self.state = np.array([init_x, init_y, 0.0, 0.0])  # state
-        raise NotImplementedError
+
+        self.P_t = np.array(
+            [[1000, 0, 0, 0], [0, 1000, 0, 0], [0, 0, 1000, 0], [0, 0, 0, 1000]]
+        )
+
+        # F
+        self.D_t = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])
+
+        # H
+        self.M_t = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
+
+        self.Q = Q
+        self.R = R
 
     def predict(self):
-        raise NotImplementedError
+        self.state = np.dot(self.D_t, self.state)
+
+        self.P_t = multi_dot([self.D_t, self.P_t, self.D_t.T]) + self.Q
 
     def correct(self, meas_x, meas_y):
-        raise NotImplementedError
+        # measurement update
+        Z = np.array([meas_x, meas_y])
+        y = Z.T - self.M_t.dot(self.state)
+        S = multi_dot([self.M_t, self.P_t, self.M_t.T]) + self.R
+        K = multi_dot([self.P_t, self.M_t.T, np.linalg.inv(S)])
+
+        self.state = self.state + K.dot(y)
+        self.P_t = (np.identity(4) - K.dot(self.M_t)).dot(self.P_t)
 
     def process(self, measurement_x, measurement_y):
 
