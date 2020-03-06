@@ -1,7 +1,7 @@
 """
 CS6476 Problem Set 5 imports. Only Numpy and cv2 are allowed.
 """
-# import cv2
+import cv2
 import numpy as np
 from numpy.linalg import multi_dot
 
@@ -25,10 +25,10 @@ class KalmanFilter(object):
             [[1000, 0, 0, 0], [0, 1000, 0, 0], [0, 0, 1000, 0], [0, 0, 0, 1000]]
         )
 
-        # F
+        # The state transition matrix - the dynamics model
         self.D_t = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])
 
-        # H
+        # The measurement model. Since its 2x4, it tells us that velocities are not measured.
         self.M_t = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
 
         self.Q = Q
@@ -111,11 +111,23 @@ class ParticleFilter(object):
 
         self.template = template
         self.frame = frame
-        self.particles = None  # Initialize your particles array. Read the docstring.
-        self.weights = None  # Initialize your weights array. Read the docstring.
+        self.particles = self._init_particles()  # Initialize your particles array. Read the docstring.
+        self.weights = np.array([1/self.num_particles]*self.num_particles)  # Initialize your weights array. Read the docstring.
         # Initialize any other components you may need when designing your filter.
 
-        raise NotImplementedError
+    def _init_particles(self):
+        particle_array = np.zeros((self.num_particles, 2))
+
+        y0 = self.template_rect['y']
+        y1 = y0 + self.template_rect['h']
+
+        x0 = self.template_rect['x']
+        x1 = x0 + self.template_rect['w']
+
+        particle_array[:, 0] = np.random.randint(x0, x1, size=self.num_particles)
+        particle_array[:, 1] = np.random.randint(y0, y1, size=self.num_particles)
+
+        return particle_array.astype(np.uint16)
 
     def get_particles(self):
         """Returns the current particles state.
@@ -143,7 +155,9 @@ class ParticleFilter(object):
         Returns:
             float: similarity value.
         """
-        return NotImplementedError
+        mse = (np.square(template - frame_cutout)).mean()
+
+        return mse
 
     def resample_particles(self):
         """Returns a new set of particles
@@ -158,7 +172,7 @@ class ParticleFilter(object):
         Returns:
             numpy.array: particles data structure.
         """
-        return NotImplementedError
+        return np.random.choice(self.particles, p=self.weights)
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -178,6 +192,7 @@ class ParticleFilter(object):
         Returns:
             None.
         """
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         raise NotImplementedError
 
     def render(self, frame_in):

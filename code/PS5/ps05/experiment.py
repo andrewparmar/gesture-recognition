@@ -232,7 +232,7 @@ def part_2a():
         99: os.path.join(output_dir, "ps5-2-a-4.png"),
     }
 
-    num_particles = 0  # Define the number of particles
+    num_particles = 200  # Define the number of particles
     sigma_mse = 0  # Define the value of sigma for the measurement exponential equation
     sigma_dyn = 0  # Define the value of sigma for the particles movement (dynamics)
 
@@ -354,9 +354,9 @@ def part_6():
 
 
 if __name__ == "__main__":
-    part_1b()
-    part_1c()
-    # part_2a()
+    # part_1b()
+    # part_1c()
+    part_2a()
     # part_2b()
     # part_3()
     # part_4()
