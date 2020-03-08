@@ -111,18 +111,22 @@ class ParticleFilter(object):
 
         self.template = template
         self.frame = frame
-        self.particles = self._init_particles()  # Initialize your particles array. Read the docstring.
-        self.weights = np.array([1/self.num_particles]*self.num_particles)  # Initialize your weights array. Read the docstring.
+        self.particles = (
+            self._init_particles()
+        )  # Initialize your particles array. Read the docstring.
+        self.weights = np.array(
+            [1 / self.num_particles] * self.num_particles
+        )  # Initialize your weights array. Read the docstring.
         # Initialize any other components you may need when designing your filter.
 
     def _init_particles(self):
         particle_array = np.zeros((self.num_particles, 2))
 
-        y0 = self.template_rect['y']
-        y1 = y0 + self.template_rect['h']
+        y0 = self.template_rect["y"]
+        y1 = y0 + self.template_rect["h"]
 
-        x0 = self.template_rect['x']
-        x1 = x0 + self.template_rect['w']
+        x0 = self.template_rect["x"]
+        x1 = x0 + self.template_rect["w"]
 
         particle_array[:, 0] = np.random.randint(x0, x1, size=self.num_particles)
         particle_array[:, 1] = np.random.randint(y0, y1, size=self.num_particles)
@@ -155,9 +159,15 @@ class ParticleFilter(object):
         Returns:
             float: similarity value.
         """
-        mse = (np.square(template - frame_cutout)).mean()
 
-        return mse
+        # import pdb; pdb.set_trace()
+        mse = np.square(
+            template.astype(np.float32) - frame_cutout.astype(np.float32)
+        ).mean()
+
+        error_metric = np.exp(-mse / (2 * self.sigma_exp ** 2))
+
+        return error_metric
 
     def resample_particles(self):
         """Returns a new set of particles
@@ -172,7 +182,13 @@ class ParticleFilter(object):
         Returns:
             numpy.array: particles data structure.
         """
-        return np.random.choice(self.particles, p=self.weights)
+        particles = np.copy(self.particles)
+
+        indexes = np.random.choice(
+            self.num_particles, size=self.num_particles, p=self.weights
+        )
+
+        return particles[indexes]
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -192,8 +208,95 @@ class ParticleFilter(object):
         Returns:
             None.
         """
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        raise NotImplementedError
+        # new_particles = np.copy(self.particles) * 0
+        # import pdb; pdb.set_trace()
+        new_particles = self.resample_particles()
+        new_weights = np.zeros(self.num_particles)
+        norm = 0
+
+        # Get new data
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
+
+        for i, _ in enumerate(new_particles):
+
+            # x_d = int(np.round(np.random.normal(3)))
+            # y_d = int(np.round(np.random.normal(3)))
+            x_d = np.random.normal(scale=self.sigma_dyn)
+            y_d = np.random.normal(scale=self.sigma_dyn)
+
+            x, y = new_particles[i]
+
+            new_particles[i, 0] = x + x_d
+            new_particles[i, 1] = y + y_d
+
+            x, y = new_particles[i]
+
+            # half template height and width
+            # t_w = self.template_rect['w'] // 2
+            # t_h = self.template_rect['h'] // 2
+
+            # frame_border = cv2.copyMakeBorder(
+            #     frame_gray,
+            #     top=t_h,
+            #     bottom=t_h,
+            #     left=t_w,
+            #     right=t_w,
+            #     borderType=cv2.BORDER_CONSTANT,
+            # )
+
+            row_start = y - self.template_rect["h"] // 2
+            row_end = row_start + self.template_rect["h"]
+
+            col_start = x - self.template_rect["w"] // 2
+            col_end = col_start + self.template_rect["w"]
+
+            frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
+
+            if not frame_cutout.shape == template_gray.shape:
+                # print('Not Equal Shape {}'.format(frame_cutout.shape == template_gray.shape))
+                error_calc = 0
+            else:
+                tmp_frame = np.copy(frame)
+                cv2.rectangle(
+                    tmp_frame,
+                    (col_start, row_start),
+                    (col_end, row_end),
+                    (0, 0, 255),
+                    2,
+                )
+                color = (0, 50, 255)
+                radius = 3
+                # import pdb; pdb.set_trace()
+                # cv2.circle(tmp_frame, (x,y), radius, color, -1)
+                # cv2.imshow('template', tmp_frame)
+                # cv2.waitKey(0)
+
+                error_calc = self.get_error_metric(template_gray, frame_cutout)
+                print("Error Calc: {}".format(error_calc))
+
+            new_weights[i] = error_calc
+            norm += error_calc
+
+        self.particles = new_particles
+        self.weights = new_weights / norm
+        # import pdb; pdb.set_trace()
+
+        # # update particles
+        # # add random gaussian noise to each particles state.
+        # random_motion = np.random.normal(scale=10, size=(10, 2))
+        # random_motion= np.round(random_motion)
+        # tmp_particles = self.particles + random_motion
+        #
+        #
+        # for i in range(self.num_particles):
+        #       # frame_cutout = np.zeroes(10, 10) #TODO calculate cutout
+        #
+        # # calculate weights
+        # error_calc = self.get_error_metric(self.template, frame_cutout)
+        #
+        # # resample particles
+        # self.resample_particles()
 
     def render(self, frame_in):
         """Visualizes current particle filter state.
@@ -234,7 +337,12 @@ class ParticleFilter(object):
             y_weighted_mean += self.particles[i, 1] * self.weights[i]
 
         # Complete the rest of the code as instructed.
-        raise NotImplementedError
+        # plot particle dots
+        for particle in self.particles:
+            color = (0, 50, 255)
+            radius = 1
+            # import pdb; pdb.set_trace()
+            cv2.circle(frame_in, tuple(particle), radius, color, -1)
 
 
 class AppearanceModelPF(ParticleFilter):

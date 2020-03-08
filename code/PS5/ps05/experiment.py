@@ -75,6 +75,7 @@ def run_particle_filter(
             pf.render(out_frame)
             cv2.imshow("Tracking", out_frame)
             cv2.waitKey(1)
+            # import time; time.sleep(0.01)
 
         # Render and save output, if indicated
         if frame_num in save_frames:
@@ -226,6 +227,11 @@ def part_2a():
     template_loc = {"y": 72, "x": 140, "w": 50, "h": 50}
 
     save_frames = {
+        1: os.path.join(output_dir, "tmp_1.png"),
+        2: os.path.join(output_dir, "tmp_2.png"),
+        3: os.path.join(output_dir, "tmp_3.png"),
+        4: os.path.join(output_dir, "tmp_4.png"),
+        4: os.path.join(output_dir, "tmp_5.png"),
         10: os.path.join(output_dir, "ps5-2-a-1.png"),
         30: os.path.join(output_dir, "ps5-2-a-2.png"),
         59: os.path.join(output_dir, "ps5-2-a-3.png"),
@@ -233,8 +239,8 @@ def part_2a():
     }
 
     num_particles = 200  # Define the number of particles
-    sigma_mse = 0  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 0  # Define the value of sigma for the particles movement (dynamics)
+    sigma_mse = 10  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
 
     run_particle_filter(
         ps5.ParticleFilter,  # particle filter model class
