@@ -273,7 +273,7 @@ class ParticleFilter(object):
                 # cv2.waitKey(0)
 
                 error_calc = self.get_error_metric(template_gray, frame_cutout)
-                print("Error Calc: {}".format(error_calc))
+                # print("Error Calc: {}".format(error_calc))
 
             new_weights[i] = error_calc
             norm += error_calc

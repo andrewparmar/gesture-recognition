@@ -227,11 +227,11 @@ def part_2a():
     template_loc = {"y": 72, "x": 140, "w": 50, "h": 50}
 
     save_frames = {
-        1: os.path.join(output_dir, "tmp_1.png"),
-        2: os.path.join(output_dir, "tmp_2.png"),
-        3: os.path.join(output_dir, "tmp_3.png"),
-        4: os.path.join(output_dir, "tmp_4.png"),
-        4: os.path.join(output_dir, "tmp_5.png"),
+        # 1: os.path.join(output_dir, "tmp_1.png"),
+        # 2: os.path.join(output_dir, "tmp_2.png"),
+        # 3: os.path.join(output_dir, "tmp_3.png"),
+        # 4: os.path.join(output_dir, "tmp_4.png"),
+        # 4: os.path.join(output_dir, "tmp_5.png"),
         10: os.path.join(output_dir, "ps5-2-a-1.png"),
         30: os.path.join(output_dir, "ps5-2-a-2.png"),
         59: os.path.join(output_dir, "ps5-2-a-3.png"),
@@ -239,8 +239,8 @@ def part_2a():
     }
 
     num_particles = 200  # Define the number of particles
-    sigma_mse = 10  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
+    sigma_mse = 5  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 4  # Define the value of sigma for the particles movement (dynamics)
 
     run_particle_filter(
         ps5.ParticleFilter,  # particle filter model class
@@ -265,9 +265,9 @@ def part_2b():
         99: os.path.join(output_dir, "ps5-2-b-4.png"),
     }
 
-    num_particles = 0  # Define the number of particles
-    sigma_mse = 0  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 0  # Define the value of sigma for the particles movement (dynamics)
+    num_particles = 200  # Define the number of particles
+    sigma_mse = 5  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 4  # Define the value of sigma for the particles movement (dynamics)
 
     run_particle_filter(
         ps5.ParticleFilter,  # particle filter model class
@@ -362,8 +362,8 @@ def part_6():
 if __name__ == "__main__":
     # part_1b()
     # part_1c()
-    part_2a()
-    # part_2b()
+    # part_2a()
+    part_2b()
     # part_3()
     # part_4()
     # part_5()
