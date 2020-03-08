@@ -118,6 +118,8 @@ class ParticleFilter(object):
             [1 / self.num_particles] * self.num_particles
         )  # Initialize your weights array. Read the docstring.
         # Initialize any other components you may need when designing your filter.
+        self.best_similarity = -np.inf
+        self.best_particle = None
 
     def _init_particles(self):
         particle_array = np.zeros((self.num_particles, 2))
@@ -208,9 +210,7 @@ class ParticleFilter(object):
         Returns:
             None.
         """
-        # new_particles = np.copy(self.particles) * 0
-        # import pdb; pdb.set_trace()
-        new_particles = self.resample_particles()
+        new_particles = np.copy(self.particles)
         new_weights = np.zeros(self.num_particles)
         norm = 0
 
@@ -220,8 +220,7 @@ class ParticleFilter(object):
 
         for i, _ in enumerate(new_particles):
 
-            # x_d = int(np.round(np.random.normal(3)))
-            # y_d = int(np.round(np.random.normal(3)))
+            # Prediction
             x_d = np.random.normal(scale=self.sigma_dyn)
             y_d = np.random.normal(scale=self.sigma_dyn)
 
@@ -229,21 +228,10 @@ class ParticleFilter(object):
 
             new_particles[i, 0] = x + x_d
             new_particles[i, 1] = y + y_d
+            ##############################################################################
 
+            # Measurement
             x, y = new_particles[i]
-
-            # half template height and width
-            # t_w = self.template_rect['w'] // 2
-            # t_h = self.template_rect['h'] // 2
-
-            # frame_border = cv2.copyMakeBorder(
-            #     frame_gray,
-            #     top=t_h,
-            #     bottom=t_h,
-            #     left=t_w,
-            #     right=t_w,
-            #     borderType=cv2.BORDER_CONSTANT,
-            # )
 
             row_start = y - self.template_rect["h"] // 2
             row_end = row_start + self.template_rect["h"]
@@ -254,32 +242,30 @@ class ParticleFilter(object):
             frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
 
             if not frame_cutout.shape == template_gray.shape:
-                # print('Not Equal Shape {}'.format(frame_cutout.shape == template_gray.shape))
                 error_calc = 0
             else:
-                tmp_frame = np.copy(frame)
-                cv2.rectangle(
-                    tmp_frame,
-                    (col_start, row_start),
-                    (col_end, row_end),
-                    (0, 0, 255),
-                    2,
-                )
-                color = (0, 50, 255)
-                radius = 3
-                # import pdb; pdb.set_trace()
-                # cv2.circle(tmp_frame, (x,y), radius, color, -1)
-                # cv2.imshow('template', tmp_frame)
-                # cv2.waitKey(0)
-
                 error_calc = self.get_error_metric(template_gray, frame_cutout)
-                # print("Error Calc: {}".format(error_calc))
 
             new_weights[i] = error_calc
             norm += error_calc
+            ##############################################################################
+
+            # if error_calc > self.best_similarity:
+            #     self.best_similarity = error_calc
+            #     self.best_particle = np.copy(new_particles[i])
 
         self.particles = new_particles
         self.weights = new_weights / norm
+
+        self.best_particle = self.particles[self.weights.argmax()]
+
+        self.particles = self.resample_particles()
+
+        # best_template_index = new_weights.argmax()
+        # print('Best template index', best_template_index)
+        #
+        # self.best_template = new_weights[best_template_index]
+
         # import pdb; pdb.set_trace()
 
         # # update particles
@@ -382,7 +368,32 @@ class AppearanceModelPF(ParticleFilter):
         Returns:
             None.
         """
-        raise NotImplementedError
+        super(AppearanceModelPF, self).process(frame)
+
+        x, y = self.best_particle.astype(np.uint16)
+
+        row_start = y - self.template_rect["h"] // 2
+        row_end = row_start + self.template_rect["h"]
+
+        col_start = x - self.template_rect["w"] // 2
+        col_end = col_start + self.template_rect["w"]
+
+        best = frame[row_start:row_end, col_start:col_end, :]
+
+        template_temp = self.alpha * best + (1 - self.alpha) * self.template
+        self.template = template_temp.astype(np.uint8)
+
+        # tmp_frame = np.copy(frame)
+        # cv2.rectangle(
+        #     tmp_frame,
+        #     (col_start, row_start),
+        #     (col_end, row_end),
+        #     (0, 0, 255),
+        #     2,
+        # )
+        #
+        # cv2.imshow('update template', tmp_frame)
+        # cv2.waitKey(1)
 
 
 class MDParticleFilter(AppearanceModelPF):
