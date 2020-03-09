@@ -290,10 +290,10 @@ def part_3():
         160: os.path.join(output_dir, "ps5-3-a-3.png"),
     }
 
-    num_particles = 200  # Define the number of particles
-    sigma_mse = 3  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 4  # Define the value of sigma for the particles movement (dynamics)
-    alpha = 0.95  # Set a value for alpha
+    num_particles = 500  # Define the number of particles
+    sigma_mse = 9  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 10  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0.98  # Set a value for alpha
 
     run_particle_filter(
         ps5.AppearanceModelPF,  # particle filter model class

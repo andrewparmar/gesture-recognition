@@ -114,12 +114,8 @@ class ParticleFilter(object):
         self.particles = (
             self._init_particles()
         )  # Initialize your particles array. Read the docstring.
-        self.weights = np.array(
-            [1 / self.num_particles] * self.num_particles
-        )  # Initialize your weights array. Read the docstring.
+        self.weights = np.ones(self.num_particles) / self.num_particles  # Initialize your weights array. Read the docstring.
         # Initialize any other components you may need when designing your filter.
-        self.best_similarity = -np.inf
-        self.best_particle = None
 
     def _init_particles(self):
         particle_array = np.zeros((self.num_particles, 2))
@@ -250,39 +246,10 @@ class ParticleFilter(object):
             norm += error_calc
             ##############################################################################
 
-            # if error_calc > self.best_similarity:
-            #     self.best_similarity = error_calc
-            #     self.best_particle = np.copy(new_particles[i])
-
         self.particles = new_particles
         self.weights = new_weights / norm
-
         self.best_particle = self.particles[self.weights.argmax()]
-
         self.particles = self.resample_particles()
-
-        # best_template_index = new_weights.argmax()
-        # print('Best template index', best_template_index)
-        #
-        # self.best_template = new_weights[best_template_index]
-
-        # import pdb; pdb.set_trace()
-
-        # # update particles
-        # # add random gaussian noise to each particles state.
-        # random_motion = np.random.normal(scale=10, size=(10, 2))
-        # random_motion= np.round(random_motion)
-        # tmp_particles = self.particles + random_motion
-        #
-        #
-        # for i in range(self.num_particles):
-        #       # frame_cutout = np.zeroes(10, 10) #TODO calculate cutout
-        #
-        # # calculate weights
-        # error_calc = self.get_error_metric(self.template, frame_cutout)
-        #
-        # # resample particles
-        # self.resample_particles()
 
     def render(self, frame_in):
         """Visualizes current particle filter state.
