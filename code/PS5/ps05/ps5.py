@@ -114,7 +114,9 @@ class ParticleFilter(object):
         self.particles = (
             self._init_particles()
         )  # Initialize your particles array. Read the docstring.
-        self.weights = np.ones(self.num_particles) / self.num_particles  # Initialize your weights array. Read the docstring.
+        self.weights = (
+            np.ones(self.num_particles) / self.num_particles
+        )  # Initialize your weights array. Read the docstring.
         # Initialize any other components you may need when designing your filter.
 
     def _init_particles(self):
@@ -294,8 +296,8 @@ class ParticleFilter(object):
         for particle in self.particles:
             color = (0, 50, 255)
             radius = 1
-            # import pdb; pdb.set_trace()
-            cv2.circle(frame_in, tuple(particle), radius, color, -1)
+
+            cv2.circle(frame_in, tuple(particle[:2]), radius, color, -1)
 
 
 class AppearanceModelPF(ParticleFilter):
@@ -346,7 +348,7 @@ class AppearanceModelPF(ParticleFilter):
         col_end = col_start + self.template_rect["w"]
 
         best = frame[row_start:row_end, col_start:col_end, :]
-
+        # import pdb; pdb.set_trace()
         template_temp = self.alpha * best + (1 - self.alpha) * self.template
         self.template = template_temp.astype(np.uint8)
 
@@ -382,6 +384,22 @@ class MDParticleFilter(AppearanceModelPF):
         #
         # The way to do it is:
         # self.some_parameter_name = kwargs.get('parameter_name', default_value)
+        self.particles = self._init_particles()
+
+    def _init_particles(self):
+        particle_array = np.zeros((self.num_particles, 3))
+
+        y0 = self.template_rect["y"]
+        y1 = y0 + self.template_rect["h"]
+
+        x0 = self.template_rect["x"]
+        x1 = x0 + self.template_rect["w"]
+
+        particle_array[:, 0] = np.random.randint(x0, x1, size=self.num_particles)
+        particle_array[:, 1] = np.random.randint(y0, y1, size=self.num_particles)
+        particle_array[:, 2] = np.ones(self.num_particles) * 100
+
+        return particle_array.astype(np.uint16)
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -397,4 +415,94 @@ class MDParticleFilter(AppearanceModelPF):
         Returns:
             None.
         """
-        raise NotImplementedError
+        # super(MDParticleFilter, self).process(frame)
+
+        new_particles = np.copy(self.particles)
+        new_weights = np.zeros(self.num_particles)
+        norm = 0
+
+        # Get new data
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
+
+        for i, _ in enumerate(new_particles):
+
+            # Prediction
+            x_d = np.random.normal(scale=self.sigma_dyn)
+            y_d = np.random.normal(scale=self.sigma_dyn)
+            z_d = np.random.normal(scale=1)  # This is scale.
+
+            x, y, z = new_particles[i]
+
+            new_particles[i, 0] = x + x_d
+            new_particles[i, 1] = y + y_d
+            new_particles[i, 2] = max(z + z_d, 1)
+            ##############################################################################
+
+            # Measurement
+            x, y, z = new_particles[i]
+
+            # scale template
+            scale_factor = z / 100
+            scale_factor = max(0.1, scale_factor)
+            print(type(z), type(scale_factor))
+            print(z, scale_factor)
+            template_gray_scaled = cv2.resize(
+                template_gray, (0, 0), fx=scale_factor, fy=scale_factor
+            )
+            h, w = template_gray_scaled.shape
+            # print('{} * {} -> {}'.format(template_gray.shape,
+            #                              scale_factor,
+            #                              template_gray_scaled.shape))
+
+            row_start = y - h // 2
+            row_end = row_start + h
+
+            col_start = x - w // 2
+            col_end = col_start + w
+
+            frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
+            # print('{}\t{}'.format(frame_cutout.shape,
+            #                         template_gray_scaled.shape))
+
+            # tmp_frame = np.copy(frame)
+            # cv2.rectangle(
+            #     tmp_frame,
+            #     (col_start, row_start),
+            #     (col_end, row_end),
+            #     (0, 0, 255),
+            #     2,
+            # )
+            #
+            # if scale_factor < 0.25:
+            #     cv2.imshow('template window', template_gray_scaled)
+            #     cv2.waitKey(1)
+            # print(frame_cutout.shape, template_gray_scaled.shape)
+            if frame_cutout.shape != template_gray_scaled.shape:
+                error_calc = 0
+                print("Shapes don't match")
+            else:
+                error_calc = self.get_error_metric(template_gray_scaled, frame_cutout)
+                print("Shapes match.")
+
+            # tmp_frame = np.copy(frame)
+            # cv2.rectangle(
+            #     tmp_frame,
+            #     (col_start, row_start),
+            #     (col_end, row_end),
+            #     (0, 0, 255),
+            #     2,
+            # )
+            # cv2.imshow('template window', tmp_frame)
+            # cv2.waitKey(0)
+
+            # print(error_calc)
+            #
+            new_weights[i] = error_calc
+            norm += error_calc
+            ##############################################################################
+
+        self.particles = new_particles
+        self.weights = new_weights / norm
+        self.best_particle = self.particles[self.weights.argmax()]
+        self.particles = self.resample_particles()

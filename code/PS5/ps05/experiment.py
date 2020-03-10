@@ -319,9 +319,10 @@ def part_4():
         300: os.path.join(output_dir, "ps5-4-a-4.png"),
     }
 
-    num_particles = 0  # Define the number of particles
-    sigma_md = 0  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 0  # Define the value of sigma for the particles movement (dynamics)
+    num_particles = 500  # Define the number of particles
+    sigma_md = 20  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 1  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0  # Set a value for alpha
 
     run_particle_filter(
         ps5.MDParticleFilter,
@@ -332,6 +333,7 @@ def part_4():
         sigma_exp=sigma_md,
         sigma_dyn=sigma_dyn,
         template_coords=template_rect,
+        alpha=alpha,
     )  # Add more if you need to
 
 
@@ -364,7 +366,7 @@ if __name__ == "__main__":
     # part_1c()
     # part_2a()
     # part_2b()
-    part_3()
-    # part_4()
+    # part_3()
+    part_4()
     # part_5()
     # part_6()
