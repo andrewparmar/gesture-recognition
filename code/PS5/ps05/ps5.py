@@ -539,65 +539,25 @@ class MDParticleFilter(AppearanceModelPF):
         # cv2.imshow('template window', tmp_frame)
         # cv2.waitKey(1)
 
-    # def render(self, frame_in):
-    #     super(MDParticleFilter, self).render(frame_in)
-    #
-    #     x_weighted_mean = 0
-    #     y_weighted_mean = 0
-    #     z_weighted_mean = 0
-    #
-    #     for i in range(self.num_particles):
-    #         x_weighted_mean += self.particles[i, 0] * self.weights[i]
-    #         y_weighted_mean += self.particles[i, 1] * self.weights[i]
-    #         z_weighted_mean += self.particles[i, 2] * self.weights[i]
-    #
-    #         # print(x_weighted_mean, y_weighted_mean, z_weighted_mean)
-    #
-    #     x_weighted_mean = int(x_weighted_mean)
-    #     y_weighted_mean = int(y_weighted_mean)
-    #     z_weighted_mean = z_weighted_mean/100
-    #
-    #     print(x_weighted_mean, y_weighted_mean, z_weighted_mean)
-    #
-    #     template_mean = cv2.resize(
-    #         self.template[:,:,0], (0, 0), fx=z_weighted_mean, fy=z_weighted_mean
-    #     )
-    #     h, w = template_mean.shape
-    #
-    #     row_start = y_weighted_mean - h // 2
-    #     row_end = row_start + h
-    #
-    #     col_start = x_weighted_mean - w // 2
-    #     col_end = col_start + w
-    #
-    #     cv2.rectangle(
-    #         frame_in,
-    #         (col_start, row_start),
-    #         (col_end, row_end),
-    #         (0, 0, 255),
-    #         1,
-    #     )
+    def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
 
-    # def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
-    #
-    #     z_weighted_mean = 0
-    #
-    #     for i in range(self.num_particles):
-    #         z_weighted_mean += self.particles[i, 2] * self.weights[i]
-    #
-    #     # draw template box
-    #     h, w, _ = self.template.shape
-    #
-    #     row_start = int(y_weighted_mean - h // 2)
-    #     row_end = row_start + h
-    #
-    #     col_start = int(x_weighted_mean) - w // 2
-    #     col_end = col_start + w
-    #
-    #     cv2.rectangle(
-    #         frame_in,
-    #         (col_start, row_start),
-    #         (col_end, row_end),
-    #         (255, 0, 0),
-    #         1,
-    #     )
+        z_weighted_mean = np.average(self.particles[:, 2], weights=self.weights)/100
+
+        template_mean = cv2.resize(
+            self.template[:,:,0], (0, 0), fx=z_weighted_mean, fy=z_weighted_mean
+        )
+        h, w = template_mean.shape
+
+        row_start = y_weighted_mean - h // 2
+        row_end = row_start + h
+
+        col_start = x_weighted_mean - w // 2
+        col_end = col_start + w
+
+        cv2.rectangle(
+            frame_in,
+            (col_start, row_start),
+            (col_end, row_end),
+            (0, 0, 255),
+            1,
+        )

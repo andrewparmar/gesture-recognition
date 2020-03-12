@@ -318,7 +318,7 @@ def part_4():
     }
 
     num_particles = 200  # Define the number of particles
-    sigma_md = 10  # Define the value of sigma for the measurement exponential equation
+    sigma_md = 20  # Define the value of sigma for the measurement exponential equation
     sigma_dyn = 1  # Define the value of sigma for the particles movement (dynamics)
     alpha = 0  # Set a value for alpha
     min_scale = 0.3
