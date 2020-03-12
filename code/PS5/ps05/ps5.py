@@ -111,13 +111,9 @@ class ParticleFilter(object):
 
         self.template = template
         self.frame = frame
-        self.particles = (
-            self._init_particles()
-        )  # Initialize your particles array. Read the docstring.
-        self.weights = (
-            np.ones(self.num_particles) / self.num_particles
-        )  # Initialize your weights array. Read the docstring.
-        # Initialize any other components you may need when designing your filter.
+        self.particles = self._init_particles()
+        self.weights = np.ones(self.num_particles) / self.num_particles
+
 
     def _init_particles(self):
         particle_array = np.zeros((self.num_particles, 2))
@@ -159,11 +155,8 @@ class ParticleFilter(object):
         Returns:
             float: similarity value.
         """
-
-        # import pdb; pdb.set_trace()
-        mse = np.square(
-            template.astype(np.float32) - frame_cutout.astype(np.float32)
-        ).mean()
+        error = template.astype(np.float32) - frame_cutout.astype(np.float32)
+        mse = np.square(error).mean()
 
         error_metric = np.exp(-mse / (2 * self.sigma_exp ** 2))
 
@@ -283,7 +276,6 @@ class ParticleFilter(object):
             frame_in (numpy.array): copy of frame to render the state of the
                                     particle filter.
         """
-
         x_weighted_mean = 0
         y_weighted_mean = 0
 
@@ -291,13 +283,51 @@ class ParticleFilter(object):
             x_weighted_mean += self.particles[i, 0] * self.weights[i]
             y_weighted_mean += self.particles[i, 1] * self.weights[i]
 
+        x_weighted_mean = int(x_weighted_mean)
+        y_weighted_mean = int(y_weighted_mean)
+
         # Complete the rest of the code as instructed.
-        # plot particle dots
-        for particle in self.particles:
-            color = (0, 50, 255)
+        self._draw_particle_and_spread(frame_in, x_weighted_mean, y_weighted_mean)
+
+        self._draw_tracking_window(frame_in, x_weighted_mean, y_weighted_mean)
+
+    def _draw_particle_and_spread(self, frame_in, x_weighted_mean, y_weighted_mean):
+        distances = np.zeros(self.num_particles)
+
+        # draw particles
+        for i, particle in enumerate(self.particles):
+            color = (0, 255, 0)
             radius = 1
 
             cv2.circle(frame_in, tuple(particle[:2]), radius, color, -1)
+
+            x, y = particle[:2]
+            dst = np.sqrt((x - x_weighted_mean) ** 2 + (y - y_weighted_mean) ** 2)
+            distances[i] = dst
+
+        # std deviation calculations
+        radius = np.round(distances.std())
+        color = (0, 0, 255)
+
+        cv2.circle(frame_in, (x_weighted_mean, y_weighted_mean), int(radius), color, 1)
+
+    def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
+        # draw template box
+        h, w, _ = self.template.shape
+
+        row_start = int(y_weighted_mean - h // 2)
+        row_end = row_start + h
+
+        col_start = int(x_weighted_mean) - w // 2
+        col_end = col_start + w
+
+        cv2.rectangle(
+            frame_in,
+            (col_start, row_start),
+            (col_end, row_end),
+            (255, 0, 0),
+            1,
+        )
 
 
 class AppearanceModelPF(ParticleFilter):
@@ -376,30 +406,13 @@ class MDParticleFilter(AppearanceModelPF):
         will be inherited so you don't have to declare them again.
         """
 
-        super(MDParticleFilter, self).__init__(
-            frame, template, **kwargs
-        )  # call base class constructor
-        # If you want to add more parameters, make sure you set a default value so that
-        # your test doesn't fail the autograder because of an unknown or None value.
-        #
-        # The way to do it is:
-        # self.some_parameter_name = kwargs.get('parameter_name', default_value)
-        self.particles = self._init_particles()
+        super(MDParticleFilter, self).__init__(frame, template, **kwargs)  # call base class constructor
 
-    def _init_particles(self):
-        particle_array = np.zeros((self.num_particles, 3))
+        self.particles = np.zeros((self.num_particles, 3), dtype=np.uint16)
+        self.particles[:,:2] = self._init_particles()
+        self.particles[:, 2] = np.ones(self.num_particles) * 100
+        self.min_scale = kwargs.get('min_scale', 1)
 
-        y0 = self.template_rect["y"]
-        y1 = y0 + self.template_rect["h"]
-
-        x0 = self.template_rect["x"]
-        x1 = x0 + self.template_rect["w"]
-
-        particle_array[:, 0] = np.random.randint(x0, x1, size=self.num_particles)
-        particle_array[:, 1] = np.random.randint(y0, y1, size=self.num_particles)
-        particle_array[:, 2] = np.ones(self.num_particles) * 100
-
-        return particle_array.astype(np.uint16)
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -425,18 +438,24 @@ class MDParticleFilter(AppearanceModelPF):
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
+        ##############################################################################
+        self.best_template = None
+        self.best_similarity = -np.inf
+        ##############################################################################
+
+
         for i, _ in enumerate(new_particles):
 
             # Prediction
             x_d = np.random.normal(scale=self.sigma_dyn)
             y_d = np.random.normal(scale=self.sigma_dyn)
-            z_d = np.random.normal(scale=1)  # This is scale.
+            z_d = np.random.normal(scale=self.sigma_dyn)  # This is scale.
 
             x, y, z = new_particles[i]
 
             new_particles[i, 0] = x + x_d
             new_particles[i, 1] = y + y_d
-            new_particles[i, 2] = max(z + z_d, 1)
+            new_particles[i, 2] = max(z + z_d, self.min_scale*100)
             ##############################################################################
 
             # Measurement
@@ -444,9 +463,8 @@ class MDParticleFilter(AppearanceModelPF):
 
             # scale template
             scale_factor = z / 100
-            scale_factor = max(0.1, scale_factor)
-            print(type(z), type(scale_factor))
-            print(z, scale_factor)
+            # print(type(z), type(scale_factor))
+            # print(z, scale_factor)
             template_gray_scaled = cv2.resize(
                 template_gray, (0, 0), fx=scale_factor, fy=scale_factor
             )
@@ -479,30 +497,107 @@ class MDParticleFilter(AppearanceModelPF):
             #     cv2.waitKey(1)
             # print(frame_cutout.shape, template_gray_scaled.shape)
             if frame_cutout.shape != template_gray_scaled.shape:
-                error_calc = 0
-                print("Shapes don't match")
+                similarity_score = 0
+                # print("Shapes don't match")
             else:
-                error_calc = self.get_error_metric(template_gray_scaled, frame_cutout)
-                print("Shapes match.")
+                similarity_score = self.get_error_metric(template_gray_scaled, frame_cutout)
+                # print("Shapes match.")
 
-            # tmp_frame = np.copy(frame)
-            # cv2.rectangle(
-            #     tmp_frame,
-            #     (col_start, row_start),
-            #     (col_end, row_end),
-            #     (0, 0, 255),
-            #     2,
-            # )
-            # cv2.imshow('template window', tmp_frame)
-            # cv2.waitKey(0)
+            if similarity_score > self.best_similarity:
+                self.best_template = template_gray_scaled
+                self.best_particle = _
 
-            # print(error_calc)
-            #
-            new_weights[i] = error_calc
-            norm += error_calc
+            new_weights[i] = similarity_score
+            norm += similarity_score
             ##############################################################################
 
         self.particles = new_particles
         self.weights = new_weights / norm
         self.best_particle = self.particles[self.weights.argmax()]
         self.particles = self.resample_particles()
+
+        # h, w = self.best_template.shape
+        # # print('{} * {} -> {}'.format(template_gray.shape,
+        # #                              scale_factor,
+        # #                              template_gray_scaled.shape))
+        #
+        # x, y, z = self.best_particle
+        # row_start = y - h // 2
+        # row_end = row_start + h
+        #
+        # col_start = x - w // 2
+        # col_end = col_start + w
+        #
+        # tmp_frame = np.copy(frame)
+        # cv2.rectangle(
+        #     tmp_frame,
+        #     (col_start, row_start),
+        #     (col_end, row_end),
+        #     (0, 0, 255),
+        #     1,
+        # )
+        # cv2.imshow('template window', tmp_frame)
+        # cv2.waitKey(1)
+
+    # def render(self, frame_in):
+    #     super(MDParticleFilter, self).render(frame_in)
+    #
+    #     x_weighted_mean = 0
+    #     y_weighted_mean = 0
+    #     z_weighted_mean = 0
+    #
+    #     for i in range(self.num_particles):
+    #         x_weighted_mean += self.particles[i, 0] * self.weights[i]
+    #         y_weighted_mean += self.particles[i, 1] * self.weights[i]
+    #         z_weighted_mean += self.particles[i, 2] * self.weights[i]
+    #
+    #         # print(x_weighted_mean, y_weighted_mean, z_weighted_mean)
+    #
+    #     x_weighted_mean = int(x_weighted_mean)
+    #     y_weighted_mean = int(y_weighted_mean)
+    #     z_weighted_mean = z_weighted_mean/100
+    #
+    #     print(x_weighted_mean, y_weighted_mean, z_weighted_mean)
+    #
+    #     template_mean = cv2.resize(
+    #         self.template[:,:,0], (0, 0), fx=z_weighted_mean, fy=z_weighted_mean
+    #     )
+    #     h, w = template_mean.shape
+    #
+    #     row_start = y_weighted_mean - h // 2
+    #     row_end = row_start + h
+    #
+    #     col_start = x_weighted_mean - w // 2
+    #     col_end = col_start + w
+    #
+    #     cv2.rectangle(
+    #         frame_in,
+    #         (col_start, row_start),
+    #         (col_end, row_end),
+    #         (0, 0, 255),
+    #         1,
+    #     )
+
+    # def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
+    #
+    #     z_weighted_mean = 0
+    #
+    #     for i in range(self.num_particles):
+    #         z_weighted_mean += self.particles[i, 2] * self.weights[i]
+    #
+    #     # draw template box
+    #     h, w, _ = self.template.shape
+    #
+    #     row_start = int(y_weighted_mean - h // 2)
+    #     row_end = row_start + h
+    #
+    #     col_start = int(x_weighted_mean) - w // 2
+    #     col_end = col_start + w
+    #
+    #     cv2.rectangle(
+    #         frame_in,
+    #         (col_start, row_start),
+    #         (col_end, row_end),
+    #         (255, 0, 0),
+    #         1,
+    #     )

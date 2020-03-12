@@ -16,9 +16,7 @@ NOISE_2 = {"x": 7.5, "y": 7.5}
 
 
 # Helper code
-def run_particle_filter(
-    filter_class, imgs_dir, template_rect, save_frames={}, **kwargs
-):
+def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, **kwargs):
     """Runs a particle filter on a given video and template.
 
     Create an object of type pf_class, passing in initial video frame,
@@ -319,10 +317,11 @@ def part_4():
         300: os.path.join(output_dir, "ps5-4-a-4.png"),
     }
 
-    num_particles = 500  # Define the number of particles
-    sigma_md = 20  # Define the value of sigma for the measurement exponential equation
+    num_particles = 200  # Define the number of particles
+    sigma_md = 10  # Define the value of sigma for the measurement exponential equation
     sigma_dyn = 1  # Define the value of sigma for the particles movement (dynamics)
     alpha = 0  # Set a value for alpha
+    min_scale = 0.3
 
     run_particle_filter(
         ps5.MDParticleFilter,
@@ -334,6 +333,7 @@ def part_4():
         sigma_dyn=sigma_dyn,
         template_coords=template_rect,
         alpha=alpha,
+        min_scale=min_scale
     )  # Add more if you need to
 
 
