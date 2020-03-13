@@ -213,7 +213,6 @@ class ParticleFilter(object):
 
         return similarity
 
-
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
 
@@ -407,7 +406,6 @@ class MDParticleFilter(AppearanceModelPF):
         above. By calling super(...) all the elements used in ParticleFilter
         will be inherited so you don't have to declare them again.
         """
-
         super(MDParticleFilter, self).__init__(
             frame, template, **kwargs
         )  # call base class constructor
@@ -416,6 +414,50 @@ class MDParticleFilter(AppearanceModelPF):
         self.particles[:, :2] = self._init_particles()
         self.particles[:, 2] = np.ones(self.num_particles) * 100
         self.min_scale = kwargs.get("min_scale", 1)
+
+    def _predict(self, particle):
+        # Prediction
+        x_d = np.random.normal(scale=self.sigma_dyn)
+        y_d = np.random.normal(scale=self.sigma_dyn)
+        z_d = np.random.normal(scale=self.sigma_dyn)
+
+        x, y, z = particle
+
+        particle[0] = x + x_d
+        particle[1] = y + y_d
+        particle[2] = max(z + z_d, self.min_scale * 100)
+
+        return particle
+
+    def _measure(self, predicted_particle, template, frame):
+        # Measurement
+        x, y, z = predicted_particle
+
+        # scale template
+        scale_factor = z / 100
+
+        template_gray_scaled = cv2.resize(
+            template, (0, 0), fx=scale_factor, fy=scale_factor
+        )
+
+        h, w = template_gray_scaled.shape
+
+        row_start = y - h // 2
+        row_end = row_start + h
+
+        col_start = x - w // 2
+        col_end = col_start + w
+
+        frame_cutout = frame[row_start:row_end, col_start:col_end]
+
+        if frame_cutout.shape != template_gray_scaled.shape:
+            similarity = 0
+        else:
+            similarity = self.get_error_metric(
+                template_gray_scaled, frame_cutout
+            )
+
+        return similarity
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -440,45 +482,11 @@ class MDParticleFilter(AppearanceModelPF):
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
-        for i, _ in enumerate(new_particles):
+        for i, particle in enumerate(new_particles):
 
-            # Prediction
-            x_d = np.random.normal(scale=self.sigma_dyn)
-            y_d = np.random.normal(scale=self.sigma_dyn)
-            z_d = np.random.normal(scale=self.sigma_dyn)
+            predicted_particle = self._predict(particle)
 
-            x, y, z = new_particles[i]
-
-            new_particles[i, 0] = x + x_d
-            new_particles[i, 1] = y + y_d
-            new_particles[i, 2] = max(z + z_d, self.min_scale * 100)
-
-            # Measurement
-            x, y, z = new_particles[i]
-
-            # scale template
-            scale_factor = z / 100
-
-            template_gray_scaled = cv2.resize(
-                template_gray, (0, 0), fx=scale_factor, fy=scale_factor
-            )
-
-            h, w = template_gray_scaled.shape
-
-            row_start = y - h // 2
-            row_end = row_start + h
-
-            col_start = x - w // 2
-            col_end = col_start + w
-
-            frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
-
-            if frame_cutout.shape != template_gray_scaled.shape:
-                similarity = 0
-            else:
-                similarity = self.get_error_metric(
-                    template_gray_scaled, frame_cutout
-                )
+            similarity = self._measure(predicted_particle, template_gray, frame_gray)
 
             new_weights[i] = similarity
 
