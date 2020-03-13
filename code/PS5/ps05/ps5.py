@@ -182,6 +182,38 @@ class ParticleFilter(object):
 
         return particles[indexes]
 
+    def _predict(self, particle):
+        x_d = np.random.normal(scale=self.sigma_dyn)
+        y_d = np.random.normal(scale=self.sigma_dyn)
+
+        x, y = particle
+
+        particle[0] = x + x_d
+        particle[1] = y + y_d
+
+        x, y = particle
+
+        return x, y
+
+    def _measure(self, predicted_particle, template, frame):
+        x, y = predicted_particle
+
+        row_start = y - self.template_rect["h"] // 2
+        row_end = row_start + self.template_rect["h"]
+
+        col_start = x - self.template_rect["w"] // 2
+        col_end = col_start + self.template_rect["w"]
+
+        frame_cutout = frame[row_start:row_end, col_start:col_end]
+
+        if not frame_cutout.shape == template.shape:
+            similarity = 0
+        else:
+            similarity = self.get_error_metric(template, frame_cutout)
+
+        return similarity
+
+
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
 
@@ -202,46 +234,21 @@ class ParticleFilter(object):
         """
         new_particles = np.copy(self.particles)
         new_weights = np.zeros(self.num_particles)
-        norm = 0
 
         # Get new data
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
-        for i, _ in enumerate(new_particles):
+        for i, particle in enumerate(new_particles):
 
-            # Prediction
-            x_d = np.random.normal(scale=self.sigma_dyn)
-            y_d = np.random.normal(scale=self.sigma_dyn)
+            predicted_particle = self._predict(particle)
 
-            x, y = new_particles[i]
+            similarity = self._measure(predicted_particle, template_gray, frame_gray)
 
-            new_particles[i, 0] = x + x_d
-            new_particles[i, 1] = y + y_d
-            ##############################################################################
-
-            # Measurement
-            x, y = new_particles[i]
-
-            row_start = y - self.template_rect["h"] // 2
-            row_end = row_start + self.template_rect["h"]
-
-            col_start = x - self.template_rect["w"] // 2
-            col_end = col_start + self.template_rect["w"]
-
-            frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
-
-            if not frame_cutout.shape == template_gray.shape:
-                error_calc = 0
-            else:
-                error_calc = self.get_error_metric(template_gray, frame_cutout)
-
-            new_weights[i] = error_calc
-            norm += error_calc
-            ##############################################################################
+            new_weights[i] = similarity
 
         self.particles = new_particles
-        self.weights = new_weights / norm
+        self.weights = new_weights / new_weights.sum()
         self.best_particle = self.particles[self.weights.argmax()]
         self.particles = self.resample_particles()
 
@@ -321,11 +328,7 @@ class ParticleFilter(object):
         col_end = col_start + w
 
         cv2.rectangle(
-            frame_in,
-            (col_start, row_start),
-            (col_end, row_end),
-            (255, 0, 0),
-            1,
+            frame_in, (col_start, row_start), (col_end, row_end), (255, 0, 0), 1,
         )
 
 
@@ -405,13 +408,14 @@ class MDParticleFilter(AppearanceModelPF):
         will be inherited so you don't have to declare them again.
         """
 
-        super(MDParticleFilter, self).__init__(frame, template, **kwargs)  # call base class constructor
+        super(MDParticleFilter, self).__init__(
+            frame, template, **kwargs
+        )  # call base class constructor
 
         self.particles = np.zeros((self.num_particles, 3), dtype=np.uint16)
-        self.particles[:,:2] = self._init_particles()
+        self.particles[:, :2] = self._init_particles()
         self.particles[:, 2] = np.ones(self.num_particles) * 100
-        self.min_scale = kwargs.get('min_scale', 1)
-
+        self.min_scale = kwargs.get("min_scale", 1)
 
     def process(self, frame):
         """Processes a video frame (image) and updates the filter's state.
@@ -431,7 +435,6 @@ class MDParticleFilter(AppearanceModelPF):
 
         new_particles = np.copy(self.particles)
         new_weights = np.zeros(self.num_particles)
-        norm = 0
 
         # Get new data
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -448,7 +451,7 @@ class MDParticleFilter(AppearanceModelPF):
 
             new_particles[i, 0] = x + x_d
             new_particles[i, 1] = y + y_d
-            new_particles[i, 2] = max(z + z_d, self.min_scale*100)
+            new_particles[i, 2] = max(z + z_d, self.min_scale * 100)
 
             # Measurement
             x, y, z = new_particles[i]
@@ -471,25 +474,25 @@ class MDParticleFilter(AppearanceModelPF):
             frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
 
             if frame_cutout.shape != template_gray_scaled.shape:
-                similarity_score = 0
+                similarity = 0
             else:
-                similarity_score = self.get_error_metric(template_gray_scaled, frame_cutout)
+                similarity = self.get_error_metric(
+                    template_gray_scaled, frame_cutout
+                )
 
-            new_weights[i] = similarity_score
-            norm += similarity_score
+            new_weights[i] = similarity
 
         self.particles = new_particles
-        self.weights = new_weights / norm
+        self.weights = new_weights / new_weights.sum()
 
         self.particles = self.resample_particles()
 
-
     def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
 
-        z_weighted_mean = np.average(self.particles[:, 2], weights=self.weights)/100
+        z_weighted_mean = np.average(self.particles[:, 2], weights=self.weights) / 100
 
         template_mean = cv2.resize(
-            self.template[:,:,0], (0, 0), fx=z_weighted_mean, fy=z_weighted_mean
+            self.template[:, :, 0], (0, 0), fx=z_weighted_mean, fy=z_weighted_mean
         )
         h, w = template_mean.shape
 
@@ -500,9 +503,5 @@ class MDParticleFilter(AppearanceModelPF):
         col_end = col_start + w
 
         cv2.rectangle(
-            frame_in,
-            (col_start, row_start),
-            (col_end, row_end),
-            (0, 0, 255),
-            1,
+            frame_in, (col_start, row_start), (col_end, row_end), (0, 0, 255), 1,
         )
