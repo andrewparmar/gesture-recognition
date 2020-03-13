@@ -114,7 +114,6 @@ class ParticleFilter(object):
         self.particles = self._init_particles()
         self.weights = np.ones(self.num_particles) / self.num_particles
 
-
     def _init_particles(self):
         particle_array = np.zeros((self.num_particles, 2))
 
@@ -438,40 +437,30 @@ class MDParticleFilter(AppearanceModelPF):
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
-        ##############################################################################
-        self.best_template = None
-        self.best_similarity = -np.inf
-        ##############################################################################
-
-
         for i, _ in enumerate(new_particles):
 
             # Prediction
             x_d = np.random.normal(scale=self.sigma_dyn)
             y_d = np.random.normal(scale=self.sigma_dyn)
-            z_d = np.random.normal(scale=self.sigma_dyn)  # This is scale.
+            z_d = np.random.normal(scale=self.sigma_dyn)
 
             x, y, z = new_particles[i]
 
             new_particles[i, 0] = x + x_d
             new_particles[i, 1] = y + y_d
             new_particles[i, 2] = max(z + z_d, self.min_scale*100)
-            ##############################################################################
 
             # Measurement
             x, y, z = new_particles[i]
 
             # scale template
             scale_factor = z / 100
-            # print(type(z), type(scale_factor))
-            # print(z, scale_factor)
+
             template_gray_scaled = cv2.resize(
                 template_gray, (0, 0), fx=scale_factor, fy=scale_factor
             )
+
             h, w = template_gray_scaled.shape
-            # print('{} * {} -> {}'.format(template_gray.shape,
-            #                              scale_factor,
-            #                              template_gray_scaled.shape))
 
             row_start = y - h // 2
             row_end = row_start + h
@@ -480,64 +469,20 @@ class MDParticleFilter(AppearanceModelPF):
             col_end = col_start + w
 
             frame_cutout = frame_gray[row_start:row_end, col_start:col_end]
-            # print('{}\t{}'.format(frame_cutout.shape,
-            #                         template_gray_scaled.shape))
 
-            # tmp_frame = np.copy(frame)
-            # cv2.rectangle(
-            #     tmp_frame,
-            #     (col_start, row_start),
-            #     (col_end, row_end),
-            #     (0, 0, 255),
-            #     2,
-            # )
-            #
-            # if scale_factor < 0.25:
-            #     cv2.imshow('template window', template_gray_scaled)
-            #     cv2.waitKey(1)
-            # print(frame_cutout.shape, template_gray_scaled.shape)
             if frame_cutout.shape != template_gray_scaled.shape:
                 similarity_score = 0
-                # print("Shapes don't match")
             else:
                 similarity_score = self.get_error_metric(template_gray_scaled, frame_cutout)
-                # print("Shapes match.")
-
-            if similarity_score > self.best_similarity:
-                self.best_template = template_gray_scaled
-                self.best_particle = _
 
             new_weights[i] = similarity_score
             norm += similarity_score
-            ##############################################################################
 
         self.particles = new_particles
         self.weights = new_weights / norm
-        self.best_particle = self.particles[self.weights.argmax()]
+
         self.particles = self.resample_particles()
 
-        # h, w = self.best_template.shape
-        # # print('{} * {} -> {}'.format(template_gray.shape,
-        # #                              scale_factor,
-        # #                              template_gray_scaled.shape))
-        #
-        # x, y, z = self.best_particle
-        # row_start = y - h // 2
-        # row_end = row_start + h
-        #
-        # col_start = x - w // 2
-        # col_end = col_start + w
-        #
-        # tmp_frame = np.copy(frame)
-        # cv2.rectangle(
-        #     tmp_frame,
-        #     (col_start, row_start),
-        #     (col_end, row_end),
-        #     (0, 0, 255),
-        #     1,
-        # )
-        # cv2.imshow('template window', tmp_frame)
-        # cv2.waitKey(1)
 
     def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
 
