@@ -264,7 +264,7 @@ def part_2b():
     }
 
     num_particles = 200  # Define the number of particles
-    sigma_mse = 5  # Define the value of sigma for the measurement exponential equation
+    sigma_mse = 10  # Define the value of sigma for the measurement exponential equation
     sigma_dyn = 4  # Define the value of sigma for the particles movement (dynamics)
 
     run_particle_filter(
@@ -288,9 +288,9 @@ def part_3():
         160: os.path.join(output_dir, "ps5-3-a-3.png"),
     }
 
-    num_particles = 500  # Define the number of particles
-    sigma_mse = 9  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 10  # Define the value of sigma for the particles movement (dynamics)
+    num_particles = 200  # Define the number of particles
+    sigma_mse = 8  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 15  # Define the value of sigma for the particles movement (dynamics)
     alpha = 0.98  # Set a value for alpha
 
     run_particle_filter(
@@ -317,9 +317,10 @@ def part_4():
         300: os.path.join(output_dir, "ps5-4-a-4.png"),
     }
 
-    num_particles = 200  # Define the number of particles
+    num_particles = 100  # Define the number of particles
     sigma_md = 20  # Define the value of sigma for the measurement exponential equation
-    sigma_dyn = 1  # Define the value of sigma for the particles movement (dynamics)
+    sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
+
     alpha = 0  # Set a value for alpha
     min_scale = 0.3
 
@@ -366,7 +367,7 @@ if __name__ == "__main__":
     # part_1c()
     # part_2a()
     # part_2b()
-    # part_3()
+    part_3()
     part_4()
     # part_5()
     # part_6()

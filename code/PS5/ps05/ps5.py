@@ -313,8 +313,7 @@ class ParticleFilter(object):
         # std deviation calculations
         radius = np.round(distances.std())
         color = (0, 0, 255)
-
-        cv2.circle(frame_in, (x_weighted_mean, y_weighted_mean), int(radius), color, 1)
+        cv2.circle(frame_in, (x_weighted_mean, y_weighted_mean), int(radius), color, 2)
 
     def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
         # draw template box
@@ -327,7 +326,7 @@ class ParticleFilter(object):
         col_end = col_start + w
 
         cv2.rectangle(
-            frame_in, (col_start, row_start), (col_end, row_end), (255, 0, 0), 1,
+            frame_in, (col_start, row_start), (col_end, row_end), (255, 0, 0), 2,
         )
 
 
@@ -370,30 +369,19 @@ class AppearanceModelPF(ParticleFilter):
         """
         super(AppearanceModelPF, self).process(frame)
 
-        x, y = self.best_particle.astype(np.uint16)
+        if self.alpha:
+            x, y = self.best_particle.astype(np.uint16)
 
-        row_start = y - self.template_rect["h"] // 2
-        row_end = row_start + self.template_rect["h"]
+            row_start = y - self.template_rect["h"] // 2
+            row_end = row_start + self.template_rect["h"]
 
-        col_start = x - self.template_rect["w"] // 2
-        col_end = col_start + self.template_rect["w"]
+            col_start = x - self.template_rect["w"] // 2
+            col_end = col_start + self.template_rect["w"]
 
-        best = frame[row_start:row_end, col_start:col_end, :]
-        # import pdb; pdb.set_trace()
-        template_temp = self.alpha * best + (1 - self.alpha) * self.template
-        self.template = template_temp.astype(np.uint8)
+            best = frame[row_start:row_end, col_start:col_end, :]
 
-        # tmp_frame = np.copy(frame)
-        # cv2.rectangle(
-        #     tmp_frame,
-        #     (col_start, row_start),
-        #     (col_end, row_end),
-        #     (0, 0, 255),
-        #     2,
-        # )
-        #
-        # cv2.imshow('update template', tmp_frame)
-        # cv2.waitKey(1)
+            template_temp = self.alpha * best + (1 - self.alpha) * self.template
+            self.template = template_temp.astype(np.uint8)
 
 
 class MDParticleFilter(AppearanceModelPF):
@@ -419,7 +407,7 @@ class MDParticleFilter(AppearanceModelPF):
         # Prediction
         x_d = np.random.normal(scale=self.sigma_dyn)
         y_d = np.random.normal(scale=self.sigma_dyn)
-        z_d = np.random.normal(scale=self.sigma_dyn)
+        z_d = np.random.normal(scale=1)
 
         x, y, z = particle
 
@@ -487,12 +475,13 @@ class MDParticleFilter(AppearanceModelPF):
             predicted_particle = self._predict(particle)
 
             similarity = self._measure(predicted_particle, template_gray, frame_gray)
-
+            # print(similarity)
             new_weights[i] = similarity
 
-        self.particles = new_particles
-        self.weights = new_weights / new_weights.sum()
-
+        print(new_weights.mean())
+        if new_weights.mean() > 0.000001:
+            self.particles = new_particles
+            self.weights = new_weights / new_weights.sum()
         self.particles = self.resample_particles()
 
     def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):
