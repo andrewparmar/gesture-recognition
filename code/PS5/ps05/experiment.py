@@ -83,6 +83,8 @@ def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, *
 
         # Update frame number
         frame_num += 1
+        # if frame_num == 40:
+        #     import pdb; pdb.set_trace()
         if frame_num % 20 == 0:
             print("Working on frame {}".format(frame_num))
 
@@ -337,6 +339,96 @@ def part_4():
         min_scale=min_scale
     )  # Add more if you need to
 
+# Helper code
+def run_particle_filter_multi_target(
+    filter_class, imgs_dir, template_rects, save_frames={}, **kwargs
+):
+    """Runs a particle filter on a given video and template.
+
+    Create an object of type pf_class, passing in initial video frame,
+    template (extracted from first frame using template_rect), and any
+    keyword arguments.
+
+    Do not modify this function except for the debugging flag.
+
+    Args:
+        filter_class (object): particle filter class to instantiate
+                           (e.g. ParticleFilter).
+        imgs_dir (str): path to input images.
+        template_rect (dict): template bounds (x, y, w, h), as float
+                              or int.
+        save_frames (dict): frames to save
+                            {<frame number>|'template': <filename>}.
+        **kwargs: arbitrary keyword arguments passed on to particle
+                  filter class.
+
+    Returns:
+        None.
+    """
+
+    imgs_list = [f for f in os.listdir(imgs_dir) if f[0] != "." and f.endswith(".jpg")]
+    imgs_list.sort()
+
+    # Initialize objects
+    configured = False
+    pf_list = []
+
+    # Loop over video (till last frame or Ctrl+C is presssed)
+    for frame_num, img in enumerate(imgs_list, 1):
+        print(f"Frame num {frame_num}")
+        frame = cv2.imread(os.path.join(imgs_dir, img))
+
+        # Extract template and initialize (one-time only)
+        if not configured:
+            for i in range(len(template_rects)):
+                template_rect = template_rects[i]
+                template = frame[
+                    int(template_rect["y"]) : int(template_rect["y"] + template_rect["h"]),
+                    int(template_rect["x"]) : int(template_rect["x"] + template_rect["w"]),
+                ]
+
+                if i != 2:
+                    pf = filter_class(frame, template, template_coords=template_rect, **kwargs)
+                    pf_list.append(pf)
+
+            configured = True
+
+        if frame_num == 25:
+            template_rect = template_rects[-1]
+            template = frame[
+                       int(template_rect["y"]): int(template_rect["y"] + template_rect["h"]),
+                       int(template_rect["x"]): int(template_rect["x"] + template_rect["w"]),
+                       ]
+            # cv2.imshow('frame', frame)
+            # cv2.waitKey(0)
+            pf = filter_class(frame, template, template_coords=template_rect, **kwargs)
+            pf_list.append(pf)
+
+        if True:  # For debugging, it displays every frame
+            out_frame = frame.copy()
+            for pf in pf_list:
+                pf.process(frame)
+                pf.render(out_frame)
+            cv2.imshow("Tracking", out_frame)
+            cv2.waitKey(1)
+
+            # template_cpy = np.zeros(out_frame.shape)
+            # template_cpy[0:115, 0:47, :] = pf.template
+            #
+            # numpy_horizontal_concat = np.concatenate((out_frame, template_cpy), axis=1)
+            # cv2.imshow('Hor Concat', numpy_horizontal_concat.astype(np.uint8))
+            # cv2.waitKey(1)
+
+        # Render and save output, if indicated
+        if frame_num in save_frames:
+            frame_out = frame.copy()
+            for pf in pf_list:
+                pf.process(frame)
+                pf.render(frame_out)
+            cv2.imwrite(save_frames[frame_num], frame_out)
+
+        if frame_num % 20 == 0:
+            print("Working on frame {}".format(frame_num))
 
 def part_5():
     """Tracking multiple Targets.
@@ -349,7 +441,34 @@ def part_5():
 
     Place all your work in this file and this section.
     """
-    raise NotImplementedError
+    # template_rect = {"x": 50, "y": 150, "w": 100, "h": 290}
+    templates = [
+        {"x": 50, "y": 150, "w": 88, "h": 156},
+        {"x": 292, "y": 198, "w": 47, "h": 115},
+        {"x": 0, "y": 173, "w": 40, "h": 128},
+    ]
+
+    save_frames = {
+        29: os.path.join(output_dir, "ps5-5-a-1.png"),
+        56: os.path.join(output_dir, "ps5-5-a-2.png"),
+        71: os.path.join(output_dir, "ps5-5-a-3.png"),
+    }
+
+    num_particles = 200  # Define the number of particles
+    sigma_md = 10  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 25  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0.02  # Set a value for alpha
+
+    run_particle_filter_multi_target(
+        ps5.AppearanceModelPF,  # particle filter model class
+        os.path.join(input_dir, "TUD-Campus"),
+        templates,
+        save_frames,
+        num_particles=num_particles,
+        sigma_exp=sigma_md,
+        sigma_dyn=sigma_dyn,
+        alpha=alpha,
+    )  # Add more if you need to
 
 
 def part_6():
