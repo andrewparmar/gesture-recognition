@@ -16,7 +16,9 @@ NOISE_2 = {"x": 7.5, "y": 7.5}
 
 
 # Helper code
-def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, **kwargs):
+def run_particle_filter(
+    filter_class, imgs_dir, template_rect, save_frames={}, **kwargs
+):
     """Runs a particle filter on a given video and template.
 
     Create an object of type pf_class, passing in initial video frame,
@@ -185,10 +187,10 @@ def part_1b():
     kf = ps5.KalmanFilter(template_loc["x"], template_loc["y"])
 
     save_frames = {
-        10: os.path.join(output_dir, "ps5-1-b-1.png"),
-        30: os.path.join(output_dir, "ps5-1-b-2.png"),
-        59: os.path.join(output_dir, "ps5-1-b-3.png"),
-        99: os.path.join(output_dir, "ps5-1-b-4.png"),
+        10: os.path.join(output_dir, "ps5-1-b-1.jpg"),
+        30: os.path.join(output_dir, "ps5-1-b-2.jpg"),
+        59: os.path.join(output_dir, "ps5-1-b-3.jpg"),
+        99: os.path.join(output_dir, "ps5-1-b-4.jpg"),
     }
 
     run_kalman_filter(
@@ -214,10 +216,10 @@ def part_1c():
     kf = ps5.KalmanFilter(init_pos["x"], init_pos["y"])
 
     save_frames = {
-        10: os.path.join(output_dir, "ps5-1-c-1.png"),
-        33: os.path.join(output_dir, "ps5-1-c-2.png"),
-        84: os.path.join(output_dir, "ps5-1-c-3.png"),
-        159: os.path.join(output_dir, "ps5-1-c-4.png"),
+        10: os.path.join(output_dir, "ps5-1-c-1.jpg"),
+        33: os.path.join(output_dir, "ps5-1-c-2.jpg"),
+        84: os.path.join(output_dir, "ps5-1-c-3.jpg"),
+        159: os.path.join(output_dir, "ps5-1-c-4.jpg"),
     }
 
     run_kalman_filter(
@@ -230,15 +232,15 @@ def part_2a():
     template_loc = {"y": 72, "x": 140, "w": 50, "h": 50}
 
     save_frames = {
-        # 1: os.path.join(output_dir, "tmp_1.png"),
-        # 2: os.path.join(output_dir, "tmp_2.png"),
-        # 3: os.path.join(output_dir, "tmp_3.png"),
-        # 4: os.path.join(output_dir, "tmp_4.png"),
-        # 4: os.path.join(output_dir, "tmp_5.png"),
-        10: os.path.join(output_dir, "ps5-2-a-1.png"),
-        30: os.path.join(output_dir, "ps5-2-a-2.png"),
-        59: os.path.join(output_dir, "ps5-2-a-3.png"),
-        99: os.path.join(output_dir, "ps5-2-a-4.png"),
+        # 1: os.path.join(output_dir, "tmp_1.jpg"),
+        # 2: os.path.join(output_dir, "tmp_2.jpg"),
+        # 3: os.path.join(output_dir, "tmp_3.jpg"),
+        # 4: os.path.join(output_dir, "tmp_4.jpg"),
+        # 4: os.path.join(output_dir, "tmp_5.jpg"),
+        10: os.path.join(output_dir, "ps5-2-a-1.jpg"),
+        30: os.path.join(output_dir, "ps5-2-a-2.jpg"),
+        59: os.path.join(output_dir, "ps5-2-a-3.jpg"),
+        99: os.path.join(output_dir, "ps5-2-a-4.jpg"),
     }
 
     num_particles = 200  # Define the number of particles
@@ -262,10 +264,10 @@ def part_2b():
     template_loc = {"x": 360, "y": 141, "w": 127, "h": 179}
 
     save_frames = {
-        10: os.path.join(output_dir, "ps5-2-b-1.png"),
-        33: os.path.join(output_dir, "ps5-2-b-2.png"),
-        84: os.path.join(output_dir, "ps5-2-b-3.png"),
-        99: os.path.join(output_dir, "ps5-2-b-4.png"),
+        10: os.path.join(output_dir, "ps5-2-b-1.jpg"),
+        33: os.path.join(output_dir, "ps5-2-b-2.jpg"),
+        84: os.path.join(output_dir, "ps5-2-b-3.jpg"),
+        99: os.path.join(output_dir, "ps5-2-b-4.jpg"),
     }
 
     num_particles = 200  # Define the number of particles
@@ -288,9 +290,9 @@ def part_3():
     template_rect = {"x": 538, "y": 377, "w": 73, "h": 117}
 
     save_frames = {
-        22: os.path.join(output_dir, "ps5-3-a-1.png"),
-        50: os.path.join(output_dir, "ps5-3-a-2.png"),
-        160: os.path.join(output_dir, "ps5-3-a-3.png"),
+        22: os.path.join(output_dir, "ps5-3-a-1.jpg"),
+        50: os.path.join(output_dir, "ps5-3-a-2.jpg"),
+        160: os.path.join(output_dir, "ps5-3-a-3.jpg"),
     }
 
     num_particles = 200  # Define the number of particles
@@ -316,10 +318,10 @@ def part_4():
     template_rect = {"x": 210, "y": 37, "w": 103, "h": 285}
 
     save_frames = {
-        40: os.path.join(output_dir, "ps5-4-a-1.png"),
-        100: os.path.join(output_dir, "ps5-4-a-2.png"),
-        240: os.path.join(output_dir, "ps5-4-a-3.png"),
-        300: os.path.join(output_dir, "ps5-4-a-4.png"),
+        40: os.path.join(output_dir, "ps5-4-a-1.jpg"),
+        100: os.path.join(output_dir, "ps5-4-a-2.jpg"),
+        240: os.path.join(output_dir, "ps5-4-a-3.jpg"),
+        300: os.path.join(output_dir, "ps5-4-a-4.jpg"),
     }
 
     num_particles = 100  # Define the number of particles
@@ -339,8 +341,9 @@ def part_4():
         sigma_dyn=sigma_dyn,
         template_coords=template_rect,
         alpha=alpha,
-        min_scale=min_scale
+        min_scale=min_scale,
     )  # Add more if you need to
+
 
 # Helper code
 def run_particle_filter_multi_target(
@@ -386,12 +389,18 @@ def run_particle_filter_multi_target(
             for i in range(len(template_rects)):
                 template_rect = template_rects[i]
                 template = frame[
-                    int(template_rect["y"]) : int(template_rect["y"] + template_rect["h"]),
-                    int(template_rect["x"]) : int(template_rect["x"] + template_rect["w"]),
+                    int(template_rect["y"]) : int(
+                        template_rect["y"] + template_rect["h"]
+                    ),
+                    int(template_rect["x"]) : int(
+                        template_rect["x"] + template_rect["w"]
+                    ),
                 ]
 
                 if i != 2:
-                    pf = filter_class(frame, template, template_coords=template_rect, **kwargs)
+                    pf = filter_class(
+                        frame, template, template_coords=template_rect, **kwargs
+                    )
                     pf_list.append(pf)
 
             configured = True
@@ -399,9 +408,9 @@ def run_particle_filter_multi_target(
         if frame_num == 25:
             template_rect = template_rects[-1]
             template = frame[
-                       int(template_rect["y"]): int(template_rect["y"] + template_rect["h"]),
-                       int(template_rect["x"]): int(template_rect["x"] + template_rect["w"]),
-                       ]
+                int(template_rect["y"]) : int(template_rect["y"] + template_rect["h"]),
+                int(template_rect["x"]) : int(template_rect["x"] + template_rect["w"]),
+            ]
             # cv2.imshow('frame', frame)
             # cv2.waitKey(0)
             pf = filter_class(frame, template, template_coords=template_rect, **kwargs)
@@ -433,6 +442,7 @@ def run_particle_filter_multi_target(
         if frame_num % 20 == 0:
             print("Working on frame {}".format(frame_num))
 
+
 # def part_5():
 #     """Tracking multiple Targets.
 #
@@ -452,9 +462,9 @@ def run_particle_filter_multi_target(
 #     ]
 #
 #     save_frames = {
-#         29: os.path.join(output_dir, "ps5-5-a-1.png"),
-#         56: os.path.join(output_dir, "ps5-5-a-2.png"),
-#         71: os.path.join(output_dir, "ps5-5-a-3.png"),
+#         29: os.path.join(output_dir, "ps5-5-a-1.jpg"),
+#         56: os.path.join(output_dir, "ps5-5-a-2.jpg"),
+#         71: os.path.join(output_dir, "ps5-5-a-3.jpg"),
 #     }
 #
 #     num_particles = 200  # Define the number of particles
@@ -473,7 +483,10 @@ def run_particle_filter_multi_target(
 #         alpha=alpha,
 #     )  # Add more if you need to
 
-def run_kalman_filter_multi_target(kf, imgs_dir, noise, sensor, save_frames={}, template_loc=None):
+
+def run_kalman_filter_multi_target(
+    kf, imgs_dir, noise, sensor, save_frames={}, template_loc=None
+):
 
     imgs_list = [f for f in os.listdir(imgs_dir) if f[0] != "." and f.endswith(".jpg")]
     imgs_list.sort()
@@ -490,7 +503,7 @@ def run_kalman_filter_multi_target(kf, imgs_dir, noise, sensor, save_frames={}, 
             template_loc["y"] : template_loc["y"] + template_loc["h"],
             template_loc["x"] : template_loc["x"] + template_loc["w"],
         ]
-        cv2.imshow('template', template)
+        cv2.imshow("template", template)
         # cv2.waitKey(0)
 
     else:
@@ -544,7 +557,9 @@ def run_kalman_filter_multi_target(kf, imgs_dir, noise, sensor, save_frames={}, 
 
             cv2.imshow("Tracking", out_frame)
             cv2.waitKey(1)
-            import time; time.sleep(0.5)
+            import time
+
+            time.sleep(0.5)
 
         # Render and save output, if indicated
         if frame_num in save_frames:
@@ -556,6 +571,7 @@ def run_kalman_filter_multi_target(kf, imgs_dir, noise, sensor, save_frames={}, 
         frame_num += 1
         if frame_num % 20 == 0:
             print("Working on frame {}".format(frame_num))
+
 
 def part_5():
     # template_loc = {"y": 72, "x": 140, "w": 50, "h": 50}
@@ -569,10 +585,10 @@ def part_5():
     kf = ps5.KalmanFilter(template_loc["x"], template_loc["y"])
 
     save_frames = {
-        # 10: os.path.join(output_dir, "ps5-1-b-1.png"),
-        # 30: os.path.join(output_dir, "ps5-1-b-2.png"),
-        # 59: os.path.join(output_dir, "ps5-1-b-3.png"),
-        # 99: os.path.join(output_dir, "ps5-1-b-4.png"),
+        # 10: os.path.join(output_dir, "ps5-1-b-1.jpg"),
+        # 30: os.path.join(output_dir, "ps5-1-b-2.jpg"),
+        # 59: os.path.join(output_dir, "ps5-1-b-3.jpg"),
+        # 99: os.path.join(output_dir, "ps5-1-b-4.jpg"),
     }
     NOISE = {"x": 0, "y": 0}
     run_kalman_filter_multi_target(
@@ -584,6 +600,7 @@ def part_5():
         template_loc,
     )
 
+
 def part_6():
     """Tracking pedestrians from a moving camera.
 
@@ -591,13 +608,14 @@ def part_6():
 
     Place all your work in this file and this section.
     """
-    # template_rect = {"x": 88, "y": 38, "w": 37, "h": 128}
-    template_rect = {'x': 90, 'y': 60, 'w': 40, 'h': 60}
+    # template_rect = {"x": 88, "y": 38, "w": 45, "h": 128}
+    template_rect = {"x": 90, "y": 60, "w": 40, "h": 60}
+    # template_rect = {"x": 87, "y": 34, "w": 129-87, "h": 126-34}
 
     save_frames = {
-        60: os.path.join(output_dir, "ps5-6-a-1.png"),
-        160: os.path.join(output_dir, "ps5-6-a-2.png"),
-        186: os.path.join(output_dir, "ps5-6-a-3.png"),
+        60: os.path.join(output_dir, "ps5-6-a-1.jpg"),
+        160: os.path.join(output_dir, "ps5-6-a-2.jpg"),
+        186: os.path.join(output_dir, "ps5-6-a-3.jpg"),
     }
 
     num_particles = 200  # Define the number of particles

@@ -444,9 +444,7 @@ class MDParticleFilter(AppearanceModelPF):
         if frame_cutout.shape != template_gray_scaled.shape:
             similarity = 0
         else:
-            similarity = self.get_error_metric(
-                template_gray_scaled, frame_cutout
-            )
+            similarity = self.get_error_metric(template_gray_scaled, frame_cutout)
 
         return similarity
 
