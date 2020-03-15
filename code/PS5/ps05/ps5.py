@@ -479,10 +479,11 @@ class MDParticleFilter(AppearanceModelPF):
             # print(similarity)
             new_weights[i] = similarity
 
-        print(new_weights.mean())
-        if new_weights.mean() > 0.000001:
+        # print(new_weights.mean())
+        if new_weights.mean() > 0.00001:
             self.particles = new_particles
             self.weights = new_weights / new_weights.sum()
+            self.best_particle = self.particles[self.weights.argmax()]
         self.particles = self.resample_particles()
 
     def _draw_tracking_window(self, frame_in, x_weighted_mean, y_weighted_mean):

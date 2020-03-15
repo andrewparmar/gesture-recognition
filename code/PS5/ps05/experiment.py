@@ -55,9 +55,6 @@ def run_particle_filter(
 
         frame = cv2.imread(os.path.join(imgs_dir, img))
 
-        # cv2.imshow('tempasf', frame)
-        # cv2.waitKey(0)
-
         # Extract template and initialize (one-time only)
         if template is None:
             template = frame[
@@ -256,7 +253,7 @@ def part_2a():
         sigma_exp=sigma_mse,
         sigma_dyn=sigma_dyn,
         template_coords=template_loc,
-    )  # Add more if you need to
+    )
 
 
 def part_2b():
@@ -283,7 +280,7 @@ def part_2b():
         sigma_exp=sigma_mse,
         sigma_dyn=sigma_dyn,
         template_coords=template_loc,
-    )  # Add more if you need to
+    )
 
 
 def part_3():
@@ -311,7 +308,7 @@ def part_3():
         sigma_dyn=sigma_dyn,
         alpha=alpha,
         template_coords=template_rect,
-    )  # Add more if you need to
+    )
 
 
 def part_4():
@@ -342,7 +339,7 @@ def part_4():
         template_coords=template_rect,
         alpha=alpha,
         min_scale=min_scale,
-    )  # Add more if you need to
+    )
 
 
 # Helper code
@@ -499,9 +496,7 @@ def part_6():
 
     Place all your work in this file and this section.
     """
-    # template_rect = {"x": 88, "y": 38, "w": 45, "h": 128}
-    template_rect = {"x": 90, "y": 60, "w": 40, "h": 60}
-    # template_rect = {"x": 87, "y": 34, "w": 129-87, "h": 126-34}
+    template_rect = {"x": 87, "y": 34, "w": 129-87, "h": 126-34}
 
     save_frames = {
         60: os.path.join(output_dir, "ps5-6-a-1.jpg"),
@@ -512,13 +507,11 @@ def part_6():
     num_particles = 200  # Define the number of particles
     sigma_mse = 20  # Define the value of sigma for the measurement exponential equation
     sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
-    alpha = 0.1  # Set a value for alpha
+    alpha = 0.00  # Set a value for alpha
 
     run_particle_filter(
-        # ps5.AppearanceModelPF,  # particle filter model class
-        ps5.MDParticleFilter,  # particle filter model class
+        ps5.MDParticleFilter,
         os.path.join(input_dir, "follow"),
-        # input video
         template_rect,
         save_frames,
         num_particles=num_particles,
@@ -526,7 +519,7 @@ def part_6():
         sigma_dyn=sigma_dyn,
         alpha=alpha,
         template_coords=template_rect,
-    )  # Add more if you need to
+    )
 
 
 if __name__ == "__main__":
