@@ -411,16 +411,19 @@ def run_particle_filter_multi_target(
                 int(template_rect["y"]) : int(template_rect["y"] + template_rect["h"]),
                 int(template_rect["x"]) : int(template_rect["x"] + template_rect["w"]),
             ]
-            # cv2.imshow('frame', frame)
-            # cv2.waitKey(0)
             pf = filter_class(frame, template, template_coords=template_rect, **kwargs)
             pf_list.append(pf)
 
         if True:  # For debugging, it displays every frame
             out_frame = frame.copy()
-            for pf in pf_list:
+            for i, pf in enumerate(pf_list):
                 pf.process(frame)
-                pf.render(out_frame)
+                if i == 0 and frame_num > 65:
+                    pass
+                elif i == 1 and frame_num > 55:
+                    pass
+                else:
+                    pf.render(out_frame)
             cv2.imshow("Tracking", out_frame)
             cv2.waitKey(1)
 
@@ -434,170 +437,58 @@ def run_particle_filter_multi_target(
         # Render and save output, if indicated
         if frame_num in save_frames:
             frame_out = frame.copy()
-            for pf in pf_list:
+            for i, pf in enumerate(pf_list):
                 pf.process(frame)
-                pf.render(frame_out)
+                if i == 0 and frame_num > 56:
+                    pass
+                elif i == 1 and frame_num > 47:
+                    pass
+                else:
+                    pf.render(frame_out)
             cv2.imwrite(save_frames[frame_num], frame_out)
 
-        if frame_num % 20 == 0:
-            print("Working on frame {}".format(frame_num))
-
-
-# def part_5():
-#     """Tracking multiple Targets.
-#
-#     Use either a Kalman or particle filter to track multiple targets
-#     as they move through the given video.  Use the sequence of images
-#     in the TUD-Campus directory.
-#
-#     Follow the instructions in the problem set instructions.
-#
-#     Place all your work in this file and this section.
-#     """
-#     # template_rect = {"x": 50, "y": 150, "w": 100, "h": 290}
-#     templates = [
-#         {"x": 50, "y": 150, "w": 88, "h": 156},
-#         {"x": 292, "y": 198, "w": 47, "h": 115},
-#         {"x": 0, "y": 173, "w": 40, "h": 128},
-#     ]
-#
-#     save_frames = {
-#         29: os.path.join(output_dir, "ps5-5-a-1.jpg"),
-#         56: os.path.join(output_dir, "ps5-5-a-2.jpg"),
-#         71: os.path.join(output_dir, "ps5-5-a-3.jpg"),
-#     }
-#
-#     num_particles = 200  # Define the number of particles
-#     sigma_md = 10  # Define the value of sigma for the measurement exponential equation
-#     sigma_dyn = 25  # Define the value of sigma for the particles movement (dynamics)
-#     alpha = 0.02  # Set a value for alpha
-#
-#     run_particle_filter_multi_target(
-#         ps5.AppearanceModelPF,  # particle filter model class
-#         os.path.join(input_dir, "TUD-Campus"),
-#         templates,
-#         save_frames,
-#         num_particles=num_particles,
-#         sigma_exp=sigma_md,
-#         sigma_dyn=sigma_dyn,
-#         alpha=alpha,
-#     )  # Add more if you need to
-
-
-def run_kalman_filter_multi_target(
-    kf, imgs_dir, noise, sensor, save_frames={}, template_loc=None
-):
-
-    imgs_list = [f for f in os.listdir(imgs_dir) if f[0] != "." and f.endswith(".jpg")]
-    imgs_list.sort()
-
-    frame_num = 0
-
-    if sensor == "hog":
-        hog = cv2.HOGDescriptor()
-        hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-
-    elif sensor == "matching":
-        frame = cv2.imread(os.path.join(imgs_dir, imgs_list[0]))
-        template = frame[
-            template_loc["y"] : template_loc["y"] + template_loc["h"],
-            template_loc["x"] : template_loc["x"] + template_loc["w"],
-        ]
-        cv2.imshow("template", template)
-        # cv2.waitKey(0)
-
-    else:
-        raise ValueError("Unknown sensor name. Choose between 'hog' or " "'matching'")
-
-    for img in imgs_list:
-
-        frame = cv2.imread(os.path.join(imgs_dir, img))
-
-        # Sensor
-        if sensor == "hog":
-            (rects, weights) = hog.detectMultiScale(
-                frame, winStride=(4, 4), padding=(8, 8), scale=1.05
-            )
-
-            if len(weights) > 0:
-                max_w_id = np.argmax(weights)
-                z_x, z_y, z_w, z_h = rects[max_w_id]
-
-                z_x += z_w // 2
-                z_y += z_h // 2
-
-                z_x += np.random.normal(0, noise["x"])
-                z_y += np.random.normal(0, noise["y"])
-
-        elif sensor == "matching":
-            corr_map = cv2.matchTemplate(frame, template, cv2.TM_SQDIFF)
-            z_y, z_x = np.unravel_index(np.argmin(corr_map), corr_map.shape)
-
-            z_w = template_loc["w"]
-            z_h = template_loc["h"]
-
-            z_x += z_w // 2 + np.random.normal(0, noise["x"])
-            z_y += z_h // 2 + np.random.normal(0, noise["y"])
-
-        frame_copy = frame.copy()
-
-        x, y = kf.process(z_x, z_y)
-
-        if True:  # For debugging, it displays every frame
-            out_frame = frame.copy()
-            cv2.circle(out_frame, (int(z_x), int(z_y)), 20, (0, 0, 255), 2)
-            cv2.circle(out_frame, (int(x), int(y)), 10, (255, 0, 0), 2)
-            cv2.rectangle(
-                out_frame,
-                (int(z_x) - z_w // 2, int(z_y) - z_h // 2),
-                (int(z_x) + z_w // 2, int(z_y) + z_h // 2),
-                (0, 0, 255),
-                2,
-            )
-
-            cv2.imshow("Tracking", out_frame)
-            cv2.waitKey(1)
-            import time
-
-            time.sleep(0.5)
-
-        # Render and save output, if indicated
-        if frame_num in save_frames:
-            frame_out = frame.copy()
-            cv2.circle(frame_out, (int(x), int(y)), 10, (255, 0, 0), 2)
-            cv2.imwrite(save_frames[frame_num], frame_out)
-
-        # Update frame number
-        frame_num += 1
         if frame_num % 20 == 0:
             print("Working on frame {}".format(frame_num))
 
 
 def part_5():
-    # template_loc = {"y": 72, "x": 140, "w": 50, "h": 50}
-    template_loc = {"x": 50, "y": 150, "w": 88, "h": 156}
+    """Tracking multiple Targets.
 
-    # Define process and measurement arrays if you want to use other than the
-    # default. Pass them to KalmanFilter.
-    Q = None  # Process noise array
-    R = None  # Measurement noise array
+    Use either a Kalman or particle filter to track multiple targets
+    as they move through the given video.  Use the sequence of images
+    in the TUD-Campus directory.
 
-    kf = ps5.KalmanFilter(template_loc["x"], template_loc["y"])
+    Follow the instructions in the problem set instructions.
+
+    Place all your work in this file and this section.
+    """
+    # template_rect = {"x": 50, "y": 150, "w": 100, "h": 290}
+    templates = [
+        {"x": 50, "y": 150, "w": 88, "h": 156},
+        {"x": 292, "y": 198, "w": 47, "h": 115},
+        {"x": 0, "y": 173, "w": 40, "h": 128},
+    ]
 
     save_frames = {
-        # 10: os.path.join(output_dir, "ps5-1-b-1.jpg"),
-        # 30: os.path.join(output_dir, "ps5-1-b-2.jpg"),
-        # 59: os.path.join(output_dir, "ps5-1-b-3.jpg"),
-        # 99: os.path.join(output_dir, "ps5-1-b-4.jpg"),
+        29: os.path.join(output_dir, "ps5-5-a-1.jpg"),
+        56: os.path.join(output_dir, "ps5-5-a-2.jpg"),
+        71: os.path.join(output_dir, "ps5-5-a-3.jpg"),
     }
-    NOISE = {"x": 0, "y": 0}
-    run_kalman_filter_multi_target(
-        kf,
+
+    num_particles = 200  # Define the number of particles
+    sigma_md = 10  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 25  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0.02  # Set a value for alpha
+
+    run_particle_filter_multi_target(
+        ps5.AppearanceModelPF,  # particle filter model class
         os.path.join(input_dir, "TUD-Campus"),
-        NOISE,
-        "matching",
+        templates,
         save_frames,
-        template_loc,
+        num_particles=num_particles,
+        sigma_exp=sigma_md,
+        sigma_dyn=sigma_dyn,
+        alpha=alpha,
     )
 
 

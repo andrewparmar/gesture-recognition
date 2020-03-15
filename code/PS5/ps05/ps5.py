@@ -462,7 +462,7 @@ class MDParticleFilter(AppearanceModelPF):
         Returns:
             None.
         """
-        super(MDParticleFilter, self).process(frame)
+        # super(MDParticleFilter, self).process(frame)
 
         new_particles = np.copy(self.particles)
         new_weights = np.zeros(self.num_particles)
