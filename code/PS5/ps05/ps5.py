@@ -370,7 +370,10 @@ class AppearanceModelPF(ParticleFilter):
         super(AppearanceModelPF, self).process(frame)
 
         if self.alpha:
-            x, y = self.best_particle.astype(np.uint16)
+            try:
+                x, y, _ = self.best_particle.astype(np.uint16)
+            except:
+                x, y = self.best_particle.astype(np.uint16)
 
             row_start = y - self.template_rect["h"] // 2
             row_end = row_start + self.template_rect["h"]
@@ -461,7 +464,7 @@ class MDParticleFilter(AppearanceModelPF):
         Returns:
             None.
         """
-        # super(MDParticleFilter, self).process(frame)
+        super(MDParticleFilter, self).process(frame)
 
         new_particles = np.copy(self.particles)
         new_weights = np.zeros(self.num_particles)

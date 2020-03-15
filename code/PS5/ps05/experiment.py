@@ -53,6 +53,9 @@ def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, *
 
         frame = cv2.imread(os.path.join(imgs_dir, img))
 
+        # cv2.imshow('tempasf', frame)
+        # cv2.waitKey(0)
+
         # Extract template and initialize (one-time only)
         if template is None:
             template = frame[
@@ -72,6 +75,7 @@ def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, *
             out_frame = frame.copy()
             pf.render(out_frame)
             cv2.imshow("Tracking", out_frame)
+            cv2.imshow("Template", pf.template)
             cv2.waitKey(1)
             # import time; time.sleep(0.01)
 
@@ -83,8 +87,7 @@ def run_particle_filter(filter_class, imgs_dir, template_rect, save_frames={}, *
 
         # Update frame number
         frame_num += 1
-        # if frame_num == 40:
-        #     import pdb; pdb.set_trace()
+
         if frame_num % 20 == 0:
             print("Working on frame {}".format(frame_num))
 
@@ -581,8 +584,6 @@ def part_5():
         template_loc,
     )
 
-
-
 def part_6():
     """Tracking pedestrians from a moving camera.
 
@@ -590,7 +591,33 @@ def part_6():
 
     Place all your work in this file and this section.
     """
-    raise NotImplementedError
+    # template_rect = {"x": 88, "y": 38, "w": 37, "h": 128}
+    template_rect = {'x': 90, 'y': 60, 'w': 40, 'h': 60}
+
+    save_frames = {
+        60: os.path.join(output_dir, "ps5-6-a-1.png"),
+        160: os.path.join(output_dir, "ps5-6-a-2.png"),
+        186: os.path.join(output_dir, "ps5-6-a-3.png"),
+    }
+
+    num_particles = 200  # Define the number of particles
+    sigma_mse = 20  # Define the value of sigma for the measurement exponential equation
+    sigma_dyn = 3  # Define the value of sigma for the particles movement (dynamics)
+    alpha = 0.1  # Set a value for alpha
+
+    run_particle_filter(
+        # ps5.AppearanceModelPF,  # particle filter model class
+        ps5.MDParticleFilter,  # particle filter model class
+        os.path.join(input_dir, "follow"),
+        # input video
+        template_rect,
+        save_frames,
+        num_particles=num_particles,
+        sigma_exp=sigma_mse,
+        sigma_dyn=sigma_dyn,
+        alpha=alpha,
+        template_coords=template_rect,
+    )  # Add more if you need to
 
 
 if __name__ == "__main__":
@@ -600,5 +627,5 @@ if __name__ == "__main__":
     # part_2b()
     # part_3()
     # part_4()
-    part_5()
-    # part_6()
+    # part_5()
+    part_6()
