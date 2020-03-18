@@ -1,9 +1,10 @@
 """Problem Set 6: PCA, Boosting, Haar Features, Viola-Jones."""
-import cv2
-import os
-import numpy as np
-import matplotlib.pyplot as plt
 import math
+import os
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 
 import ps6
 
@@ -11,8 +12,8 @@ import ps6
 INPUT_DIR = "input_images"
 OUTPUT_DIR = "./"
 
-YALE_FACES_DIR = os.path.join(INPUT_DIR, 'Yalefaces')
-FACES94_DIR = os.path.join(INPUT_DIR, 'faces94')
+YALE_FACES_DIR = os.path.join(INPUT_DIR, "Yalefaces")
+FACES94_DIR = os.path.join(INPUT_DIR, "faces94")
 POS_DIR = os.path.join(INPUT_DIR, "pos")
 NEG_DIR = os.path.join(INPUT_DIR, "neg")
 NEG2_DIR = os.path.join(INPUT_DIR, "neg2")
@@ -25,21 +26,22 @@ def load_images_from_dir(data_dir, size=(24, 24), ext=".png"):
 
     return imgs
 
+
 # Utility function
 def plot_eigen_faces(eig_vecs, fig_name="", visualize=False):
     r = np.ceil(np.sqrt(len(eig_vecs)))
-    c = int(np.ceil(len(eig_vecs)/r))
+    c = int(np.ceil(len(eig_vecs) / r))
     r = int(r)
     fig = plt.figure()
 
-    for i,v in enumerate(eig_vecs):
-        sp = fig.add_subplot(r,c,i+1)
+    for i, v in enumerate(eig_vecs):
+        sp = fig.add_subplot(r, c, i + 1)
 
-        plt.imshow(v.reshape(32,32).real, cmap='gray')
-        sp.set_title('eigenface_%i'%i)
-        sp.axis('off')
+        plt.imshow(v.reshape(32, 32).real, cmap="gray")
+        sp.set_title("eigenface_%i" % i)
+        sp.axis("off")
 
-    fig.subplots_adjust(hspace=.5)
+    fig.subplots_adjust(hspace=0.5)
 
     if visualize:
         plt.show()
@@ -64,7 +66,10 @@ def visualize_mean_face(x_mean, size, new_dims):
     Returns:
         numpy.array: Mean face uint8 2D array.
     """
-    return NotImplementedError
+    reshaped_image = x_mean.reshape(size)
+    resized_image = cv2.resize(reshaped_image, new_dims)
+
+    return resized_image
 
 
 def part_1a_1b():
@@ -120,8 +125,8 @@ def part_1c():
         else:
             bad += 1
 
-    print('Good predictions = ', good, 'Bad predictions = ', bad)
-    print('{0:.2f}% accuracy'.format(100 * float(good) / (good + bad)))
+    print("Good predictions = ", good, "Bad predictions = ", bad)
+    print("{0:.2f}% accuracy".format(100 * float(good) / (good + bad)))
 
 
 def part_2a():
@@ -134,7 +139,7 @@ def part_2a():
     idx = y == y0
     idx |= y == y1
 
-    X = X[idx,:]
+    X = X[idx, :]
     y = y[idx]
 
     # Label them 1 and -1
@@ -151,7 +156,7 @@ def part_2a():
     # TODO: find which of these labels match ytrain and report its accuracy
     rand_accuracy = None
     raise NotImplementedError
-    print('(Random) Training accuracy: {0:.2f}%'.format(rand_accuracy))
+    print("(Random) Training accuracy: {0:.2f}%".format(rand_accuracy))
 
     # Using Weak Classifier
     uniform_weights = np.ones((Xtrain.shape[0],)) / Xtrain.shape[0]
@@ -161,7 +166,7 @@ def part_2a():
     # TODO: find which of these labels match ytrain and report its accuracy
     wk_accuracy = None
     raise NotImplementedError
-    print('(Weak) Training accuracy {0:.2f}%'.format(wk_accuracy))
+    print("(Weak) Training accuracy {0:.2f}%".format(wk_accuracy))
 
     num_iter = 5
 
@@ -169,27 +174,27 @@ def part_2a():
     boost.train()
     good, bad = boost.evaluate()
     boost_accuracy = 100 * float(good) / (good + bad)
-    print('(Boosting) Training accuracy {0:.2f}%'.format(boost_accuracy))
+    print("(Boosting) Training accuracy {0:.2f}%".format(boost_accuracy))
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytest)))
     # TODO: find which of these labels match ytest and report its accuracy
     rand_accuracy = None
     raise NotImplementedError
-    print('(Random) Testing accuracy: {0:.2f}%'.format(rand_accuracy))
+    print("(Random) Testing accuracy: {0:.2f}%".format(rand_accuracy))
 
     # Using Weak Classifier
     wk_results = [wk_clf.predict(x) for x in Xtest]
     # TODO: find which of these labels match ytest and report its accuracy
     wk_accuracy = None
     raise NotImplementedError
-    print('(Weak) Testing accuracy {0:.2f}%'.format(wk_accuracy))
+    print("(Weak) Testing accuracy {0:.2f}%".format(wk_accuracy))
 
     y_pred = boost.predict(Xtest)
     # TODO: find which of these labels match ytest and report its accuracy
     boost_accuracy = None
     raise NotImplementedError
-    print('(Boosting) Testing accuracy {0:.2f}%'.format(boost_accuracy))
+    print("(Boosting) Testing accuracy {0:.2f}%".format(boost_accuracy))
 
 
 def part_3a():
@@ -259,8 +264,8 @@ def part_4_c():
 
 if __name__ == "__main__":
     part_1a_1b()
-    part_1c()
-    part_2a()
-    part_3a()
-    part_4_a_b()
-    part_4_c()
+    # part_1c()
+    # part_2a()
+    # part_3a()
+    # part_4_a_b()
+    # part_4_c()
