@@ -93,7 +93,7 @@ def part_1a_1b():
 
 
 def part_1c():
-    p = 0.5  # Select a split percentage value
+    p = 0.7  # Select a split percentage value
     k = 5  # Select a value for k
 
     size = [32, 32]
@@ -263,8 +263,8 @@ def part_4_c():
 
 
 if __name__ == "__main__":
-    part_1a_1b()
-    # part_1c()
+    # part_1a_1b()
+    part_1c()
     # part_2a()
     # part_3a()
     # part_4_a_b()

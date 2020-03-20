@@ -62,8 +62,15 @@ def split_dataset(X, y, p):
             Xtest (numpy.array): Test data test 2D array.
             ytest (numpy.array): Test data labels.
     """
+    size = int(X.shape[0] * p)
+    indices = np.random.permutation(X.shape[0])
 
-    raise NotImplementedError
+    Xtrain = X[indices[:size]]
+    Xtest = X[indices[size:]]
+    ytrain = y[indices[:size]]
+    ytest = y[indices[size:]]
+
+    return Xtrain, ytrain, Xtest, ytest
 
 
 def get_mean_face(x):
