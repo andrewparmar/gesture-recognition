@@ -153,9 +153,7 @@ def part_2a():
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytrain)))
-    # TODO: find which of these labels match ytrain and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
+    rand_accuracy = np.count_nonzero(rand_y == ytrain) / len(ytrain) * 100
     print("(Random) Training accuracy: {0:.2f}%".format(rand_accuracy))
 
     # Using Weak Classifier
@@ -163,9 +161,7 @@ def part_2a():
     wk_clf = ps6.WeakClassifier(Xtrain, ytrain, uniform_weights)
     wk_clf.train()
     wk_results = [wk_clf.predict(x) for x in Xtrain]
-    # TODO: find which of these labels match ytrain and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
+    wk_accuracy = np.count_nonzero(wk_results == ytrain) / len(ytrain) * 100
     print("(Weak) Training accuracy {0:.2f}%".format(wk_accuracy))
 
     num_iter = 5
@@ -264,8 +260,8 @@ def part_4_c():
 
 if __name__ == "__main__":
     # part_1a_1b()
-    part_1c()
-    # part_2a()
+    # part_1c()
+    part_2a()
     # part_3a()
     # part_4_a_b()
     # part_4_c()
