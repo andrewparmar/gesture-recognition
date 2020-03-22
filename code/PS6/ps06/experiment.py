@@ -174,22 +174,16 @@ def part_2a():
 
     # Picking random numbers
     rand_y = np.random.choice([-1, 1], (len(ytest)))
-    # TODO: find which of these labels match ytest and report its accuracy
-    rand_accuracy = None
-    raise NotImplementedError
+    rand_accuracy = np.count_nonzero(rand_y == ytest) / len(ytest) * 100
     print("(Random) Testing accuracy: {0:.2f}%".format(rand_accuracy))
 
     # Using Weak Classifier
     wk_results = [wk_clf.predict(x) for x in Xtest]
-    # TODO: find which of these labels match ytest and report its accuracy
-    wk_accuracy = None
-    raise NotImplementedError
+    wk_accuracy = np.count_nonzero(wk_results == ytest) / len(ytest) * 100
     print("(Weak) Testing accuracy {0:.2f}%".format(wk_accuracy))
 
     y_pred = boost.predict(Xtest)
-    # TODO: find which of these labels match ytest and report its accuracy
-    boost_accuracy = None
-    raise NotImplementedError
+    boost_accuracy = np.count_nonzero(y_pred == ytest) / len(ytest) * 100
     print("(Boosting) Testing accuracy {0:.2f}%".format(boost_accuracy))
 
 

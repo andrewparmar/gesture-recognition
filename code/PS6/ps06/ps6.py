@@ -157,7 +157,25 @@ class Boosting:
 
     def train(self):
         """Implement the for loop shown in the problem set instructions."""
-        raise NotImplementedError
+        for j in range(self.num_iterations):
+            # print("".format(j))
+            # print("weight before: {}".format(self.weights[0]))
+            self.weights = self.weights / self.weights.sum()
+            # print("weight after: {}".format(self.weights[0]))
+            wk_clf = WeakClassifier(self.Xtrain, self.ytrain, self.weights)
+            wk_clf.train()
+            h_x = [wk_clf.predict(x) for x in self.Xtrain]
+            idx = h_x != self.ytrain
+            err = self.weights[idx].sum()
+            alpha_j = 0.5 * np.log((1 - err) / err)
+            # print("Iteration num {}: Err {}, Alpha {}".format(j, err, alpha_j))
+            self.weakClassifiers.append(wk_clf)
+            self.alphas.append(alpha_j)
+
+            if err > self.eps:
+                self.weights = self.weights * np.exp(-self.ytrain * alpha_j * h_x)
+            else:
+                break
 
     def evaluate(self):
         """Return the number of correct and incorrect predictions.
@@ -171,7 +189,12 @@ class Boosting:
                 correct (int): Number of correct predictions.
                 incorrect (int): Number of incorrect predictions.
         """
-        raise NotImplementedError
+        predictions = self.predict(self.Xtrain)
+
+        good = np.count_nonzero(predictions == self.ytrain)
+        bad = len(self.ytrain) - good
+
+        return good, bad
 
     def predict(self, X):
         """Return predictions for a given array of observations.
@@ -185,7 +208,20 @@ class Boosting:
         Returns:
             numpy.array: Predictions, one for each row in X.
         """
-        raise NotImplementedError
+        outputs = np.zeros((len(self.alphas), X.shape[0]))
+
+        for j in range(len(self.alphas)):
+            wk_results = (
+                np.array([self.weakClassifiers[j].predict(x) for x in X]).astype(
+                    np.float32
+                )
+                * self.alphas[j]
+            )
+            outputs[j, :] = wk_results
+
+        predictions = np.sign(outputs.sum(axis=0))
+
+        return predictions
 
 
 class HaarFeature:
