@@ -242,6 +242,8 @@ class HaarFeature:
         self.feat_type = feat_type
         self.position = position
         self.size = size
+        self.white = 255
+        self.gray = 126
 
     def _create_two_horizontal_feature(self, shape):
         """Create a feature of type (2, 1).
@@ -255,7 +257,20 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        raise NotImplementedError
+        feature_base = np.zeros(shape, dtype=np.float32)
+
+        h = self.size[0] // 2
+        w = self.size[1]
+
+        row, col = self.position
+
+        # print("Row {}, Col {}".format(row, col))
+        # print("H {}, W {}".format(h, w))
+
+        feature_base[row : row + h, col : col + w] = self.white
+        feature_base[row + h : row + self.size[0], col : col + w] = self.gray
+
+        return feature_base
 
     def _create_two_vertical_feature(self, shape):
         """Create a feature of type (1, 2).
@@ -269,7 +284,20 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        raise NotImplementedError
+        feature_base = np.zeros(shape, dtype=np.float32)
+
+        h = self.size[0]
+        w = self.size[1] // 2
+
+        row, col = self.position
+
+        # print("Row {}, Col {}".format(row, col))
+        # print("H {}, W {}".format(h, w))
+
+        feature_base[row : row + h, col : col + w] = self.white
+        feature_base[row : row + h, col + w : col + self.size[1]] = self.gray
+
+        return feature_base
 
     def _create_three_horizontal_feature(self, shape):
         """Create a feature of type (3, 1).
@@ -283,7 +311,21 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        raise NotImplementedError
+        feature_base = np.zeros(shape, dtype=np.float32)
+
+        h = self.size[0] // 3
+        w = self.size[1]
+
+        row, col = self.position
+
+        # print("Row {}, Col {}".format(row, col))
+        # print("H {}, W {}".format(h, w))
+
+        feature_base[row : row + h, col : col + w] = self.white
+        feature_base[row + h : row + (2 * h), col : col + w] = self.gray
+        feature_base[row + (2 * h) : row + self.size[0], col : col + w] = self.white
+
+        return feature_base
 
     def _create_three_vertical_feature(self, shape):
         """Create a feature of type (1, 3).
@@ -297,7 +339,21 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        raise NotImplementedError
+        feature_base = np.zeros(shape, dtype=np.float32)
+
+        h = self.size[0]
+        w = self.size[1] // 3
+
+        row, col = self.position
+
+        # print("Row {}, Col {}".format(row, col))
+        # print("H {}, W {}".format(h, w))
+
+        feature_base[row : row + h, col : col + w] = self.white
+        feature_base[row : row + h, col + w : col + (2 * w)] = self.gray
+        feature_base[row : row + h, col + (2 * w) : col + self.size[1]] = self.white
+
+        return feature_base
 
     def _create_four_square_feature(self, shape):
         """Create a feature of type (2, 2).
@@ -311,7 +367,27 @@ class HaarFeature:
             numpy.array: Image containing a Haar feature. (uint8).
         """
 
-        raise NotImplementedError
+        feature_base = np.zeros(shape, dtype=np.float32)
+
+        h = self.size[0] // 2
+        w = self.size[1] // 2
+
+        row, col = self.position
+
+        # print("Row {}, Col {}".format(row, col))
+        # print("H {}, W {}".format(h, w))
+
+        # Top Row
+        feature_base[row : row + h, col : col + w] = self.gray
+        feature_base[row : row + h, col + w : col + self.size[1]] = self.white
+
+        # Bottom Row
+        feature_base[row + h : row + self.size[0], col : col + w] = self.white
+        feature_base[
+            row + h : row + self.size[0], col + w : col + self.size[1]
+        ] = self.gray
+
+        return feature_base
 
     def preview(self, shape=(24, 24), filename=None):
         """Return an image with a Haar-like feature of a given type.
@@ -350,7 +426,7 @@ class HaarFeature:
             cv2.imwrite("output/{}_feature.png".format(self.feat_type), X)
 
         else:
-            cv2.imwrite("output/{}.png".format(filename), X)
+            cv2.imwrite("output/{}".format(filename), X)
 
         return X
 
