@@ -452,7 +452,104 @@ class HaarFeature:
             float: Score value.
         """
 
-        raise NotImplementedError
+        row, col = self.position
+        row = row - 1
+        col = col - 1
+
+        score = 0
+
+        if self.feat_type == (2, 1):  # two_horizontal
+            h = self.size[0] // 2
+            w = self.size[1]
+
+            A = ii[row, col]
+            B = ii[row, col + w]
+            C = ii[row + h, col]
+            D = ii[row + h, col + w]
+            E = ii[row + self.size[0], col]
+            F = ii[row + self.size[0], col + w]
+
+            D_ = D - B - C + A
+            F_ = F - D - E + C
+
+            score = D_ - F_
+
+        elif self.feat_type == (1, 2):  # two_vertical
+            h = self.size[0]
+            w = self.size[1] // 2
+
+            A = ii[row, col]
+            B = ii[row, col + w]
+            C = ii[row, col + self.size[1]]
+            D = ii[row + h, col]
+            E = ii[row + h, col + w]
+            F = ii[row + h, col + self.size[1]]
+
+            E_ = E - B - D + A
+            F_ = F - C - E + B
+
+            score = E_ - F_
+
+        elif self.feat_type == (3, 1):  # three_horizontal
+            h = self.size[0] // 3
+            w = self.size[1]
+
+            A = ii[row, col]
+            B = ii[row, col + w]
+            C = ii[row + h, col]
+            D = ii[row + h, col + w]
+            E = ii[row + (2 * h), col]
+            F = ii[row + (2 * h), col + w]
+            G = ii[row + self.size[0], col]
+            H = ii[row + self.size[0], col + w]
+
+            D_ = D - B - C + A
+            F_ = F - D - E + C
+            H_ = H - F - G + E
+
+            score = D_ - F_ + H_
+
+        elif self.feat_type == (1, 3):  # three_vertical:
+            h = self.size[0]
+            w = self.size[1] // 3
+
+            A = ii[row, col]
+            B = ii[row, col + w]
+            C = ii[row, col + (2 * w)]
+            D = ii[row + h, col]
+            E = ii[row + h, col + w]
+            F = ii[row + h, col + (2 * w)]
+            G = ii[row, col + self.size[1]]
+            H = ii[row + h, col + self.size[1]]
+
+            E_ = E - B - D + A
+            F_ = F - C - E + B
+            H_ = H - G - F + C
+
+            score = E_ - F_ + H_
+
+        elif self.feat_type == (2, 2):  # four_square
+            h = self.size[0] // 2
+            w = self.size[1] // 2
+
+            A = ii[row, col]
+            B = ii[row, col + w]
+            C = ii[row + h, col]
+            D = ii[row + h, col + w]
+            E = ii[row + self.size[0], col]
+            F = ii[row + self.size[0], col + w]
+            G = ii[row, col + self.size[1]]
+            H = ii[row + h, col + self.size[1]]
+            I = ii[row + self.size[0], col + self.size[1]]
+
+            D_ = D - B - C + A
+            F_ = F - D - E + C
+            H_ = H - G - D + B
+            I_ = I - H - F + D
+
+            score = -D_ + F_ + H_ - I_
+
+        return score
 
 
 def convert_images_to_integral_images(images):
@@ -464,8 +561,14 @@ def convert_images_to_integral_images(images):
     Returns:
         (list): List of integral images.
     """
+    integral_images = []
 
-    raise NotImplementedError
+    for img in images:
+        img_vert_sum = img.cumsum(axis=0)
+        integral_img = img_vert_sum.cumsum(axis=1)
+        integral_images.append(integral_img)
+
+    return integral_images
 
 
 class ViolaJones:

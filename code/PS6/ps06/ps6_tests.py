@@ -176,12 +176,13 @@ class HaarFeature(unittest.TestCase):
 
             ref_img = np.load(os.path.join(self.input_dir, file_name))
 
-            # Uncomment if you want to see the reference image
-            # cv2.imshow("ref_img", ref_img.astype("uint8"))
-            # cv2.waitKey(0)
-
             hf = ps6.HaarFeature(feat_type, pos, size)
             hf_img = hf.preview((50, 50))
+
+            # Uncomment if you want to see the reference image
+            # cv2.imshow("ref_img", ref_img.astype("uint8"))
+            # cv2.imshow("hf_img", ref_img.astype("uint8"))
+            # cv2.waitKey(0)
 
             correct = np.allclose(hf_img, ref_img)
             message = "Output image does not match the reference solution."
@@ -216,7 +217,7 @@ class HaarFeature(unittest.TestCase):
         pos = (5, 5)
         size = (30, 30)
 
-        if feat_type == (2, 1):
+        if feat_type == (1, 2):
             A = np.sum(
                 test_image[pos[0] : pos[0] + size[0] // 2, pos[1] : pos[1] + size[1]]
             )
