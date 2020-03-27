@@ -598,17 +598,15 @@ class ViolaJones:
         self.alphas = []
         self.posImages = pos
         self.negImages = neg
-        self.labels = np.hstack((np.ones(len(pos)), -1 * np.ones(len(neg))))
+        self.labels = np.hstack((np.ones(len(pos)), -1*np.ones(len(neg))))
 
     def createHaarFeatures(self):
         # Let's take detector resolution of 24x24 like in the paper
-        FeatureTypes = {
-            "two_horizontal": (2, 1),
-            "two_vertical": (1, 2),
-            "three_horizontal": (3, 1),
-            "three_vertical": (1, 3),
-            "four_square": (2, 2),
-        }
+        FeatureTypes = {"two_horizontal": (2, 1),
+                        "two_vertical": (1, 2),
+                        "three_horizontal": (3, 1),
+                        "three_vertical": (1, 3),
+                        "four_square": (2, 2)}
 
         haarFeatures = []
         for _, feat_type in FeatureTypes.items():
@@ -617,11 +615,8 @@ class ViolaJones:
                     for posi in range(0, 24 - sizei + 1, 4):
                         for posj in range(0, 24 - sizej + 1, 4):
                             haarFeatures.append(
-                                HaarFeature(
-                                    feat_type, [posi, posj], [sizei - 1, sizej - 1]
-                                    # feat_type, [posi, posj], [sizei, sizej]
-                                )
-                            )
+                                HaarFeature(feat_type, [posi, posj],
+                                            [sizei-1, sizej-1]))
         self.haarFeatures = haarFeatures
 
     def train(self, num_classifiers):
@@ -629,25 +624,18 @@ class ViolaJones:
         # Use this scores array to train a weak classifier using VJ_Classifier
         # in the for loop below.
         scores = np.zeros((len(self.integralImages), len(self.haarFeatures)))
-        print(" -- compute all scores --")
+        # print(" -- compute all scores --")
         for i, im in enumerate(self.integralImages):
             scores[i, :] = [hf.evaluate(im) for hf in self.haarFeatures]
 
-        weights_pos = (
-            np.ones(len(self.posImages), dtype="float")
-            * 1.0
-            / (2 * len(self.posImages))
-        )
-        weights_neg = (
-            np.ones(len(self.negImages), dtype="float")
-            * 1.0
-            / (2 * len(self.negImages))
-        )
+        weights_pos = np.ones(len(self.posImages), dtype='float') * 1.0 / (
+                           2*len(self.posImages))
+        weights_neg = np.ones(len(self.negImages), dtype='float') * 1.0 / (
+                           2*len(self.negImages))
         weights = np.hstack((weights_pos, weights_neg))
 
-        print(" -- select classifiers --")
+        # print(" -- select classifiers --")
         for i in range(num_classifiers):
-
             # normalize
             weights = weights / weights.sum()
 
@@ -676,7 +664,6 @@ class ViolaJones:
         Returns:
             list: Predictions, one for each element in images.
         """
-
         ii = convert_images_to_integral_images(images)
 
         scores = np.zeros((len(ii), len(self.haarFeatures)))
@@ -687,7 +674,7 @@ class ViolaJones:
         for clf in self.classifiers:
 
             # Obtain the Haar feature id from clf.feature
-            print(f"Features: {clf.feature}")
+            # print(f"Features: {clf.feature}")
             feature_id = clf.feature
             feature_ids.append(feature_id)
 
@@ -712,7 +699,7 @@ class ViolaJones:
             if tmp_result >= sum_alpha:
                 result.append(1)
             else:
-                result.append(0)
+                result.append(-1)
 
         return result
 
