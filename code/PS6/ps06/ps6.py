@@ -598,15 +598,17 @@ class ViolaJones:
         self.alphas = []
         self.posImages = pos
         self.negImages = neg
-        self.labels = np.hstack((np.ones(len(pos)), -1*np.ones(len(neg))))
+        self.labels = np.hstack((np.ones(len(pos)), -1 * np.ones(len(neg))))
 
     def createHaarFeatures(self):
         # Let's take detector resolution of 24x24 like in the paper
-        FeatureTypes = {"two_horizontal": (2, 1),
-                        "two_vertical": (1, 2),
-                        "three_horizontal": (3, 1),
-                        "three_vertical": (1, 3),
-                        "four_square": (2, 2)}
+        FeatureTypes = {
+            "two_horizontal": (2, 1),
+            "two_vertical": (1, 2),
+            "three_horizontal": (3, 1),
+            "three_vertical": (1, 3),
+            "four_square": (2, 2),
+        }
 
         haarFeatures = []
         for _, feat_type in FeatureTypes.items():
@@ -615,8 +617,13 @@ class ViolaJones:
                     for posi in range(0, 24 - sizei + 1, 4):
                         for posj in range(0, 24 - sizej + 1, 4):
                             haarFeatures.append(
-                                HaarFeature(feat_type, [posi, posj],
-                                            [sizei-1, sizej-1]))
+                                HaarFeature(
+                                    feat_type,
+                                    [posi, posj],
+                                    # [sizei-1, sizej-1]))
+                                    [sizei, sizej],
+                                )
+                            )
         self.haarFeatures = haarFeatures
 
     def train(self, num_classifiers):
@@ -628,10 +635,16 @@ class ViolaJones:
         for i, im in enumerate(self.integralImages):
             scores[i, :] = [hf.evaluate(im) for hf in self.haarFeatures]
 
-        weights_pos = np.ones(len(self.posImages), dtype='float') * 1.0 / (
-                           2*len(self.posImages))
-        weights_neg = np.ones(len(self.negImages), dtype='float') * 1.0 / (
-                           2*len(self.negImages))
+        weights_pos = (
+            np.ones(len(self.posImages), dtype="float")
+            * 1.0
+            / (2 * len(self.posImages))
+        )
+        weights_neg = (
+            np.ones(len(self.negImages), dtype="float")
+            * 1.0
+            / (2 * len(self.negImages))
+        )
         weights = np.hstack((weights_pos, weights_neg))
 
         # print(" -- select classifiers --")
@@ -641,7 +654,7 @@ class ViolaJones:
 
             vj_clf = VJ_Classifier(scores, self.labels, weights)
             vj_clf.train()
-            print(f'Training {i}')
+            # print(f'Training {i}')
             self.classifiers.append(vj_clf)
 
             beta_j = vj_clf.error / (1 - vj_clf.error)
@@ -718,5 +731,33 @@ class ViolaJones:
         Returns:
             None.
         """
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        raise NotImplementedError
+        h, w = image_gray.shape
+
+        images = []
+        coordinates = np.zeros(((h - 24) * (w - 24), 2))
+
+        i = 0
+        for row in range(0, h - 24):
+            for col in range(0, w - 24):
+                im = image_gray[row : row + 24, col : col + 24]
+
+                images.append(im)
+
+                coordinates[i] = [row, col]
+
+                i += 1
+
+        results = self.predict(images)
+
+        indices = np.argwhere(np.array(results) == 1)
+
+        row, col = np.median(coordinates[indices.flatten()], axis=0).astype(np.uint8)
+
+        cv2.rectangle(image, (col, row), (col + 24, row + 24), (255, 0, 0), 2)
+
+        # cv2.imshow('detection', image)
+        # cv2.waitKey(0)
+
+        cv2.imwrite(f"output/{filename}.jpg", image)

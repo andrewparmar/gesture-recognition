@@ -251,9 +251,11 @@ def part_4_c():
     integral_images = ps6.convert_images_to_integral_images(images)
     VJ = ps6.ViolaJones(pos, neg, integral_images)
     VJ.createHaarFeatures()
+    print("Training ...")
+    VJ.train(5)
+    print("Training complete")
 
-    VJ.train(4)
-
+    print("Detection ...")
     image = cv2.imread(os.path.join(INPUT_DIR, "man.jpeg"), -1)
     image = cv2.resize(image, (120, 60))
     VJ.faceDetection(image, filename="ps4-4-c-1")
@@ -264,5 +266,5 @@ if __name__ == "__main__":
     # part_1c()
     # part_2a()
     # part_3a()
-    part_4_a_b()
-    # part_4_c()
+    # part_4_a_b()
+    part_4_c()
