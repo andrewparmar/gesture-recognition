@@ -458,6 +458,8 @@ class HaarFeature:
 
         score = 0
 
+        ii = ii.astype(np.float)
+
         if self.feat_type == (2, 1):  # two_horizontal
             h = self.size[0] // 2
             w = self.size[1]
@@ -617,6 +619,7 @@ class ViolaJones:
                             haarFeatures.append(
                                 HaarFeature(
                                     feat_type, [posi, posj], [sizei - 1, sizej - 1]
+                                    # feat_type, [posi, posj], [sizei, sizej]
                                 )
                             )
         self.haarFeatures = haarFeatures
@@ -645,9 +648,24 @@ class ViolaJones:
         print(" -- select classifiers --")
         for i in range(num_classifiers):
 
-            # TODO: Complete the Viola Jones algorithm
+            # normalize
+            weights = weights / weights.sum()
 
-            raise NotImplementedError
+            vj_clf = VJ_Classifier(scores, self.labels, weights)
+            vj_clf.train()
+            print(f'Training {i}')
+            self.classifiers.append(vj_clf)
+
+            beta_j = vj_clf.error / (1 - vj_clf.error)
+            alpha_j = np.log10(1 / beta_j)
+            self.alphas.append(alpha_j)
+
+            h_x = [vj_clf.predict(x) for x in scores]
+
+            err = np.ones(len(self.labels))
+            err[h_x == self.labels] = -1
+
+            weights *= beta_j ** (1 - err)
 
     def predict(self, images):
         """Return predictions for a given list of images.
@@ -665,23 +683,36 @@ class ViolaJones:
 
         # Populate the score location for each classifier 'clf' in
         # self.classifiers.
+        feature_ids = []
+        for clf in self.classifiers:
 
-        # Obtain the Haar feature id from clf.feature
+            # Obtain the Haar feature id from clf.feature
+            print(f"Features: {clf.feature}")
+            feature_id = clf.feature
+            feature_ids.append(feature_id)
 
-        # Use this id to select the respective feature object from
-        # self.haarFeatures
+            # Use this id to select the respective feature object from
+            # self.haarFeatures
+            feat_obj = self.haarFeatures[feature_id]
 
-        # Add the score value to score[x, feature id] calling the feature's
-        # evaluate function. 'x' is each image in 'ii'
+            # Add the score value to score[x, feature id] calling the feature's
+            # evaluate function. 'x' is each image in 'ii'
+            scores[:, feature_id] = [feat_obj.evaluate(x) for x in ii]
 
         result = []
 
         # Append the results for each row in 'scores'. This value is obtained
         # using the equation for the strong classifier H(x).
-
+        sum_alpha = 0.5 * sum(self.alphas)
         for x in scores:
-            # TODO
-            raise NotImplementedError
+            tmp_result = 0
+            for i, clf in enumerate(self.classifiers):
+                tmp_result += self.alphas[i] * clf.predict(x)
+
+            if tmp_result >= sum_alpha:
+                result.append(1)
+            else:
+                result.append(0)
 
         return result
 

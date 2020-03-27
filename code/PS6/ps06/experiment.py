@@ -223,12 +223,11 @@ def part_4_a_b():
 
     VJ.train(4)
 
-    VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1")
-    VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2")
+    VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1.png")
+    VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2.png")
 
     predictions = VJ.predict(images)
-    vj_accuracy = None
-    raise NotImplementedError
+    vj_accuracy = np.count_nonzero(predictions == labels) / len(labels) * 100
     print("Prediction accuracy on training: {0:.2f}%".format(vj_accuracy))
 
     neg = load_images_from_dir(NEG2_DIR)
@@ -239,8 +238,7 @@ def part_4_a_b():
     real_labels = np.array(len(test_pos) * [1] + len(test_neg) * [-1])
     predictions = VJ.predict(test_images)
 
-    vj_accuracy = None
-    raise NotImplementedError
+    vj_accuracy = np.count_nonzero(predictions == real_labels) / len(real_labels) * 100
     print("Prediction accuracy on testing: {0:.2f}%".format(vj_accuracy))
 
 
@@ -265,6 +263,6 @@ if __name__ == "__main__":
     # part_1a_1b()
     # part_1c()
     # part_2a()
-    part_3a()
-    # part_4_a_b()
+    # part_3a()
+    part_4_a_b()
     # part_4_c()
