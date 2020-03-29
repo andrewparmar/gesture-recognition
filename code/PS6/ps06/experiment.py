@@ -83,7 +83,7 @@ def part_1a_1b():
 
     x_mean_image = visualize_mean_face(x_mean, small_size, orig_size)
 
-    cv2.imwrite(os.path.join(OUTPUT_DIR, "ps6-1-a-1.png"), x_mean_image)
+    cv2.imwrite(os.path.join(OUTPUT_DIR, "ps6-1-a-1.jpg"), x_mean_image)
 
     # PCA dimension reduction
     k = 10
@@ -192,19 +192,19 @@ def part_3a():
     instructions document."""
 
     feature1 = ps6.HaarFeature((2, 1), (25, 30), (50, 100))
-    feature1.preview((200, 200), filename="ps6-3-a-1.png")
+    feature1.preview((200, 200), filename="ps6-3-a-1.jpg")
 
     feature2 = ps6.HaarFeature((1, 2), (10, 25), (50, 150))
-    feature2.preview((200, 200), filename="ps6-3-a-2.png")
+    feature2.preview((200, 200), filename="ps6-3-a-2.jpg")
 
     feature3 = ps6.HaarFeature((3, 1), (50, 50), (100, 50))
-    feature3.preview((200, 200), filename="ps6-3-a-3.png")
+    feature3.preview((200, 200), filename="ps6-3-a-3.jpg")
 
     feature4 = ps6.HaarFeature((1, 3), (50, 125), (100, 50))
-    feature4.preview((200, 200), filename="ps6-3-a-4.png")
+    feature4.preview((200, 200), filename="ps6-3-a-4.jpg")
 
     feature5 = ps6.HaarFeature((2, 2), (50, 25), (100, 150))
-    feature5.preview((200, 200), filename="ps6-3-a-5.png")
+    feature5.preview((200, 200), filename="ps6-3-a-5.jpg")
 
 
 def part_4_a_b():
@@ -221,10 +221,10 @@ def part_4_a_b():
     VJ = ps6.ViolaJones(train_pos, train_neg, integral_images)
     VJ.createHaarFeatures()
 
-    VJ.train(4)
+    VJ.train(5)
 
-    VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1.png")
-    VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2.png")
+    VJ.haarFeatures[VJ.classifiers[0].feature].preview(filename="ps6-4-b-1.jpg")
+    VJ.haarFeatures[VJ.classifiers[1].feature].preview(filename="ps6-4-b-2.jpg")
 
     predictions = VJ.predict(images)
     vj_accuracy = np.count_nonzero(predictions == labels) / len(labels) * 100
@@ -258,13 +258,13 @@ def part_4_c():
     print("Detection ...")
     image = cv2.imread(os.path.join(INPUT_DIR, "man.jpeg"), -1)
     image = cv2.resize(image, (120, 60))
-    VJ.faceDetection(image, filename="ps4-4-c-1")
+    VJ.faceDetection(image, filename="ps6-4-c-1")
 
 
 if __name__ == "__main__":
-    # part_1a_1b()
-    # part_1c()
-    # part_2a()
-    # part_3a()
-    # part_4_a_b()
+    part_1a_1b()
+    part_1c()
+    part_2a()
+    part_3a()
+    part_4_a_b()
     part_4_c()
