@@ -1,4 +1,50 @@
 % A line starting with a % character is a comment and wont be included in the report.
 % Always use two backslashes like \\ to insert a new line. Take a look at the example below.
-I think \\
-my answer is ...
+
+\begin{table}[]
+\begin{tabular}{c c}
+ \multicolumn{2}{l}{\% Accuracy (Average of 5 runs) - Random and Weak} \\
+ \hline
+random & weak\\
+51.0 & 87.0 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\begin{tabular}{ll}
+ \multicolumn{2}{l}{\% Accuracy (Average of 5 runs) - Boosting} \\
+ \hline
+boosting-accuracy & boosting-num\_iter \\
+87.125 & 1 \\
+86.5 & 2 \\
+88.375 & 3 \\
+89.5 & 4 \\
+92.625 & 5 \\
+93.25 & 6 \\
+95.375 & 7 \\
+94.75 & 8 \\
+96.75 & 9 \\
+96.0 & 10 \\
+99.0 & 15 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\begin{tabular}{llll}
+ \multicolumn{4}{l}{\% Accuracy (Average of 5 runs) - Changing p fixed num\_iterations} \\
+ \hline
+p-split & random & weak & boosting \\
+0.1 & 49.03 & 85.39 & 87.89 \\
+0.2 & 51.47 & 86.22 & 91.41 \\
+0.3 & 49.50 & 85.46 & 89.32 \\
+0.4 & 50.75 & 87.04 & 91.62 \\
+0.5 & 48.40 & 86.40 & 91.35 \\
+0.6 & 49.00 & 88.25 & 92.19 \\
+0.7 & 49.58 & 85.75 & 91.67 \\
+0.8 & 47.38 & 85.88 & 92.62 \\
+0.9 & 52.75 & 88.25 & 92.75 \\
+ \hline
+\end{tabular}
+\end{table}

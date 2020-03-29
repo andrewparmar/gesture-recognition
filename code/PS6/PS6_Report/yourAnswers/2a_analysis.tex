@@ -1,4 +1,8 @@
 % A line starting with a % character is a comment and wont be included in the report.
 % Always use two backslashes like \\ to insert a new line. Take a look at the example below.
-I think \\
-my answer is ...
+
+As expected, the random classifier has an average accuracy close to 50\%. The weak classifier does a significantly better job of around 87\%.\\
+
+Boosting as we expect, performs the best. The number of weak classifiers used to create the boosting classifier (num\_iter) is directly proportional to the boosting classifiers accuracy. The default value of 5 iteration provides a 5\% increase over a single weak classifier. While using 10 iterations yields 8\% better performance. As expected, the higher iteration do take longer to run, so there is a trade-off between accuracy and speed.\\
+
+As the p-values don't play a part in the random classifier, we don't see any effect of changing the data split value here. The weak classifier also seems relatively consistent in accuracy - any variation is small that it is not discernible from noise. The boosting classifier however, shows a minor but noticeable improvement with increasing training data.\\
