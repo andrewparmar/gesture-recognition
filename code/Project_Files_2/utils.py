@@ -5,58 +5,39 @@ import numpy as np
 
 VID_DIR = "sample_dataset"
 
-# def helper_for_part_4_and_5(video_name, fps, frame_ids, output_prefix,
-#                             counter_init, is_part5):
-#
-#     video = os.path.join(VID_DIR, video_name)
-#     image_gen = ps3.video_gray_frame_generator(video)
-#
-#     image = image_gen.__next__()
-#     h, w, d = image.shape
-#
-#     out_path = "ar_{}-{}".format(output_prefix[4:], video_name)
-#     video_out = mp4_video_writer(out_path, (w, h), fps)
-#
-#     # Optional template image
-#     template = cv2.imread(os.path.join(IMG_DIR, "template.jpg"))
-#
-#     if is_part5:
-#         advert = cv2.imread(os.path.join(IMG_DIR, "img-3-a-1.png"))
-#         src_points = ps3.get_corners_list(advert)
-#
-#     output_counter = counter_init
-#
-#     frame_num = 1
-#
-#     while image is not None:
-#
-#         print("Processing fame {}".format(frame_num))
-#
-#         markers = ps3.find_markers(image, template)
-#
-#         if is_part5:
-#             homography = ps3.find_four_point_transform(src_points, markers)
-#             image = ps3.project_imageA_onto_imageB(advert, image, homography)
-#
-#         else:
-#
-#             for marker in markers:
-#                 mark_location(image, marker)
-#
-#         frame_id = frame_ids[(output_counter - 1) % 3]
-#
-#         if frame_num == frame_id:
-#             out_str = output_prefix + "-{}.jpg".format(output_counter)
-#             save_image(out_str, image)
-#             output_counter += 1
-#
-#         video_out.write(image)
-#
-#         image = image_gen.__next__()
-#
-#         frame_num += 1
-#
-#     video_out.release()
+
+class BinaryMotion:
+
+    def __init__(self, len_img_history, threshold):
+        self.n = len_img_history
+        self.theta = threshold
+
+    def update(self, image):
+        if not hasattr(self, 'last_image'):
+            h, w = image.shape
+            self.images = np.zeros((h, w, self.n), dtype=np.uint8)
+            self.last_image = image
+            self.binary_image = np.zeros((h, w))
+        else:
+            self.images[:, :, :self.n - 1] = self.images[:, :, 1:self.n]
+            self.images[:, :, -1] = self.last_image
+            self.last_image = image
+
+    def get_binary_image(self):
+        diff_image = cv2.absdiff(self.last_image, np.median(self.images, axis=2).astype(np.uint8))
+
+        self.binary_image = np.zeros(diff_image.shape)
+
+        idx = diff_image >= self.theta
+        self.binary_image[idx] = 1
+
+        self._cleanup()
+
+        return self.binary_image
+
+    def _cleanup(self):
+        kernel = np.ones((5, 5), np.uint8)
+        self.binary_image = cv2.morphologyEx(self.binary_image, cv2.MORPH_OPEN, kernel)
 
 
 def get_binary_image(image1, image2, threshold):
@@ -75,24 +56,24 @@ def get_binary_image(image1, image2, threshold):
     return binary_image
 
 
-# def make_motion_history_image(binary_sequence):
-#     # Second try: Recursive reduction
-#     h, w, n = binary_sequence.shape
-#
-#     mhi = np.zeros((h, w))
-#
-#     tau = 255
-#
-#     if n == 1:
-#         idx = binary_sequence[:, :, 0] == 1
-#         mhi[idx] = tau
-#         mhi[~idx] = 0
-#         return mhi
-#     else:
-#         idx = binary_sequence[:, :, 0] == 1
-#         mhi[idx] = tau
-#         mhi[~idx] = np.maximum(make_motion_history_image(binary_sequence[:, :, 1:]) - 30, 0)[~idx]
-#         return mhi
+def make_motion_history_image_recursive(binary_sequence):
+    # Second try: Recursive reduction
+    h, w, n = binary_sequence.shape
+
+    mhi = np.zeros((h, w))
+
+    tau = 255
+
+    if n == 1:
+        idx = binary_sequence[:, :, 0] == 1
+        mhi[idx] = tau
+        mhi[~idx] = 0
+        return mhi
+    else:
+        idx = binary_sequence[:, :, 0] == 1
+        mhi[idx] = tau
+        mhi[~idx] = np.maximum(make_motion_history_image_recursive(binary_sequence[:, :, 1:]) - 30, 0)[~idx]
+        return mhi
 
 
 def make_motion_history_image(binary_sequence):
@@ -127,21 +108,17 @@ def video_to_image_array(filename, fps):
 
     h, w = input_image_t.shape
     n = 50  # 50 is best so far
-    tau = 40  # 50 is best so far
+    theta = 40  # 50 is best so far
     q = 10
 
     frame_num = 0
 
-    last_n_images = np.zeros((h, w, n), dtype=np.uint8)
+    binary_motion = BinaryMotion(n, theta)
 
     last_q_binary_images = np.zeros((h, w, q), dtype=np.uint8)
 
     while input_image_t is not None:
-
-        last_n_images[:, :, : n - 1] = last_n_images[:, :, 1:n]
-        last_n_images[:, :, -1] = input_image_t
-
-        input_image_t = input_image_gen.__next__()
+        binary_motion.update(input_image_t)
 
         if frame_num % 10 == 0:
             print("Processing fame {}".format(frame_num))
@@ -149,12 +126,7 @@ def video_to_image_array(filename, fps):
         # if frame_num == 200:
         #     import pdb; pdb.set_trace()
 
-        median_of_past_n_images = np.median(last_n_images, axis=2)
-
-        binary_image = get_binary_image(
-            input_image_t, median_of_past_n_images.astype(np.uint8), tau
-        )
-        # binary_image = cleanup_image(binary_image)
+        binary_image = binary_motion.get_binary_image()
 
         last_q_binary_images[:, :, : q - 1] = last_q_binary_images[:, :, 1:q]
         last_q_binary_images[:, :, -1] = binary_image
@@ -172,8 +144,7 @@ def video_to_image_array(filename, fps):
 
         cv2.waitKey(10)
 
-        # if input_image_t is not None:
-        #     input_image_t = input_image_gen.__next__()
+        input_image_t = input_image_gen.__next__()
 
         frame_num += 1
 
