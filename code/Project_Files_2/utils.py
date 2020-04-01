@@ -79,28 +79,43 @@ def video_to_image_array(filename, fps):
     input_image_gen = video_gray_frame_generator(input_video_path)
     input_image_t = input_image_gen.__next__()
 
-    frame_num = 1
+    h, w = input_image_t.shape
+    n = 50  # 50 is best so far
+    tau = 40  # 50 is best so far
+
+    frame_num = 0
+
+    last_n_images = np.zeros((h, w, n), dtype=np.uint8)
 
     while input_image_t is not None:
 
-        input_image_t_minus_1 = input_image_t
+        last_n_images[:, :, : n - 1] = last_n_images[:, :, 1:n]
+        last_n_images[:, :, -1] = input_image_t
+
         input_image_t = input_image_gen.__next__()
 
         if frame_num % 10 == 0:
             print("Processing fame {}".format(frame_num))
 
-        # if frame_num == 20:
+        # if frame_num == 40:
         #     import pdb; pdb.set_trace()
 
-        binary_image = get_binary_image(input_image_t, input_image_t_minus_1, 30)
+        median_of_past_n_images = np.median(last_n_images, axis=2)
+
+        binary_image = get_binary_image(
+            input_image_t, median_of_past_n_images.astype(np.uint8), tau
+        )
+
+        kernel = np.ones((5, 5), np.uint8)
+        binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
 
         cv2.namedWindow("binary_image", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("binary_image", (600, 600))
         cv2.imshow("binary_image", binary_image)
-        cv2.waitKey(20)
+        cv2.waitKey(30)
 
-        if input_image_t is not None:
-            input_image_t = input_image_gen.__next__()
+        # if input_image_t is not None:
+        #     input_image_t = input_image_gen.__next__()
 
         frame_num += 1
 
