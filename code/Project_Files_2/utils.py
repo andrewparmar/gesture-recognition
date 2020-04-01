@@ -73,6 +73,39 @@ def get_binary_image(image1, image2, threshold):
     return binary_image
 
 
+# def make_motion_history_image(binary_sequence):
+#     # First try: Reduce images by set weight
+#     # import pdb; pdb.set_trace()
+#     h, w, n = binary_sequence.shape
+#
+#     mhi = np.zeros((h, w))
+#
+#     tau = 255/n
+#
+#     if
+#
+#     return np.maximum(make_motion_history_image(binary_sequence[:, :, 1:]) - 1)
+#
+#     return mhi
+
+
+def make_motion_history_image(binary_sequence):
+    # First try: Reduce images by set weight
+    # import pdb; pdb.set_trace()
+    h, w, n = binary_sequence.shape
+
+    mhi = np.zeros((h, w))
+
+    tau = 255 / n
+
+    for i in range(n):
+        print(f"This is {i}th frame. Tau: {255 - tau*i}")
+        idx = binary_sequence[:, :, i] == 1
+        mhi[idx] = tau * i
+
+    return mhi
+
+
 def video_to_image_array(filename, fps):
 
     input_video_path = os.path.join(VID_DIR, filename)
@@ -82,10 +115,13 @@ def video_to_image_array(filename, fps):
     h, w = input_image_t.shape
     n = 50  # 50 is best so far
     tau = 40  # 50 is best so far
+    q = 10
 
     frame_num = 0
 
     last_n_images = np.zeros((h, w, n), dtype=np.uint8)
+
+    last_q_binary_images = np.zeros((h, w, q), dtype=np.uint8)
 
     while input_image_t is not None:
 
@@ -97,8 +133,10 @@ def video_to_image_array(filename, fps):
         if frame_num % 10 == 0:
             print("Processing fame {}".format(frame_num))
 
-        # if frame_num == 40:
-        #     import pdb; pdb.set_trace()
+        if frame_num == 200:
+            import pdb
+
+            pdb.set_trace()
 
         median_of_past_n_images = np.median(last_n_images, axis=2)
 
@@ -109,10 +147,20 @@ def video_to_image_array(filename, fps):
         kernel = np.ones((5, 5), np.uint8)
         binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
 
+        last_q_binary_images[:, :, : q - 1] = last_q_binary_images[:, :, 1:q]
+        last_q_binary_images[:, :, -1] = binary_image
+
+        motion_history_image = make_motion_history_image(last_q_binary_images)
+
         cv2.namedWindow("binary_image", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("binary_image", (600, 600))
         cv2.imshow("binary_image", binary_image)
-        cv2.waitKey(30)
+
+        cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("motion_history_image", (600, 600))
+        cv2.imshow("motion_history_image", motion_history_image.astype(np.uint8))
+
+        cv2.waitKey(20)
 
         # if input_image_t is not None:
         #     input_image_t = input_image_gen.__next__()
