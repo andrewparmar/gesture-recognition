@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 VID_DIR = "sample_dataset"
+WAIT_DURATION = 1
 
 
 class BinaryMotion:
@@ -46,7 +47,7 @@ class BinaryMotion:
         cv2.namedWindow("binary_image", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("binary_image", (600, 600))
         cv2.imshow("binary_image", self.binary_image)
-        cv2.waitKey(20)
+        cv2.waitKey(WAIT_DURATION)
 
 
 class MotionHistoryImage:
@@ -55,6 +56,7 @@ class MotionHistoryImage:
         self.tau = 255 / self.n
         self.motion_images = None
         self.mhi = None
+        # Note: self.mei could just be mhi as float right?
 
     def update(self, motion_img):
         if self.motion_images is None:
@@ -84,11 +86,74 @@ class MotionHistoryImage:
         cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("motion_history_image", (600, 600))
         cv2.imshow("motion_history_image", self.mhi)
-        cv2.waitKey(20)
+        cv2.waitKey(WAIT_DURATION)
+
+
+def moment(image):
+    h, w = image.shape
+
+    m00 = 0
+    m10 = 0
+    m01 = 0
+
+    for y in range(h):
+
+        for x in range(w):
+            m00 += image[y, x]
+
+            m10 += x ** 1 * y ** 0 * image[y, x]
+
+            m01 += x ** 0 * y ** 1 * image[y, x]
+
+    x_mean = m10 / m00
+    y_mean = m01 / m00
+
+    mu00 = 0
+    mu10 = 0
+    mu01 = 0
+    mu11 = 0
+    mu20 = 0
+    mu02 = 0
+    mu30 = 0
+    mu03 = 0
+    mu12 = 0
+    mu21 = 0
+
+    for y in range(h):
+
+        for x in range(w):
+            mu00 += image[y, x]
+
+            mu10 += (x - x_mean) ** 1 * (y - y_mean) ** 0 * image[y, x]
+
+            mu01 += (x - x_mean) ** 0 * (y - y_mean) ** 1 * image[y, x]
+
+            mu11 += (x - x_mean) ** 1 * (y - y_mean) ** 1 * image[y, x]
+
+            mu20 += (x - x_mean) ** 2 * (y - y_mean) ** 0 * image[y, x]
+
+            mu02 += (x - x_mean) ** 0 * (y - y_mean) ** 2 * image[y, x]
+
+            mu30 += (x - x_mean) ** 3 * (y - y_mean) ** 0 * image[y, x]
+
+            mu03 += (x - x_mean) ** 0 * (y - y_mean) ** 3 * image[y, x]
+
+            mu12 += (x - x_mean) ** 1 * (y - y_mean) ** 2 * image[y, x]
+
+            mu21 += (x - x_mean) ** 2 * (y - y_mean) ** 1 * image[y, x]
+
+    print(
+        mu00, mu10, mu01, mu11, mu20, mu02, mu30, mu03, mu12, mu21,
+    )
+
+    print(image.sum())
+
+
+class HuMoments:
+    pass
 
 
 def video_to_image_array(filename, fps):
-
     input_video_path = os.path.join(VID_DIR, filename)
     input_image_gen = video_gray_frame_generator(input_video_path)
     input_image_t = input_image_gen.__next__()
@@ -103,10 +168,12 @@ def video_to_image_array(filename, fps):
     motion_history_image = MotionHistoryImage(q)
 
     while input_image_t is not None:
-        # if frame_num % 10 == 0:
-        #     print("Processing fame {}".format(frame_num))
-        # if frame_num == 200:
-        #     import pdb; pdb.set_trace()
+        if frame_num % 20 == 0:
+            print("Processing fame {}".format(frame_num))
+        if frame_num == 200:
+            cv2.imwrite(
+                "mhi_frame_200_person01_walking_d1.png", motion_history_image.mhi
+            )
 
         binary_motion.update(input_image_t)
         motion_history_image.update(binary_motion.get_binary_image())

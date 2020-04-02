@@ -1,5 +1,6 @@
 # subdivision of sequences
 
+# person number split
 training_sequence = [11, 12, 13, 14, 15, 16, 17, 18]
 validation_sequence = [19, 20, 21, 23, 24, 25, 1, 4]
 test_sequence = [22, 2, 3, 5, 6, 7, 8, 9, 10]
