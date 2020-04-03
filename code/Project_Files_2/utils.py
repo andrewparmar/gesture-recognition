@@ -89,68 +89,130 @@ class MotionHistoryImage:
         cv2.waitKey(WAIT_DURATION)
 
 
-def moment(image):
-    h, w = image.shape
+# def moment(image):
+#     h, w = image.shape
+#
+#     m00 = 0
+#     m10 = 0
+#     m01 = 0
+#
+#     for y in range(h):
+#
+#         for x in range(w):
+#             m00 += image[y, x]
+#
+#             m10 += x ** 1 * y ** 0 * image[y, x]
+#
+#             m01 += x ** 0 * y ** 1 * image[y, x]
+#
+#     x_mean = m10 / m00
+#     y_mean = m01 / m00
+#
+#     mu00 = 0
+#     mu10 = 0
+#     mu01 = 0
+#     mu11 = 0
+#     mu20 = 0
+#     mu02 = 0
+#     mu30 = 0
+#     mu03 = 0
+#     mu12 = 0
+#     mu21 = 0
+#
+#     for y in range(h):
+#
+#         for x in range(w):
+#             mu00 += image[y, x]
+#
+#             mu10 += (x - x_mean) ** 1 * (y - y_mean) ** 0 * image[y, x]
+#
+#             mu01 += (x - x_mean) ** 0 * (y - y_mean) ** 1 * image[y, x]
+#
+#             mu11 += (x - x_mean) ** 1 * (y - y_mean) ** 1 * image[y, x]
+#
+#             mu20 += (x - x_mean) ** 2 * (y - y_mean) ** 0 * image[y, x]
+#
+#             mu02 += (x - x_mean) ** 0 * (y - y_mean) ** 2 * image[y, x]
+#
+#             mu30 += (x - x_mean) ** 3 * (y - y_mean) ** 0 * image[y, x]
+#
+#             mu03 += (x - x_mean) ** 0 * (y - y_mean) ** 3 * image[y, x]
+#
+#             mu12 += (x - x_mean) ** 1 * (y - y_mean) ** 2 * image[y, x]
+#
+#             mu21 += (x - x_mean) ** 2 * (y - y_mean) ** 1 * image[y, x]
+#
+#     print(
+#         mu00, mu10, mu01, mu11, mu20, mu02, mu30, mu03, mu12, mu21,
+#     )
+#
+#     print(image.sum())
 
-    m00 = 0
-    m10 = 0
-    m01 = 0
+def moments(image):
+    x, y = np.mgrid[:image.shape[0], :image.shape[1]]
+    moments = {}
 
-    for y in range(h):
+    # import pdb; pdb.set_trace()
+    moments['mean_x'] = (x * image).sum() / image.sum()
+    moments['mean_y'] = (y * image).sum() / image.sum()
 
-        for x in range(w):
-            m00 += image[y, x]
+    # raw or spatial moments
+    moments['m00'] = (image).sum()
+    moments['m10'] = (x ** 1 * y ** 0 * image).sum()
+    moments['m01'] = (x ** 0 * y ** 1 * image).sum()
+    moments['m11'] = (x ** 1 * y ** 1 * image).sum()
+    moments['m20'] = (x ** 2 * y ** 0 * image).sum()
+    moments['m02'] = (x ** 0 * y ** 2 * image).sum()
+    moments['m30'] = (x ** 3 * y ** 0 * image).sum()
+    moments['m03'] = (x ** 0 * y ** 3 * image).sum()
+    moments['m12'] = (x ** 1 * y ** 2 * image).sum()
+    moments['m21'] = (x ** 2 * y ** 1 * image).sum()
 
-            m10 += x ** 1 * y ** 0 * image[y, x]
+    # central moments
+    x_mean = moments['mean_x']
+    y_mean = moments['mean_y']
+    moments['mu10'] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
+    moments['mu01'] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
+    moments['mu11'] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
+    moments['mu20'] = ((x - x_mean) ** 2 * (y - y_mean) ** 0 * image).sum()
+    moments['mu02'] = ((x - x_mean) ** 0 * (y - y_mean) ** 2 * image).sum()
+    moments['mu30'] = ((x - x_mean) ** 3 * (y - y_mean) ** 0 * image).sum()
+    moments['mu03'] = ((x - x_mean) ** 0 * (y - y_mean) ** 3 * image).sum()
+    moments['mu12'] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
+    moments['mu21'] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
 
-            m01 += x ** 0 * y ** 1 * image[y, x]
+    # central standardized or normalized or scale invariant moments
+    moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
+    moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
+    moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
+    moments['nu20'] = moments['mu20'] / moments['m00'] ** (1 + (2 + 0) / 2)
+    moments['nu03'] = moments['mu03'] / moments['m00'] ** (1 + (0 + 3) / 2)
+    moments['nu30'] = moments['mu30'] / moments['m00'] ** (1 + (3 + 0) / 2)
 
-    x_mean = m10 / m00
-    y_mean = m01 / m00
+    return moments
 
-    mu00 = 0
-    mu10 = 0
-    mu01 = 0
-    mu11 = 0
-    mu20 = 0
-    mu02 = 0
-    mu30 = 0
-    mu03 = 0
-    mu12 = 0
-    mu21 = 0
+def hu_moments(moments):
+    mu10 = moments['mu10']
+    mu01 = moments['mu01']
+    mu11 = moments['mu11']
+    mu20 = moments['mu20']
+    mu02 = moments['mu02']
+    mu30 = moments['mu30']
+    mu03 = moments['mu03']
+    mu12 = moments['mu12']
+    mu21 = moments['mu21']
 
-    for y in range(h):
+    h1 = mu20 + mu02  # noqa
+    h2 = (mu20 - mu02)**2 + 4*mu11**2  # noqa
+    h3 = (mu30 - 3*mu12)**2 + (3*mu21 - mu03)**2  # noqa
+    h4 = (mu30 + mu12)**2 + (mu21 + mu03)**2  # noqa
+    h5 = (mu30 - 3*mu12)*(mu30 + mu12) * ((mu30 + mu12)**2 - 3*(mu21 + mu03)**2) + (3*mu21 - mu03) * (mu21 + mu03) * (3*(mu30 + mu12)**2 - (mu21 + mu03)**2)  # noqa
+    h6 = (mu20 - mu02)*((mu30 + mu12)**2 - (mu21 + mu03)**2) + 4 * mu11 * (mu30 + mu12) *(mu21 + mu03)  # noqa
+    h7 = (3 * mu21 - mu03) * (mu30 + mu12) * ((mu30 + mu12)**2 - 3*(mu21 + mu03)**2) - (mu30 - 3*mu12)*(mu21 + mu03)*(3*(mu30 + mu12)**2 - (mu21 + mu03)**2)  # noqa
 
-        for x in range(w):
-            mu00 += image[y, x]
+    hu_moments = [h1, h2, h3, h4, h5, h6, h7]
 
-            mu10 += (x - x_mean) ** 1 * (y - y_mean) ** 0 * image[y, x]
-
-            mu01 += (x - x_mean) ** 0 * (y - y_mean) ** 1 * image[y, x]
-
-            mu11 += (x - x_mean) ** 1 * (y - y_mean) ** 1 * image[y, x]
-
-            mu20 += (x - x_mean) ** 2 * (y - y_mean) ** 0 * image[y, x]
-
-            mu02 += (x - x_mean) ** 0 * (y - y_mean) ** 2 * image[y, x]
-
-            mu30 += (x - x_mean) ** 3 * (y - y_mean) ** 0 * image[y, x]
-
-            mu03 += (x - x_mean) ** 0 * (y - y_mean) ** 3 * image[y, x]
-
-            mu12 += (x - x_mean) ** 1 * (y - y_mean) ** 2 * image[y, x]
-
-            mu21 += (x - x_mean) ** 2 * (y - y_mean) ** 1 * image[y, x]
-
-    print(
-        mu00, mu10, mu01, mu11, mu20, mu02, mu30, mu03, mu12, mu21,
-    )
-
-    print(image.sum())
-
-
-class HuMoments:
-    pass
+    return hu_moments
 
 
 def video_to_image_array(filename, fps):
