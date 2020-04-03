@@ -149,10 +149,9 @@ class MotionHistoryImage:
 #     print(image.sum())
 
 def moments(image):
-    x, y = np.mgrid[:image.shape[0], :image.shape[1]]
-    moments = {}
+    y, x = np.mgrid[:image.shape[0], :image.shape[1]]
 
-    # import pdb; pdb.set_trace()
+    moments = {}
     moments['mean_x'] = (x * image).sum() / image.sum()
     moments['mean_y'] = (y * image).sum() / image.sum()
 
@@ -185,6 +184,7 @@ def moments(image):
     moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
     moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
     moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
+    moments['nu02'] = moments['mu02'] / moments['m00'] ** (1 + (0 + 2) / 2)
     moments['nu20'] = moments['mu20'] / moments['m00'] ** (1 + (2 + 0) / 2)
     moments['nu03'] = moments['mu03'] / moments['m00'] ** (1 + (0 + 3) / 2)
     moments['nu30'] = moments['mu30'] / moments['m00'] ** (1 + (3 + 0) / 2)
@@ -192,23 +192,23 @@ def moments(image):
     return moments
 
 def hu_moments(moments):
-    mu10 = moments['mu10']
-    mu01 = moments['mu01']
-    mu11 = moments['mu11']
-    mu20 = moments['mu20']
-    mu02 = moments['mu02']
-    mu30 = moments['mu30']
-    mu03 = moments['mu03']
-    mu12 = moments['mu12']
-    mu21 = moments['mu21']
+    # nu10 = moments['nu10']
+    # nu01 = moments['nu01']
+    nu11 = moments['nu11']
+    nu20 = moments['nu20']
+    nu02 = moments['nu02']
+    nu30 = moments['nu30']
+    nu03 = moments['nu03']
+    nu12 = moments['nu12']
+    nu21 = moments['nu21']
 
-    h1 = mu20 + mu02  # noqa
-    h2 = (mu20 - mu02)**2 + 4*mu11**2  # noqa
-    h3 = (mu30 - 3*mu12)**2 + (3*mu21 - mu03)**2  # noqa
-    h4 = (mu30 + mu12)**2 + (mu21 + mu03)**2  # noqa
-    h5 = (mu30 - 3*mu12)*(mu30 + mu12) * ((mu30 + mu12)**2 - 3*(mu21 + mu03)**2) + (3*mu21 - mu03) * (mu21 + mu03) * (3*(mu30 + mu12)**2 - (mu21 + mu03)**2)  # noqa
-    h6 = (mu20 - mu02)*((mu30 + mu12)**2 - (mu21 + mu03)**2) + 4 * mu11 * (mu30 + mu12) *(mu21 + mu03)  # noqa
-    h7 = (3 * mu21 - mu03) * (mu30 + mu12) * ((mu30 + mu12)**2 - 3*(mu21 + mu03)**2) - (mu30 - 3*mu12)*(mu21 + mu03)*(3*(mu30 + mu12)**2 - (mu21 + mu03)**2)  # noqa
+    h1 = nu20 + nu02  # noqa
+    h2 = (nu20 - nu02)**2 + 4*nu11**2  # noqa
+    h3 = (nu30 - 3*nu12)**2 + (3*nu21 - nu03)**2  # noqa
+    h4 = (nu30 + nu12)**2 + (nu21 + nu03)**2  # noqa
+    h5 = (nu30 - 3*nu12)*(nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) + (3*nu21 - nu03) * (nu21 + nu03) * (3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
+    h6 = (nu20 - nu02)*((nu30 + nu12)**2 - (nu21 + nu03)**2) + 4 * nu11 * (nu30 + nu12) *(nu21 + nu03)  # noqa
+    h7 = (3 * nu21 - nu03) * (nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) - (nu30 - 3*nu12)*(nu21 + nu03)*(3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
 
     hu_moments = [h1, h2, h3, h4, h5, h6, h7]
 
