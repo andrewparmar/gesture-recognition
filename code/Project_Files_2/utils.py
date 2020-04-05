@@ -50,12 +50,13 @@ class BinaryMotion:
         cv2.waitKey(WAIT_DURATION)
 
 
-class MotionHistoryImage:
+class TemporalTemplate:
     def __init__(self, len_img_history):
         self.n = len_img_history
         self.tau = 255 / self.n
         self.motion_images = None
         self.mhi = None
+        self.mei = None
         # Note: self.mei could just be mhi as float right?
 
     def update(self, motion_img):
@@ -70,6 +71,7 @@ class MotionHistoryImage:
         self.motion_images[:, :, -1] = motion_img
 
         self._make_motion_history_image()
+        self._make_motion_energy_image()
 
     def _make_motion_history_image(self):
         h, w, n = self.motion_images.shape
@@ -82,81 +84,39 @@ class MotionHistoryImage:
 
         self.mhi = self.mhi.astype(np.uint8)
 
-    def view(self):
-        cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("motion_history_image", (600, 600))
-        cv2.imshow("motion_history_image", self.mhi)
-        cv2.waitKey(WAIT_DURATION)
+    def _make_motion_energy_image(self):
+        h, w, n = self.motion_images.shape
 
+        self.mei = np.zeros((h, w))
 
-# def moment(image):
-#     h, w = image.shape
-#
-#     m00 = 0
-#     m10 = 0
-#     m01 = 0
-#
-#     for y in range(h):
-#
-#         for x in range(w):
-#             m00 += image[y, x]
-#
-#             m10 += x ** 1 * y ** 0 * image[y, x]
-#
-#             m01 += x ** 0 * y ** 1 * image[y, x]
-#
-#     x_mean = m10 / m00
-#     y_mean = m01 / m00
-#
-#     mu00 = 0
-#     mu10 = 0
-#     mu01 = 0
-#     mu11 = 0
-#     mu20 = 0
-#     mu02 = 0
-#     mu30 = 0
-#     mu03 = 0
-#     mu12 = 0
-#     mu21 = 0
-#
-#     for y in range(h):
-#
-#         for x in range(w):
-#             mu00 += image[y, x]
-#
-#             mu10 += (x - x_mean) ** 1 * (y - y_mean) ** 0 * image[y, x]
-#
-#             mu01 += (x - x_mean) ** 0 * (y - y_mean) ** 1 * image[y, x]
-#
-#             mu11 += (x - x_mean) ** 1 * (y - y_mean) ** 1 * image[y, x]
-#
-#             mu20 += (x - x_mean) ** 2 * (y - y_mean) ** 0 * image[y, x]
-#
-#             mu02 += (x - x_mean) ** 0 * (y - y_mean) ** 2 * image[y, x]
-#
-#             mu30 += (x - x_mean) ** 3 * (y - y_mean) ** 0 * image[y, x]
-#
-#             mu03 += (x - x_mean) ** 0 * (y - y_mean) ** 3 * image[y, x]
-#
-#             mu12 += (x - x_mean) ** 1 * (y - y_mean) ** 2 * image[y, x]
-#
-#             mu21 += (x - x_mean) ** 2 * (y - y_mean) ** 1 * image[y, x]
-#
-#     print(
-#         mu00, mu10, mu01, mu11, mu20, mu02, mu30, mu03, mu12, mu21,
-#     )
-#
-#     print(image.sum())
+        for i in range(n):
+            idx = self.motion_images[:, :, i] == 1
+            self.mei[idx] = 255
+
+        self.mei = self.mei.astype(np.uint8)
+
+    def view(self, type):
+        if type == 'mhi':
+            cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("motion_history_image", (600, 600))
+            cv2.imshow("motion_history_image", self.mhi)
+            cv2.waitKey(WAIT_DURATION)
+        elif type == 'mei':
+            cv2.namedWindow("motion_energy_image", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("motion_energy_image", (600, 600))
+            cv2.imshow("motion_energy_image", self.mei)
+            cv2.waitKey(WAIT_DURATION)
+
 
 def moments(image):
     y, x = np.mgrid[:image.shape[0], :image.shape[1]]
+    x_mean = (x * image).sum() / image.sum()
+    y_mean = (y * image).sum() / image.sum()
 
     moments = {}
-    moments['mean_x'] = (x * image).sum() / image.sum()
-    moments['mean_y'] = (y * image).sum() / image.sum()
 
-    # raw or spatial moments
-    moments['m00'] = (image).sum()
+    # regular moments
+    moments['m00'] = (x ** 0 * y ** 0 * image).sum()
     moments['m10'] = (x ** 1 * y ** 0 * image).sum()
     moments['m01'] = (x ** 0 * y ** 1 * image).sum()
     moments['m11'] = (x ** 1 * y ** 1 * image).sum()
@@ -168,8 +128,6 @@ def moments(image):
     moments['m21'] = (x ** 2 * y ** 1 * image).sum()
 
     # central moments
-    x_mean = moments['mean_x']
-    y_mean = moments['mean_y']
     moments['mu10'] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
     moments['mu01'] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
     moments['mu11'] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
@@ -180,7 +138,7 @@ def moments(image):
     moments['mu12'] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
     moments['mu21'] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
 
-    # central standardized or normalized or scale invariant moments
+    # scale invariant moments
     moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
     moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
     moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
@@ -191,9 +149,8 @@ def moments(image):
 
     return moments
 
+
 def hu_moments(moments):
-    # nu10 = moments['nu10']
-    # nu01 = moments['nu01']
     nu11 = moments['nu11']
     nu20 = moments['nu20']
     nu02 = moments['nu02']
@@ -214,6 +171,13 @@ def hu_moments(moments):
 
     return hu_moments
 
+def get_hu_moments(image):
+    moments_ = moments(image)
+    return hu_moments(moments_)
+
+def print_person_names():
+    for num in range(1, 26):
+        person = f'person{num:02d}'
 
 def video_to_image_array(filename, fps):
     input_video_path = os.path.join(VID_DIR, filename)
@@ -227,21 +191,24 @@ def video_to_image_array(filename, fps):
     frame_num = 0
 
     binary_motion = BinaryMotion(n, theta)
-    motion_history_image = MotionHistoryImage(q)
+    temporal_template = TemporalTemplate(q)
 
     while input_image_t is not None:
         if frame_num % 20 == 0:
             print("Processing fame {}".format(frame_num))
         if frame_num == 200:
             cv2.imwrite(
-                "mhi_frame_200_person01_walking_d1.png", motion_history_image.mhi
+                "mhi_frame_200_person01_walking_d1.png", temporal_template.mhi
             )
 
         binary_motion.update(input_image_t)
-        motion_history_image.update(binary_motion.get_binary_image())
+        temporal_template.update(binary_motion.get_binary_image())
 
-        binary_motion.view()
-        motion_history_image.view()
+        # binary_motion.view()
+        # temporal_template.view(type='mei')
+        # temporal_template.view(type='mhi')
+
+        print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
 
         input_image_t = input_image_gen.__next__()
 

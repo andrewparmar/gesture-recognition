@@ -1,4 +1,6 @@
 # subdivision of sequences
+actions = ['boxing', 'handclapping', 'handwaving', 'jogging', 'running', 'walking']
+backgrounds = ['d1', 'd2', 'd3', 'd4']
 
 # person number split
 training_sequence = [11, 12, 13, 14, 15, 16, 17, 18]

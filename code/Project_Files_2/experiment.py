@@ -17,11 +17,9 @@ def run_moment_calculation():
     test_image = cv2.imread(filename)
 
     moments_ = moments(test_image[:, :, 0])
-    pprint.pprint(moments_)
+    # pprint.pprint(moments_)
 
     pprint.pprint(hu_moments(moments_))
-
-    import pdb; pdb.set_trace()
 
     cv2_moments = cv2.moments(test_image[:, :, 0])
 
@@ -29,6 +27,6 @@ def run_moment_calculation():
 
 if __name__ == "__main__":
 
-    # run_video_player()
+    run_video_player()
 
-    run_moment_calculation()
+    # run_moment_calculation()
