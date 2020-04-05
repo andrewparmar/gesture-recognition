@@ -1,12 +1,12 @@
 # subdivision of sequences
 
 actions = {
-    'boxing': 1,
-    'handclapping': 2,
-    'handwaving': 3,
-    'jogging': 4,
+    # 'boxing': 1,
+    # 'handclapping': 2,
+    # 'handwaving': 3,
+    # 'jogging': 4,
     'running': 5,
-    'walking': 6
+    # 'walking': 6
 }
 backgrounds = ['d1', 'd2', 'd3', 'd4']
 

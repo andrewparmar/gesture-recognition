@@ -1,4 +1,5 @@
 import os
+import sys
 
 import cv2
 import numpy as np
@@ -16,6 +17,7 @@ class BinaryMotion:
         self.images = None
         self.last_image = None
         self.binary_image = None
+        self.ksize = 2
 
     def update(self, image):
         if self.images is None:
@@ -27,14 +29,15 @@ class BinaryMotion:
             self.images[:, :, -1] = self.last_image
             self.last_image = image
 
-    def get_binary_image(self):
+    def get_binary_image(self, mode='frame'):
         """
         binary_image is of type np.float64
         """
-        diff_image = cv2.absdiff(
-            self.last_image,
-            np.median(self.images[:,:,:self.n-1], axis=2).astype(np.uint8)
-        )
+        if mode == 'median':
+            median_image = np.median(self.images[:,:,:self.n-1], axis=2).astype(np.uint8)
+            diff_image = cv2.absdiff(self.last_image, median_image)
+        else:
+            diff_image = cv2.absdiff(self.last_image, self.images[:, :, self.n-1])
 
         self.binary_image = np.zeros(diff_image.shape)
         self.binary_image[diff_image >= self.theta] = 1
@@ -43,7 +46,7 @@ class BinaryMotion:
         return self.binary_image
 
     def _cleanup(self):
-        kernel = np.ones((5, 5), np.uint8)
+        kernel = np.ones((self.ksize, self.ksize), np.uint8)
         self.binary_image = cv2.morphologyEx(self.binary_image, cv2.MORPH_OPEN, kernel)
 
     def view(self):
@@ -184,8 +187,8 @@ def video_frame_sequence_analyzer(filename, fps):
     input_image_gen = video_gray_frame_generator(input_video_path)
     input_image_t = input_image_gen.__next__()
 
-    n = 50  # 50 is best so far
-    theta = 40  # 50 is best so far
+    n = 2  # 50 is best so far
+    theta = 20  # for frame differencing. (50 is best so far with median)
     q = 10
 
     frame_num = 0
@@ -196,17 +199,15 @@ def video_frame_sequence_analyzer(filename, fps):
     while input_image_t is not None:
         if frame_num % 20 == 0:
             print("Processing fame {}".format(frame_num))
-        if frame_num == 200:
-            cv2.imwrite(
-                "mhi_frame_200_person01_walking_d1.png", temporal_template.mhi
-            )
+        # if frame_num == 200:
+        #     cv2.imwrite("mhi_frame_200_person01_walking_d1.png", temporal_template.mhi)
 
         binary_motion.update(input_image_t)
         temporal_template.update(binary_motion.get_binary_image())
 
         binary_motion.view()
+        temporal_template.view(type='mhi')
         # temporal_template.view(type='mei')
-        # temporal_template.view(type='mhi')
 
         # print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
 
@@ -214,30 +215,53 @@ def video_frame_sequence_analyzer(filename, fps):
 
         frame_num += 1
 
-def video_to_image_array(filename, fps):
+def video_frame_array_analyzer(video_frame_array, frame_ranges):
+    n = 2
+    theta = 20  # for frame differencing. (50 is best so far with median)
+    q = 10
+
+    for frame_range in frame_ranges:
+
+        binary_motion = BinaryMotion(n, theta)
+        temporal_template = TemporalTemplate(q)
+
+        start = frame_range[0] - 1
+        end = frame_range[1]
+
+        for i in range(start, end):
+
+            input_image_t = video_frame_array[:,:,i]
+
+            binary_motion.update(input_image_t)
+            temporal_template.update(binary_motion.get_binary_image())
+
+            binary_motion.view()
+            temporal_template.view(type='mhi')
+
+
+def video_to_image_array(filename):
     input_video_path = os.path.join(VID_DIR, filename)
+
+    total_video_frames = get_video_frame_count(input_video_path)
+
     input_image_gen = video_gray_frame_generator(input_video_path)
     input_image = input_image_gen.__next__()
 
-    video_image_array = np.zeros((input_image.shape[0],input_image.shape[1],1))
+    video_image_array = np.zeros(
+        (input_image.shape[0], input_image.shape[1], total_video_frames), dtype=np.uint8)
 
     frame_num = 0
 
     while input_image is not None:
 
-        h, w, z = video_image_array.shape
-
-        tmp_array = np.zeros((h, w, z+1))
-
-        tmp_array[:,:,:video_image_array.shape[2]] = video_image_array
-
-        video_image_array = tmp_array
+        video_image_array[:,:,frame_num] = input_image
 
         input_image = input_image_gen.__next__()
 
         frame_num += 1
 
-    print(f'Final video array shape {video_image_array.shape}')
+    return video_image_array
+
 
 def video_gray_frame_generator(file_path):
     """A generator function that returns a frame on each 'next()' call.
@@ -259,7 +283,6 @@ def video_gray_frame_generator(file_path):
         if ret:
             gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             yield gray_image
-            # yield gray_image
         else:
             break
 
@@ -267,20 +290,39 @@ def video_gray_frame_generator(file_path):
     yield None
 
 
+def get_video_frame_count(file_path):
+    video = cv2.VideoCapture(file_path)
+
+    total = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    video.release()
+
+    return total
+
+
 def dataset_loop():
     """
     "person01_walking_d1": [(1, 75), (152, 225), (325, 400), (480, 555)],
     """
 
-    for num in training_sequence:
+    for num in training_sequence[:1]:
         for action in actions:
             for background in backgrounds:
-                filename = f'person{num:02d}_{action}_{background}'
-
-                print(frame_sequences[filename])
+                key_name = f'person{num:02d}_{action}_{background}'
+                filename = f'{key_name}_uncomp.avi'
 
                 # convert video to image array
+                video_frame_array = video_to_image_array(filename)
+                print(f'Final video array shape {video_frame_array.shape}')
 
                 # from each frame sequence, get huMoments
+                video_frame_array_analyzer(video_frame_array, frame_sequences[key_name])
 
                 # create training array.
+
+
+action_theta = {
+    'walking': {'theta': 20, 'ksize':2},
+    'jogging': {'theta': 20, 'ksize':2},
+
+}

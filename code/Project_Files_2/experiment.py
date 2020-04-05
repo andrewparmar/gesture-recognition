@@ -28,8 +28,8 @@ def run_moment_calculation():
 
 if __name__ == "__main__":
 
-    run_video_player()
+    # run_video_player()
 
     # run_moment_calculation()
 
-    # dataset_loop()
+    dataset_loop()
