@@ -114,72 +114,73 @@ class TemporalTemplate:
             cv2.waitKey(WAIT_DURATION)
 
 
-def moments(image):
-    y, x = np.mgrid[:image.shape[0], :image.shape[1]]
-    x_mean = (x * image).sum() / image.sum()
-    y_mean = (y * image).sum() / image.sum()
+class HuMoments:
+    # Todo: take the MEI and MHI as input.
+    def __init__(self, image, mei=None, mhi=None):
+        self._moments = self._calc_moments(image)
+        self.values = self._calc_hu_moments()
 
-    moments = {}
+    def _calc_moments(self, image):
+        y, x = np.mgrid[:image.shape[0], :image.shape[1]]
+        x_mean = (x * image).sum() / image.sum()
+        y_mean = (y * image).sum() / image.sum()
 
-    # regular moments
-    moments['m00'] = (x ** 0 * y ** 0 * image).sum()
-    moments['m10'] = (x ** 1 * y ** 0 * image).sum()
-    moments['m01'] = (x ** 0 * y ** 1 * image).sum()
-    moments['m11'] = (x ** 1 * y ** 1 * image).sum()
-    moments['m20'] = (x ** 2 * y ** 0 * image).sum()
-    moments['m02'] = (x ** 0 * y ** 2 * image).sum()
-    moments['m30'] = (x ** 3 * y ** 0 * image).sum()
-    moments['m03'] = (x ** 0 * y ** 3 * image).sum()
-    moments['m12'] = (x ** 1 * y ** 2 * image).sum()
-    moments['m21'] = (x ** 2 * y ** 1 * image).sum()
+        moments = {}
 
-    # central moments
-    moments['mu10'] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
-    moments['mu01'] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
-    moments['mu11'] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
-    moments['mu20'] = ((x - x_mean) ** 2 * (y - y_mean) ** 0 * image).sum()
-    moments['mu02'] = ((x - x_mean) ** 0 * (y - y_mean) ** 2 * image).sum()
-    moments['mu30'] = ((x - x_mean) ** 3 * (y - y_mean) ** 0 * image).sum()
-    moments['mu03'] = ((x - x_mean) ** 0 * (y - y_mean) ** 3 * image).sum()
-    moments['mu12'] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
-    moments['mu21'] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
+        # regular moments
+        moments['m00'] = (x ** 0 * y ** 0 * image).sum()
+        moments['m10'] = (x ** 1 * y ** 0 * image).sum()
+        moments['m01'] = (x ** 0 * y ** 1 * image).sum()
+        moments['m11'] = (x ** 1 * y ** 1 * image).sum()
+        moments['m20'] = (x ** 2 * y ** 0 * image).sum()
+        moments['m02'] = (x ** 0 * y ** 2 * image).sum()
+        moments['m30'] = (x ** 3 * y ** 0 * image).sum()
+        moments['m03'] = (x ** 0 * y ** 3 * image).sum()
+        moments['m12'] = (x ** 1 * y ** 2 * image).sum()
+        moments['m21'] = (x ** 2 * y ** 1 * image).sum()
 
-    # scale invariant moments
-    moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
-    moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
-    moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
-    moments['nu02'] = moments['mu02'] / moments['m00'] ** (1 + (0 + 2) / 2)
-    moments['nu20'] = moments['mu20'] / moments['m00'] ** (1 + (2 + 0) / 2)
-    moments['nu03'] = moments['mu03'] / moments['m00'] ** (1 + (0 + 3) / 2)
-    moments['nu30'] = moments['mu30'] / moments['m00'] ** (1 + (3 + 0) / 2)
+        # central moments
+        moments['mu10'] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
+        moments['mu01'] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
+        moments['mu11'] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
+        moments['mu20'] = ((x - x_mean) ** 2 * (y - y_mean) ** 0 * image).sum()
+        moments['mu02'] = ((x - x_mean) ** 0 * (y - y_mean) ** 2 * image).sum()
+        moments['mu30'] = ((x - x_mean) ** 3 * (y - y_mean) ** 0 * image).sum()
+        moments['mu03'] = ((x - x_mean) ** 0 * (y - y_mean) ** 3 * image).sum()
+        moments['mu12'] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
+        moments['mu21'] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
 
-    return moments
+        # scale invariant moments
+        moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
+        moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
+        moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
+        moments['nu02'] = moments['mu02'] / moments['m00'] ** (1 + (0 + 2) / 2)
+        moments['nu20'] = moments['mu20'] / moments['m00'] ** (1 + (2 + 0) / 2)
+        moments['nu03'] = moments['mu03'] / moments['m00'] ** (1 + (0 + 3) / 2)
+        moments['nu30'] = moments['mu30'] / moments['m00'] ** (1 + (3 + 0) / 2)
 
+        return moments
 
-def hu_moments(moments):
-    nu11 = moments['nu11']
-    nu20 = moments['nu20']
-    nu02 = moments['nu02']
-    nu30 = moments['nu30']
-    nu03 = moments['nu03']
-    nu12 = moments['nu12']
-    nu21 = moments['nu21']
+    def _calc_hu_moments(self):
+        nu11 = self._moments['nu11']
+        nu20 = self._moments['nu20']
+        nu02 = self._moments['nu02']
+        nu30 = self._moments['nu30']
+        nu03 = self._moments['nu03']
+        nu12 = self._moments['nu12']
+        nu21 = self._moments['nu21']
 
-    h1 = nu20 + nu02  # noqa
-    h2 = (nu20 - nu02)**2 + 4*nu11**2  # noqa
-    h3 = (nu30 - 3*nu12)**2 + (3*nu21 - nu03)**2  # noqa
-    h4 = (nu30 + nu12)**2 + (nu21 + nu03)**2  # noqa
-    h5 = (nu30 - 3*nu12)*(nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) + (3*nu21 - nu03) * (nu21 + nu03) * (3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
-    h6 = (nu20 - nu02)*((nu30 + nu12)**2 - (nu21 + nu03)**2) + 4 * nu11 * (nu30 + nu12) *(nu21 + nu03)  # noqa
-    h7 = (3 * nu21 - nu03) * (nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) - (nu30 - 3*nu12)*(nu21 + nu03)*(3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
+        h1 = nu20 + nu02  # noqa
+        h2 = (nu20 - nu02)**2 + 4*nu11**2  # noqa
+        h3 = (nu30 - 3*nu12)**2 + (3*nu21 - nu03)**2  # noqa
+        h4 = (nu30 + nu12)**2 + (nu21 + nu03)**2  # noqa
+        h5 = (nu30 - 3*nu12)*(nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) + (3*nu21 - nu03) * (nu21 + nu03) * (3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
+        h6 = (nu20 - nu02)*((nu30 + nu12)**2 - (nu21 + nu03)**2) + 4 * nu11 * (nu30 + nu12) *(nu21 + nu03)  # noqa
+        h7 = (3 * nu21 - nu03) * (nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) - (nu30 - 3*nu12)*(nu21 + nu03)*(3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
 
-    hu_moments = [h1, h2, h3, h4, h5, h6, h7]
+        hu_moments = np.array([h1, h2, h3, h4, h5, h6, h7])
 
-    return hu_moments
-
-def get_hu_moments(image):
-    moments_ = moments(image)
-    return hu_moments(moments_)
+        return hu_moments
 
 
 def video_frame_sequence_analyzer(filename, fps):
@@ -215,6 +216,7 @@ def video_frame_sequence_analyzer(filename, fps):
 
         frame_num += 1
 
+
 def video_frame_array_analyzer(video_frame_array, frame_ranges):
     n = 2
     theta = 20  # for frame differencing. (50 is best so far with median)
@@ -237,6 +239,8 @@ def video_frame_array_analyzer(video_frame_array, frame_ranges):
 
             binary_motion.view()
             temporal_template.view(type='mhi')
+            hu_moments = HuMoments(temporal_template.mhi)
+            print(f'HuMoments: {hu_moments.values}')
 
 
 def video_to_image_array(filename):
@@ -300,8 +304,25 @@ def get_video_frame_count(file_path):
     return total
 
 
-def dataset_loop():
+def get_total_dataset_frame_count(sequence):
+    frame_count_total = 0
+
+    for num in sequence:
+        for action in actions:
+            for background in backgrounds:
+                key_name = f'person{num:02d}_{action}_{background}'
+                # print(key_name)
+                frame_ranges = frame_sequences[key_name]
+                if isinstance(frame_ranges, list):
+                    for frame_range in frame_ranges:
+                        frame_count_total += (frame_range[1] - frame_range[0] - 1)
+
+    print(frame_count_total)
+
+
+def generate_training_data():
     """
+    Example:
     "person01_walking_d1": [(1, 75), (152, 225), (325, 400), (480, 555)],
     """
 
