@@ -1,5 +1,13 @@
 # subdivision of sequences
-actions = ['boxing', 'handclapping', 'handwaving', 'jogging', 'running', 'walking']
+
+actions = {
+    'boxing': 1,
+    'handclapping': 2,
+    'handwaving': 3,
+    'jogging': 4,
+    'running': 5,
+    'walking': 6
+}
 backgrounds = ['d1', 'd2', 'd3', 'd4']
 
 # person number split
@@ -331,7 +339,7 @@ frame_sequences = {
     "person14_handwaving_d1": [(1, 165), (166, 305), (306, 445), (446, 545)],
     "person14_handwaving_d2": [(1, 125), (126, 292), (293, 395), (432, 526)],
     "person14_handwaving_d3": [(1, 145), (146, 235), (236, 330)],
-    "(person14_handwaving_d4": [(1, 132), (133, 265), (266, 446), (447, 631)],
+    "person14_handwaving_d4": [(1, 132), (133, 265), (266, 446), (447, 631)],
     "person14_jogging_d1": [(1, 55), (165, 245), (284, 345), (460, 525)],
     "person14_jogging_d2": [(1, 80), (165, 255), (302, 380), (470, 560)],
     "person14_jogging_d3": [(1, 75), (166, 245), (350, 420), (540, 612)],
@@ -348,7 +356,7 @@ frame_sequences = {
     "person15_boxing_d2": [(1, 128), (129, 252), (253, 335), (336, 485)],
     "person15_boxing_d3": [(1, 90), (91, 191), (192, 264), (265, 418)],
     "person15_boxing_d4": [(1, 90), (91, 200), (201, 294)],
-    "(person15_handclapping_d1": [(1, 65), (66, 164), (165, 232), (233, 312)],
+    "person15_handclapping_d1": [(1, 65), (66, 164), (165, 232), (233, 312)],
     "person15_handclapping_d2": [(1, 85), (86, 155), (156, 228), (228, 285)],
     "person15_handclapping_d3": [(1, 60), (61, 160), (161, 255), (256, 365)],
     "person15_handclapping_d4": [(1, 80), (81, 150), (151, 220), (221, 322)],
@@ -513,7 +521,7 @@ frame_sequences = {
     "person21_walking_d3": [(1, 70), (195, 260), (506, 575), (700, 775)],
     "person21_walking_d4": [(1, 130), (172, 288), (298, 400), (490, 612)],
     "person22_boxing_d1": [(1, 92), (104, 208), (222, 302)],
-    "(person22_boxing_d2": [(1, 74), (148, 248), (262, 320), (337, 417)],
+    "person22_boxing_d2": [(1, 74), (148, 248), (262, 320), (337, 417)],
     "person22_boxing_d3": [(1, 99), (125, 226), (227, 340), (363, 428)],
     "person22_boxing_d4": [(1, 80), (104, 184), (208, 300), (314, 435)],
     "person22_handclapping_d1": [(1, 102), (103, 178), (179, 250), (251, 344)],

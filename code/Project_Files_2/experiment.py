@@ -1,7 +1,7 @@
 import cv2
 import pprint
 
-from utils import moments, video_to_image_array, hu_moments
+from utils import moments, video_frame_sequence_analyzer, hu_moments, video_to_image_array, dataset_loop
 
 
 def run_video_player():
@@ -9,7 +9,8 @@ def run_video_player():
     filename = "person01_walking_d1_uncomp.avi"
     fps = 25
 
-    video_to_image_array(filename, fps)
+    video_frame_sequence_analyzer(filename, fps)
+    # video_to_image_array(filename, fps)
 
 
 def run_moment_calculation():
@@ -30,3 +31,5 @@ if __name__ == "__main__":
     run_video_player()
 
     # run_moment_calculation()
+
+    # dataset_loop()

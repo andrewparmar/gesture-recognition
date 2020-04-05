@@ -3,6 +3,8 @@ import os
 import cv2
 import numpy as np
 
+from config import actions, backgrounds, training_sequence, frame_sequences
+
 VID_DIR = "sample_dataset"
 WAIT_DURATION = 1
 
@@ -30,7 +32,8 @@ class BinaryMotion:
         binary_image is of type np.float64
         """
         diff_image = cv2.absdiff(
-            self.last_image, np.median(self.images, axis=2).astype(np.uint8)
+            self.last_image,
+            np.median(self.images[:,:,:self.n-1], axis=2).astype(np.uint8)
         )
 
         self.binary_image = np.zeros(diff_image.shape)
@@ -175,11 +178,8 @@ def get_hu_moments(image):
     moments_ = moments(image)
     return hu_moments(moments_)
 
-def print_person_names():
-    for num in range(1, 26):
-        person = f'person{num:02d}'
 
-def video_to_image_array(filename, fps):
+def video_frame_sequence_analyzer(filename, fps):
     input_video_path = os.path.join(VID_DIR, filename)
     input_image_gen = video_gray_frame_generator(input_video_path)
     input_image_t = input_image_gen.__next__()
@@ -204,16 +204,40 @@ def video_to_image_array(filename, fps):
         binary_motion.update(input_image_t)
         temporal_template.update(binary_motion.get_binary_image())
 
-        # binary_motion.view()
+        binary_motion.view()
         # temporal_template.view(type='mei')
         # temporal_template.view(type='mhi')
 
-        print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
+        # print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
 
         input_image_t = input_image_gen.__next__()
 
         frame_num += 1
 
+def video_to_image_array(filename, fps):
+    input_video_path = os.path.join(VID_DIR, filename)
+    input_image_gen = video_gray_frame_generator(input_video_path)
+    input_image = input_image_gen.__next__()
+
+    video_image_array = np.zeros((input_image.shape[0],input_image.shape[1],1))
+
+    frame_num = 0
+
+    while input_image is not None:
+
+        h, w, z = video_image_array.shape
+
+        tmp_array = np.zeros((h, w, z+1))
+
+        tmp_array[:,:,:video_image_array.shape[2]] = video_image_array
+
+        video_image_array = tmp_array
+
+        input_image = input_image_gen.__next__()
+
+        frame_num += 1
+
+    print(f'Final video array shape {video_image_array.shape}')
 
 def video_gray_frame_generator(file_path):
     """A generator function that returns a frame on each 'next()' call.
@@ -241,3 +265,22 @@ def video_gray_frame_generator(file_path):
 
     video.release()
     yield None
+
+
+def dataset_loop():
+    """
+    "person01_walking_d1": [(1, 75), (152, 225), (325, 400), (480, 555)],
+    """
+
+    for num in training_sequence:
+        for action in actions:
+            for background in backgrounds:
+                filename = f'person{num:02d}_{action}_{background}'
+
+                print(frame_sequences[filename])
+
+                # convert video to image array
+
+                # from each frame sequence, get huMoments
+
+                # create training array.
