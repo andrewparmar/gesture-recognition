@@ -4,7 +4,7 @@ import sys
 import cv2
 import numpy as np
 
-from config import actions, backgrounds, training_sequence, frame_sequences
+from config import actions, backgrounds, frame_sequences, training_sequence
 
 VID_DIR = "sample_dataset"
 WAIT_DURATION = 1
@@ -29,15 +29,17 @@ class BinaryMotion:
             self.images[:, :, -1] = self.last_image
             self.last_image = image
 
-    def get_binary_image(self, mode='frame'):
+    def get_binary_image(self, mode="frame"):
         """
         binary_image is of type np.float64
         """
-        if mode == 'median':
-            median_image = np.median(self.images[:,:,:self.n-1], axis=2).astype(np.uint8)
+        if mode == "median":
+            median_image = np.median(self.images[:, :, : self.n - 1], axis=2).astype(
+                np.uint8
+            )
             diff_image = cv2.absdiff(self.last_image, median_image)
         else:
-            diff_image = cv2.absdiff(self.last_image, self.images[:, :, self.n-1])
+            diff_image = cv2.absdiff(self.last_image, self.images[:, :, self.n - 1])
 
         self.binary_image = np.zeros(diff_image.shape)
         self.binary_image[diff_image >= self.theta] = 1
@@ -102,12 +104,12 @@ class TemporalTemplate:
         self.mei = self.mei.astype(np.uint8)
 
     def view(self, type):
-        if type == 'mhi':
+        if type == "mhi":
             cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("motion_history_image", (600, 600))
             cv2.imshow("motion_history_image", self.mhi)
             cv2.waitKey(WAIT_DURATION)
-        elif type == 'mei':
+        elif type == "mei":
             cv2.namedWindow("motion_energy_image", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("motion_energy_image", (600, 600))
             cv2.imshow("motion_energy_image", self.mei)
@@ -121,203 +123,182 @@ class HuMoments:
         self.values = self._calc_hu_moments()
 
     def _calc_moments(self, image):
-        y, x = np.mgrid[:image.shape[0], :image.shape[1]]
+        y, x = np.mgrid[: image.shape[0], : image.shape[1]]
         x_mean = (x * image).sum() / image.sum()
         y_mean = (y * image).sum() / image.sum()
 
         moments = {}
 
         # regular moments
-        moments['m00'] = (x ** 0 * y ** 0 * image).sum()
-        moments['m10'] = (x ** 1 * y ** 0 * image).sum()
-        moments['m01'] = (x ** 0 * y ** 1 * image).sum()
-        moments['m11'] = (x ** 1 * y ** 1 * image).sum()
-        moments['m20'] = (x ** 2 * y ** 0 * image).sum()
-        moments['m02'] = (x ** 0 * y ** 2 * image).sum()
-        moments['m30'] = (x ** 3 * y ** 0 * image).sum()
-        moments['m03'] = (x ** 0 * y ** 3 * image).sum()
-        moments['m12'] = (x ** 1 * y ** 2 * image).sum()
-        moments['m21'] = (x ** 2 * y ** 1 * image).sum()
+        moments["m00"] = (x ** 0 * y ** 0 * image).sum()
+        moments["m10"] = (x ** 1 * y ** 0 * image).sum()
+        moments["m01"] = (x ** 0 * y ** 1 * image).sum()
+        moments["m11"] = (x ** 1 * y ** 1 * image).sum()
+        moments["m20"] = (x ** 2 * y ** 0 * image).sum()
+        moments["m02"] = (x ** 0 * y ** 2 * image).sum()
+        moments["m30"] = (x ** 3 * y ** 0 * image).sum()
+        moments["m03"] = (x ** 0 * y ** 3 * image).sum()
+        moments["m12"] = (x ** 1 * y ** 2 * image).sum()
+        moments["m21"] = (x ** 2 * y ** 1 * image).sum()
 
         # central moments
-        moments['mu10'] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
-        moments['mu01'] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
-        moments['mu11'] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
-        moments['mu20'] = ((x - x_mean) ** 2 * (y - y_mean) ** 0 * image).sum()
-        moments['mu02'] = ((x - x_mean) ** 0 * (y - y_mean) ** 2 * image).sum()
-        moments['mu30'] = ((x - x_mean) ** 3 * (y - y_mean) ** 0 * image).sum()
-        moments['mu03'] = ((x - x_mean) ** 0 * (y - y_mean) ** 3 * image).sum()
-        moments['mu12'] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
-        moments['mu21'] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
+        moments["mu10"] = ((x - x_mean) ** 1 * (y - y_mean) ** 0 * image).sum()
+        moments["mu01"] = ((x - x_mean) ** 0 * (y - y_mean) ** 1 * image).sum()
+        moments["mu11"] = ((x - x_mean) ** 1 * (y - y_mean) ** 1 * image).sum()
+        moments["mu20"] = ((x - x_mean) ** 2 * (y - y_mean) ** 0 * image).sum()
+        moments["mu02"] = ((x - x_mean) ** 0 * (y - y_mean) ** 2 * image).sum()
+        moments["mu30"] = ((x - x_mean) ** 3 * (y - y_mean) ** 0 * image).sum()
+        moments["mu03"] = ((x - x_mean) ** 0 * (y - y_mean) ** 3 * image).sum()
+        moments["mu12"] = ((x - x_mean) ** 1 * (y - y_mean) ** 2 * image).sum()
+        moments["mu21"] = ((x - x_mean) ** 2 * (y - y_mean) ** 1 * image).sum()
 
         # scale invariant moments
-        moments['nu11'] = moments['mu11'] / moments['m00'] ** (1 + (1 + 1) / 2)
-        moments['nu12'] = moments['mu12'] / moments['m00'] ** (1 + (1 + 2) / 2)
-        moments['nu21'] = moments['mu21'] / moments['m00'] ** (1 + (2 + 1) / 2)
-        moments['nu02'] = moments['mu02'] / moments['m00'] ** (1 + (0 + 2) / 2)
-        moments['nu20'] = moments['mu20'] / moments['m00'] ** (1 + (2 + 0) / 2)
-        moments['nu03'] = moments['mu03'] / moments['m00'] ** (1 + (0 + 3) / 2)
-        moments['nu30'] = moments['mu30'] / moments['m00'] ** (1 + (3 + 0) / 2)
+        moments["nu11"] = moments["mu11"] / moments["m00"] ** (1 + (1 + 1) / 2)
+        moments["nu12"] = moments["mu12"] / moments["m00"] ** (1 + (1 + 2) / 2)
+        moments["nu21"] = moments["mu21"] / moments["m00"] ** (1 + (2 + 1) / 2)
+        moments["nu02"] = moments["mu02"] / moments["m00"] ** (1 + (0 + 2) / 2)
+        moments["nu20"] = moments["mu20"] / moments["m00"] ** (1 + (2 + 0) / 2)
+        moments["nu03"] = moments["mu03"] / moments["m00"] ** (1 + (0 + 3) / 2)
+        moments["nu30"] = moments["mu30"] / moments["m00"] ** (1 + (3 + 0) / 2)
 
         return moments
 
     def _calc_hu_moments(self):
-        nu11 = self._moments['nu11']
-        nu20 = self._moments['nu20']
-        nu02 = self._moments['nu02']
-        nu30 = self._moments['nu30']
-        nu03 = self._moments['nu03']
-        nu12 = self._moments['nu12']
-        nu21 = self._moments['nu21']
+        nu11 = self._moments["nu11"]
+        nu20 = self._moments["nu20"]
+        nu02 = self._moments["nu02"]
+        nu30 = self._moments["nu30"]
+        nu03 = self._moments["nu03"]
+        nu12 = self._moments["nu12"]
+        nu21 = self._moments["nu21"]
 
         h1 = nu20 + nu02  # noqa
-        h2 = (nu20 - nu02)**2 + 4*nu11**2  # noqa
-        h3 = (nu30 - 3*nu12)**2 + (3*nu21 - nu03)**2  # noqa
-        h4 = (nu30 + nu12)**2 + (nu21 + nu03)**2  # noqa
-        h5 = (nu30 - 3*nu12)*(nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) + (3*nu21 - nu03) * (nu21 + nu03) * (3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
-        h6 = (nu20 - nu02)*((nu30 + nu12)**2 - (nu21 + nu03)**2) + 4 * nu11 * (nu30 + nu12) *(nu21 + nu03)  # noqa
-        h7 = (3 * nu21 - nu03) * (nu30 + nu12) * ((nu30 + nu12)**2 - 3*(nu21 + nu03)**2) - (nu30 - 3*nu12)*(nu21 + nu03)*(3*(nu30 + nu12)**2 - (nu21 + nu03)**2)  # noqa
+        h2 = (nu20 - nu02) ** 2 + 4 * nu11 ** 2  # noqa
+        h3 = (nu30 - 3 * nu12) ** 2 + (3 * nu21 - nu03) ** 2  # noqa
+        h4 = (nu30 + nu12) ** 2 + (nu21 + nu03) ** 2  # noqa
+        h5 = (nu30 - 3 * nu12) * (nu30 + nu12) * (
+            (nu30 + nu12) ** 2 - 3 * (nu21 + nu03) ** 2
+        ) + (3 * nu21 - nu03) * (nu21 + nu03) * (
+            3 * (nu30 + nu12) ** 2 - (nu21 + nu03) ** 2
+        )  # noqa
+        h6 = (nu20 - nu02) * ((nu30 + nu12) ** 2 - (nu21 + nu03) ** 2) + 4 * nu11 * (
+            nu30 + nu12
+        ) * (
+            nu21 + nu03
+        )  # noqa
+        h7 = (3 * nu21 - nu03) * (nu30 + nu12) * (
+            (nu30 + nu12) ** 2 - 3 * (nu21 + nu03) ** 2
+        ) - (nu30 - 3 * nu12) * (nu21 + nu03) * (
+            3 * (nu30 + nu12) ** 2 - (nu21 + nu03) ** 2
+        )  # noqa
 
         hu_moments = np.array([h1, h2, h3, h4, h5, h6, h7])
 
         return hu_moments
 
 
-def video_frame_sequence_analyzer(filename, fps):
-    input_video_path = os.path.join(VID_DIR, filename)
-    input_image_gen = video_gray_frame_generator(input_video_path)
-    input_image_t = input_image_gen.__next__()
+class ActionVideo:
+    PARAM_MAP = {
+        "walking": {"theta": 20, "ksize": 2},
+        "jogging": {"theta": 20, "ksize": 2},
+    }
+    NUM_HU = 7
 
-    n = 2  # 50 is best so far
-    theta = 20  # for frame differencing. (50 is best so far with median)
-    q = 10
+    def __init__(self, num, action, background):
+        self.key_name = f"person{num:02d}_{action}_{background}"
+        self.filename = f"{self.key_name}_uncomp.avi"
+        self.action = action
+        self.frame_ranges = frame_sequences[self.key_name]
+        self.video_frame_array = None
 
-    frame_num = 0
+        self._video_to_image_array()
 
-    binary_motion = BinaryMotion(n, theta)
-    temporal_template = TemporalTemplate(q)
+    def _video_to_image_array(self):
+        input_video_path = os.path.join(VID_DIR, self.filename)
 
-    while input_image_t is not None:
-        if frame_num % 20 == 0:
-            print("Processing fame {}".format(frame_num))
-        # if frame_num == 200:
-        #     cv2.imwrite("mhi_frame_200_person01_walking_d1.png", temporal_template.mhi)
+        self.total_video_frames = self._get_video_frame_count(input_video_path)
 
-        binary_motion.update(input_image_t)
-        temporal_template.update(binary_motion.get_binary_image())
-
-        binary_motion.view()
-        temporal_template.view(type='mhi')
-        # temporal_template.view(type='mei')
-
-        # print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
-
-        input_image_t = input_image_gen.__next__()
-
-        frame_num += 1
-
-
-def video_frame_array_analyzer(video_frame_array, frame_ranges):
-    n = 2
-    theta = 20  # for frame differencing. (50 is best so far with median)
-    q = 10
-
-    for frame_range in frame_ranges:
-
-        binary_motion = BinaryMotion(n, theta)
-        temporal_template = TemporalTemplate(q)
-
-        start = frame_range[0] - 1
-        end = frame_range[1]
-
-        for i in range(start, end):
-
-            input_image_t = video_frame_array[:,:,i]
-
-            binary_motion.update(input_image_t)
-            temporal_template.update(binary_motion.get_binary_image())
-
-            binary_motion.view()
-            temporal_template.view(type='mhi')
-            hu_moments = HuMoments(temporal_template.mhi)
-            print(f'HuMoments: {hu_moments.values}')
-
-
-def video_to_image_array(filename):
-    input_video_path = os.path.join(VID_DIR, filename)
-
-    total_video_frames = get_video_frame_count(input_video_path)
-
-    input_image_gen = video_gray_frame_generator(input_video_path)
-    input_image = input_image_gen.__next__()
-
-    video_image_array = np.zeros(
-        (input_image.shape[0], input_image.shape[1], total_video_frames), dtype=np.uint8)
-
-    frame_num = 0
-
-    while input_image is not None:
-
-        video_image_array[:,:,frame_num] = input_image
-
+        input_image_gen = self._gray_frame_generator(input_video_path)
         input_image = input_image_gen.__next__()
 
-        frame_num += 1
+        self.video_frame_array = np.zeros(
+            (input_image.shape[0], input_image.shape[1], self.total_video_frames),
+            dtype=np.uint8,
+        )
 
-    return video_image_array
+        frame_num = 0
 
+        while input_image is not None:
+            self.video_frame_array[:, :, frame_num] = input_image
 
-def video_gray_frame_generator(file_path):
-    """A generator function that returns a frame on each 'next()' call.
+            input_image = input_image_gen.__next__()
 
-    Will return 'None' when there are no frames left.
+            frame_num += 1
 
-    Args:
-        file_path (string): Relative file path.
+    def _get_video_frame_count(self, file_path):
+        video = cv2.VideoCapture(file_path)
 
-    Returns:
-        None.
-    """
-    video = cv2.VideoCapture(file_path)
+        total = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Do not edit this while loop
-    while video.isOpened():
-        ret, frame = video.read()
+        video.release()
 
-        if ret:
-            gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            yield gray_image
-        else:
-            break
+        return total
 
-    video.release()
-    yield None
+    @staticmethod
+    def _gray_frame_generator(file_path):
+        """A generator function that returns a frame on each 'next()' call.
 
+        Will return 'None' when there are no frames left.
 
-def get_video_frame_count(file_path):
-    video = cv2.VideoCapture(file_path)
+        Args:
+            file_path (string): Relative file path.
 
-    total = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+        Returns:
+            None.
+        """
+        video = cv2.VideoCapture(file_path)
 
-    video.release()
+        # Do not edit this while loop
+        while video.isOpened():
+            ret, frame = video.read()
 
-    return total
+            if ret:
+                gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                yield gray_image
+            else:
+                break
 
+        video.release()
+        yield None
 
-def get_total_dataset_frame_count(sequence):
-    frame_count_total = 0
+    def analyze_frames(self):
+        n = 2
+        theta = self.PARAM_MAP[self.action]["theta"]
+        tau = 10
 
-    for num in sequence:
-        for action in actions:
-            for background in backgrounds:
-                key_name = f'person{num:02d}_{action}_{background}'
-                # print(key_name)
-                frame_ranges = frame_sequences[key_name]
-                if isinstance(frame_ranges, list):
-                    for frame_range in frame_ranges:
-                        frame_count_total += (frame_range[1] - frame_range[0] - 1)
+        self.frame_features = np.zeros((self.total_video_frames, self.NUM_HU))
 
-    print(frame_count_total)
+        self.frame_labels = np.zeros(self.total_video_frames)
+
+        for frame_range in self.frame_ranges:
+
+            binary_motion = BinaryMotion(n, theta)
+            temporal_template = TemporalTemplate(tau)
+
+            start = frame_range[0] - 1
+            end = frame_range[1]
+
+            for i in range(start, end):
+                input_image_t = self.video_frame_array[:, :, i]
+
+                binary_motion.update(input_image_t)
+                temporal_template.update(binary_motion.get_binary_image())
+
+                binary_motion.view()
+                temporal_template.view(type="mhi")
+                hu_moments = HuMoments(temporal_template.mhi)
+                print(f"HuMoments: {hu_moments.values}")
+                self.frame_features[i] = hu_moments.values
 
 
 def generate_training_data():
@@ -326,24 +307,19 @@ def generate_training_data():
     "person01_walking_d1": [(1, 75), (152, 225), (325, 400), (480, 555)],
     """
 
-    for num in training_sequence[:1]:
+    Xtrain = np.zeros((1, 7))
+    ytrain = np.zeros(1)
+
+    for person_num in training_sequence[:1]:
         for action in actions:
             for background in backgrounds:
-                key_name = f'person{num:02d}_{action}_{background}'
-                filename = f'{key_name}_uncomp.avi'
 
-                # convert video to image array
-                video_frame_array = video_to_image_array(filename)
-                print(f'Final video array shape {video_frame_array.shape}')
+                action_video = ActionVideo(person_num, action, background)
 
-                # from each frame sequence, get huMoments
-                video_frame_array_analyzer(video_frame_array, frame_sequences[key_name])
+                action_video.analyze_frames()
 
-                # create training array.
+                Xtrain = np.vstack((Xtrain, action_video.frame_features))
 
+                # ytrain = np.hstack((ytrain, action_video.frame_labels))
 
-action_theta = {
-    'walking': {'theta': 20, 'ksize':2},
-    'jogging': {'theta': 20, 'ksize':2},
-
-}
+    return Xtrain, ytrain

@@ -5,10 +5,10 @@ actions = {
     # 'handclapping': 2,
     # 'handwaving': 3,
     # 'jogging': 4,
-    'running': 5,
-    # 'walking': 6
+    # 'running': 5,
+    "walking": 6
 }
-backgrounds = ['d1', 'd2', 'd3', 'd4']
+backgrounds = ["d1", "d2", "d3", "d4"]
 
 # person number split
 training_sequence = [11, 12, 13, 14, 15, 16, 17, 18]
