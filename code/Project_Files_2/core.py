@@ -1,5 +1,8 @@
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
 import os
-import sys
 
 import cv2
 import numpy as np
@@ -117,15 +120,20 @@ class TemporalTemplate:
 
 
 class HuMoments:
-    # Todo: take the MEI and MHI as input.
-    def __init__(self, image, mei=None, mhi=None):
+    def __init__(self, image):
         self._moments = self._calc_moments(image)
         self.values = self._calc_hu_moments()
 
     def _calc_moments(self, image):
         y, x = np.mgrid[: image.shape[0], : image.shape[1]]
-        x_mean = (x * image).sum() / image.sum()
-        y_mean = (y * image).sum() / image.sum()
+
+        if image.sum() == 0:
+            keys = ["nu11", "nu12", "nu21", "nu02", "nu20", "nu03", "nu30"]
+            moments = {k: 0 for k in keys}
+            return moments
+        else:
+            x_mean = (x * image).sum() / image.sum()
+            y_mean = (y * image).sum() / image.sum()
 
         moments = {}
 
@@ -192,15 +200,19 @@ class HuMoments:
             3 * (nu30 + nu12) ** 2 - (nu21 + nu03) ** 2
         )  # noqa
 
-        hu_moments = np.array([h1, h2, h3, h4, h5, h6, h7])
+        hu_moments = np.nan_to_num(np.array([h1, h2, h3, h4, h5, h6, h7]))
 
         return hu_moments
 
 
 class ActionVideo:
     PARAM_MAP = {
-        "walking": {"theta": 20, "ksize": 2},
-        "jogging": {"theta": 20, "ksize": 2},
+        'boxing':       {"label": 1, "theta": 20, "ksize": 2},  # noqa
+        'handclapping': {"label": 2, "theta": 20, "ksize": 2},  # noqa
+        'handwaving':   {"label": 3, "theta": 20, "ksize": 2},  # noqa
+        "jogging":      {"label": 4, "theta": 20, "ksize": 2},  # noqa
+        "running":      {"label": 5, "theta": 20, "ksize": 2},  # noqa
+        "walking":      {"label": 6, "theta": 20, "ksize": 2},  # noqa
     }
     NUM_HU = 7
 
@@ -276,6 +288,47 @@ class ActionVideo:
         theta = self.PARAM_MAP[self.action]["theta"]
         tau = 10
 
+        frame_count_total = 0
+        for frame_range in self.frame_ranges:
+            frame_count_total += (frame_range[1] - frame_range[0] + 1)
+        print(f'Frame range count total: {frame_count_total}')
+        print(f'Total frames: {self.total_video_frames}')
+
+        self.frame_features = np.zeros((frame_count_total, self.NUM_HU))
+        self.frame_labels = np.zeros(frame_count_total)
+
+        counter = 0
+
+        for frame_range in self.frame_ranges[:1]:
+
+            binary_motion = BinaryMotion(n, theta)
+            temporal_template = TemporalTemplate(tau)
+
+            start = frame_range[0] - 1
+            end = frame_range[1]
+            print(f"{start}:{end}")
+
+            for i in range(start, end):
+                input_image_t = self.video_frame_array[:, :, i]
+
+                binary_motion.update(input_image_t)
+                temporal_template.update(binary_motion.get_binary_image())
+
+                # binary_motion.view()
+                # temporal_template.view(type="mhi")
+
+                hu_moments = HuMoments(temporal_template.mei)
+                # print(f"HuMoments: {hu_moments.values}")
+                self.frame_features[counter] = hu_moments.values
+                if (self.frame_features[counter].sum() != 0):
+                    self.frame_labels[counter] = self.PARAM_MAP[self.action]['label']
+                counter += 1
+
+    def analyze_frames_all(self):
+        n = 2
+        theta = self.PARAM_MAP[self.action]["theta"]
+        tau = 10
+
         self.frame_features = np.zeros((self.total_video_frames, self.NUM_HU))
 
         self.frame_labels = np.zeros(self.total_video_frames)
@@ -314,12 +367,31 @@ def generate_training_data():
         for action in actions:
             for background in backgrounds:
 
-                action_video = ActionVideo(person_num, action, background)
+                # Manual override.
+                person_num = 1
+                action = 'walking'
+                background = 'd1'
 
+                action_video = ActionVideo(person_num, action, background)
+                print(action_video.key_name)
                 action_video.analyze_frames()
+
+                fig, ax = plt.subplots()
+                ax.plot(action_video.frame_features[:, :1])
+
+                labels = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7']
+
+                ax.legend(labels, loc='best')
+                ax.set(
+                    xlabel='Frame number',
+                    ylabel='Hu Value',
+                    title=f'{action_video.key_name}'
+                )
+                plt.show()
 
                 Xtrain = np.vstack((Xtrain, action_video.frame_features))
 
-                # ytrain = np.hstack((ytrain, action_video.frame_labels))
+                ytrain = np.hstack((ytrain, action_video.frame_labels))
 
+    import pdb; pdb.set_trace()
     return Xtrain, ytrain
