@@ -6,7 +6,8 @@ import config
 import core
 
 def run_moment_calculation():
-    filename = "mhi_frame_200_person01_walking_d1.png"
+    # filename = "mhi_frame_200_person01_walking_d1.png"
+    filename = "output_images/0_mhi.jpg"
     test_image = cv2.imread(filename)
 
     for type_ in [np.uint8, np.uint16, np.float]:
@@ -22,6 +23,6 @@ def run_moment_calculation():
 if __name__ == "__main__":
     np.set_printoptions(precision=5, linewidth=200)
 
-    run_moment_calculation()
+    # run_moment_calculation()
 
     Xtrain, ytrain = core.generate_training_data()
