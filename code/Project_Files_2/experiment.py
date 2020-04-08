@@ -26,3 +26,5 @@ if __name__ == "__main__":
     # run_moment_calculation()
 
     Xtrain, ytrain = core.generate_training_data()
+
+    import pdb; pdb.set_trace()
