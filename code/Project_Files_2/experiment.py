@@ -1,5 +1,5 @@
 import pprint
-import warnings
+# import warnings
 
 import cv2
 import matplotlib
@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.utils.multiclass import unique_labels
+from sklearn.preprocessing import StandardScaler, normalize
 
 import config
 import core
@@ -18,7 +19,7 @@ matplotlib.use("Qt5Agg")
 
 
 
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
 
 
 def run_moment_calculation():
@@ -99,7 +100,7 @@ def plot_confusion_matrix(
 
 
 if __name__ == "__main__":
-    np.set_printoptions(precision=5, linewidth=200)
+    np.set_printoptions(precision=3, linewidth=200)
 
     # run_moment_calculation()
 
@@ -107,43 +108,55 @@ if __name__ == "__main__":
     # X_validation, y_validation = core.generate_data(config.validation_sequence)
     X_test, y_test = core.generate_data(config.test_sequence)
 
-    # clf = RandomForestClassifier()
-    clf = KNeighborsClassifier()
-    clf.fit(X_train, y_train)
+    # Normalize the data
+    x_train_norm = normalize(X_train, norm='l2')
+    x_test_norm = normalize(X_test, norm='l2')
 
+    clf = RandomForestClassifier(n_estimators=100)
+    # clf = KNeighborsClassifier()
+    clf.fit(x_train_norm, y_train)
+
+########################################################################################
     # parameters = {'n_estimators': [50, 100, 150],
     #               'max_depth': [None, 10, 50, 100, 500, 1000]}
     # clf = GridSearchCV(clf, parameters, cv=10, refit=True)
     #
     # clf.fit(X_train, y_train)
 
-    accuracy = clf.score(X_train, y_train)
+    accuracy = clf.score(x_train_norm, y_train)
     print(f"Training set accuracy: {accuracy}")
 
-    y_test_predicted = clf.predict(X_test)
-    accuracy_score = accuracy_score(y_test, y_test_predicted)
-    print(f"Testing set accuracy: {accuracy_score}")
+    y_test_predicted = clf.predict(x_test_norm)
+    accuracy = accuracy_score(y_test, y_test_predicted)
+    print(f"Testing set accuracy: {accuracy}")
 
-    labels = np.array(
-        [
-            "blank",
-            "boxing",
-            "handclapping",
-            "handwaving",
-            "jogging",
-            "running",
-            "walking",
-        ]
-    )
+    import pdb; pdb.set_trace()
 
-    # Plot normalized confusion matrix
-    fig, ax = plot_confusion_matrix(
-        y_test.astype(np.uint8),
-        y_test_predicted.astype(np.uint8),
-        classes=labels,
-        normalize=True,
-    )
+    print("Should you save this model?")
 
-    fig.savefig("confusion_matrix.png")
 
-    plt.show()
+
+#     labels = np.array(
+#         [
+#             "blank",
+#             "boxing",
+#             "handclapping",
+#             "handwaving",
+#             "jogging",
+#             "running",
+#             "walking",
+#         ]
+#     )
+#
+#     # Plot normalized confusion matrix
+#     fig, ax = plot_confusion_matrix(
+#         y_test.astype(np.uint8),
+#         y_test_predicted.astype(np.uint8),
+#         classes=labels,
+#         normalize=True,
+#     )
+#
+#     fig.savefig("confusion_matrix.png")
+#
+#     plt.show()
+# ########################################################################################
