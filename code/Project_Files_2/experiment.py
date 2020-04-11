@@ -1,25 +1,32 @@
 import pprint
-# import warnings
+import warnings
 
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.utils.multiclass import unique_labels
 from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.utils.multiclass import unique_labels
 
 import config
 import core
 
+# warnings.filterwarnings("ignore")
+
+
+
+
+# Console settings
 matplotlib.use("Qt5Agg")
 
+np.set_printoptions(precision=3, linewidth=200)
 
-
-# warnings.filterwarnings("ignore")
+SAVED_DATA_DIR = "saved_objects"
+TAU = core.ActionVideo.TAU
 
 
 def run_moment_calculation():
@@ -38,115 +45,108 @@ def run_moment_calculation():
         pprint.pprint(cv2.HuMoments(cv2_moments).flatten())
 
 
-def plot_confusion_matrix(
-    y_true, y_pred, classes, normalize=False, title=None, cmap=plt.cm.Blues
-):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
-    if not title:
-        if normalize:
-            title = "Normalized confusion matrix"
-        else:
-            title = "Confusion matrix, without normalization"
-
-    # Compute confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    # Only use the labels that appear in the data
-    classes = classes[unique_labels(y_true, y_pred)]
-    if normalize:
-        cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print("Confusion matrix, without normalization")
-
-    print(cm)
-
-    fig, ax = plt.subplots()
-    im = ax.imshow(cm, interpolation="nearest", cmap=cmap)
-    ax.figure.colorbar(im, ax=ax)
-    # We want to show all ticks...
-    ax.set(
-        xticks=np.arange(cm.shape[1]),
-        yticks=np.arange(cm.shape[0]),
-        # ... and label them with the respective list entries
-        xticklabels=classes,
-        yticklabels=classes,
-        title=title,
-        ylabel="True label",
-        xlabel="Predicted label",
-    )
-
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
-
-    # Loop over data dimensions and create text annotations.
-    fmt = ".2f" if normalize else "d"
-    thresh = cm.max() / 2.0
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax.text(
-                j,
-                i,
-                format(cm[i, j], fmt),
-                ha="center",
-                va="center",
-                color="white" if cm[i, j] > thresh else "black",
-            )
-    fig.tight_layout()
-
-    return fig, ax
-
-
 if __name__ == "__main__":
-    np.set_printoptions(precision=3, linewidth=200)
+    get_data = True
+    show_graph = False
 
-    # run_moment_calculation()
+    if get_data:
+        X_train, y_train = core.generate_data(
+            config.training_sequence + config.validation_sequence
+        )
+        X_validation, y_validation = core.generate_data(config.validation_sequence)
+        X_test, y_test = core.generate_data(config.test_sequence)
 
-    X_train, y_train = core.generate_data(config.training_sequence)
-    # X_validation, y_validation = core.generate_data(config.validation_sequence)
-    X_test, y_test = core.generate_data(config.test_sequence)
+        # Save the data
+        np.save(f"{SAVED_DATA_DIR}/X_train_{TAU}", X_train)
+        np.save(f"{SAVED_DATA_DIR}/X_test_{TAU}", X_test)
+        np.save(f"{SAVED_DATA_DIR}/y_train_{TAU}", y_train)
+        np.save(f"{SAVED_DATA_DIR}/y_test_{TAU}", y_test)
+
+    # Load the data
+    print("Loading data ...")
+    X_train = np.load(f"{SAVED_DATA_DIR}/X_train_{TAU}.npy")
+    X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{TAU}.npy")
+    y_train = np.load(f"{SAVED_DATA_DIR}/y_train_{TAU}.npy")
+    y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{TAU}.npy")
 
     # Normalize the data
-    x_train_norm = normalize(X_train, norm='l2')
-    x_test_norm = normalize(X_test, norm='l2')
+    print("Normalizing data ...")
+    x_train_norm = normalize(X_train, norm="l2")
+    x_test_norm = normalize(X_test, norm="l2")
 
-    clf = RandomForestClassifier(n_estimators=100)
-    # clf = KNeighborsClassifier()
+    print("Training classifier ...")
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    # clf = KNeighborsClassifier(n_neighbors=10)
     clf.fit(x_train_norm, y_train)
 
-########################################################################################
+    ######################################################################################
     # parameters = {'n_estimators': [50, 100, 150],
     #               'max_depth': [None, 10, 50, 100, 500, 1000]}
     # clf = GridSearchCV(clf, parameters, cv=10, refit=True)
     #
     # clf.fit(X_train, y_train)
+    ######################################################################################
 
+    print("Predicting ...")
     accuracy = clf.score(x_train_norm, y_train)
-    print(f"Training set accuracy: {accuracy}")
+    print(f"\nTraining set accuracy: {accuracy}")
+
+    # Todo: Add The baseline predictions use random choice.
+    # baseline_preds = test_features[:, feature_list.index('average')]
+    y_random = np.random.choice(list(range(8)), size=y_test.shape, replace=True, p=None)
+    accuracy = accuracy_score(y_test, y_random)
+    print(f"\nBaseline accuracy: {accuracy}")
 
     y_test_predicted = clf.predict(x_test_norm)
     accuracy = accuracy_score(y_test, y_test_predicted)
-    print(f"Testing set accuracy: {accuracy}")
+    print(f"\nTesting set accuracy: {accuracy}")
 
-    import pdb; pdb.set_trace()
+    import pdb
 
-    print("Should you save this model?")
+    pdb.set_trace()
 
+    if show_graph:
+        cm = confusion_matrix(y_test, y_test_predicted)
 
+        class_names = np.array(
+            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
+        )
 
-#     labels = np.array(
-#         [
-#             "blank",
-#             "boxing",
-#             "handclapping",
-#             "handwaving",
-#             "jogging",
-#             "running",
-#             "walking",
-#         ]
-#     )
+        title = "Confusion Matrix - Training Data"
+
+        disp = plot_confusion_matrix(
+            clf,
+            x_train_norm,
+            y_train,
+            display_labels=class_names,
+            cmap=plt.cm.Blues,
+            normalize="true",
+        )
+        disp.figure_.savefig("confusion_matrix_training.png")
+
+        disp.ax_.set_title(title)
+
+        print(title)
+        print(disp.confusion_matrix)
+
+        title = "Confusion Matrix - Testing Data"
+
+        disp = plot_confusion_matrix(
+            clf,
+            x_test_norm,
+            y_test,
+            display_labels=class_names,
+            cmap=plt.cm.Reds,
+            normalize="true",
+        )
+        disp.ax_.set_title(title)
+
+        print(title)
+        print(disp.confusion_matrix)
+
+        plt.show()
+
+        disp.figure_.savefig("confusion_matrix_testing.png")
 #
 #     # Plot normalized confusion matrix
 #     fig, ax = plot_confusion_matrix(
@@ -159,4 +159,3 @@ if __name__ == "__main__":
 #     fig.savefig("confusion_matrix.png")
 #
 #     plt.show()
-# ########################################################################################

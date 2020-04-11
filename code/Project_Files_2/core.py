@@ -1,13 +1,16 @@
-import matplotlib
-matplotlib.use('Qt5Agg')
-import matplotlib.pyplot as plt
-
 import os
 
 import cv2
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 
-from config import actions, backgrounds, frame_sequences, training_sequence
+from config import actions, backgrounds, frame_sequences
+
+matplotlib.use("Qt5Agg")
+
+
+
 
 VID_DIR = "sample_dataset"
 WAIT_DURATION = 10
@@ -67,19 +70,52 @@ class BinaryMotion:
         cv2.imshow("binary_image", self.binary_image)
         cv2.waitKey(WAIT_DURATION)
 
+    def view_image(self, text=None):
+        img = np.copy(self.last_image)
+        if text:
+            img = self._add_text(img, str(text), (100, 100))
+
+        cv2.namedWindow("last_image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("last_image", (600, 600))
+        cv2.imshow("last_image", img)
+        cv2.waitKey(WAIT_DURATION)
+
+    @staticmethod
+    def _add_text(img, text, coordinate):
+        h, w = img.shape
+        x, y = coordinate
+        font = cv2.FONT_ITALIC
+        fontScale = 0.7
+        color_outline = (255, 255, 255)
+        color_text = (0, 0, 0)
+        thickness_outline = 2
+        thickness_text = 1
+
+        # text_width, text_height = \
+        # cv2.getTextSize(text, font, fontScale, thickness_outline)[0]
+        # org = (x - int(text_width / 2), y + 30)
+        # while (org[0] + text_width) > w:
+        #     org = (org[0] - 1, org[1])
+        org = (x, y)
+
+        cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline)
+
+        return img
+
 
 class TemporalTemplate:
     def __init__(self, tau):
         self.tau = tau
         self.motion_images = None
-        self.mhi = None
-        self.mei = None
+        self._mhi = None
+        self._mei = None
         # Note: self.mei could just be mhi as float right?
 
     def update(self, motion_img):
         if self.motion_images is None:
             h, w = motion_img.shape
             self.motion_images = np.zeros((h, w, self.tau), dtype=np.uint8)
+            self._mhi = np.zeros((h, w))
         else:
             self.motion_images[:, :, : self.tau - 1] = self.motion_images[
                 :, :, 1 : self.tau
@@ -90,32 +126,57 @@ class TemporalTemplate:
         self._make_motion_history_image()
         self._make_motion_energy_image()
 
+    # def _make_motion_history_image(self):
+    #     h, w, n = self.motion_images.shape
+    #
+    #     mhi = np.zeros((h, w))
+    #
+    #     tau = self.tau - 1
+    #
+    #     for i in range(self.tau-1, -1, -1):
+    #         # print(f'Tau {tau}, i {i}')
+    #         idx = self.motion_images[:, :, i] == 1
+    #         mhi[idx] = tau
+    #         tau = tau - 1
+    #
+    #     self.mhi = cv2.normalize(
+    #         mhi, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+    #     )
+    # #
+    # # # TODO: Also consider, should we be normalizing this? What about making self._mhi and
+    # # # exposing mhi as a property?
+
     def _make_motion_history_image(self):
         h, w, n = self.motion_images.shape
 
         mhi = np.zeros((h, w))
 
-        tau = self.tau - 1
+        idx = self.motion_images[:, :, -1] == 1
 
-        for i in range(self.tau-1, -1, -1):
-            # print(f'Tau {tau}, i {i}')
-            idx = self.motion_images[:, :, i] == 1
-            mhi[idx] = tau
-            tau = tau - 1
+        mhi[idx] = self.tau
+        mhi[~idx] = self._mhi[~idx] - 1
 
-        self.mhi = cv2.normalize(
-            mhi, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+        mhi[mhi < 0] = 0
+
+        self._mhi = mhi
+
+    @property
+    def mhi(self):
+        return cv2.normalize(
+            self._mhi, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+        )
+
+    @property
+    def mei(self):
+        return cv2.normalize(
+            self._mei, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
         )
 
     def _make_motion_energy_image(self):
         mei = np.zeros(self.mhi.shape)
-        mei[self.mhi > 0] = 1
+        mei[self._mhi > 0] = 1
 
-        self.mei = mei
-            or
-        self.mei = cv2.normalize(
-            mei, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
-        )
+        self._mei = mei
 
     def view(self, type):
         if type == "mhi":
@@ -218,13 +279,16 @@ class HuMoments:
 
 
 class ActionVideo:
+    TAU_MAX = 40
+    TAU_MIN = 10
+    TAU = 20
     PARAM_MAP = {
-        'boxing':       {"label": 1, "theta": 20, "ksize": 2, "tau": 25},  # noqa
-        'handclapping': {"label": 2, "theta": 20, "ksize": 2, "tau": 25},  # noqa
-        'handwaving':   {"label": 3, "theta": 20, "ksize": 2, "tau": 25},  # noqa
-        "jogging":      {"label": 4, "theta": 20, "ksize": 2, "tau": 25},  # noqa
-        "running":      {"label": 5, "theta": 20, "ksize": 2, "tau": 25},  # noqa
-        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": 25},  # noqa
+        "boxing": {"label": 1, "theta": 10, "ksize": 2, "tau": TAU},  # noqa
+        "handclapping": {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+        "handwaving": {"label": 3, "theta": 35, "ksize": 2, "tau": TAU_MAX},  # noqa
+        "jogging": {"label": 4, "theta": 35, "ksize": 2, "tau": TAU},  # noqa
+        "running": {"label": 5, "theta": 35, "ksize": 2, "tau": TAU_MIN},  # noqa
+        "walking": {"label": 6, "theta": 35, "ksize": 2, "tau": TAU},  # noqa
     }
 
     def __init__(self, num, action, background):
@@ -323,19 +387,22 @@ class ActionVideo:
                 # cv2.imwrite(f"output_images/{i}_mhi.jpg", temporal_template.mhi)
 
                 # binary_motion.view()
-                # temporal_template.view(type="mhi")
+                # binary_motion.view_image(text=i)
+                temporal_template.view(type="mhi")
                 # temporal_template.view(type="mei")
 
                 # if self.frame_labels.shape[0] == 141:
                 #     cv2.imwrite(f"output_images/{counter}_binary.jpg", binary_motion.get_binary_image() * 255)
                 #     cv2.imwrite(f"output_images/{counter}_mhi.jpg", temporal_template.mhi)
 
-                hu_moments_mei = HuMoments(temporal_template.mei)
-                hu_moments_mhi = HuMoments(temporal_template.mhi)
-                hu_moments = np.concatenate((hu_moments_mei.values,hu_moments_mhi.values))
+                hu_moments_mei = HuMoments(temporal_template._mei)
+                hu_moments_mhi = HuMoments(temporal_template._mhi)
+                hu_moments = np.concatenate(
+                    (hu_moments_mei.values, hu_moments_mhi.values)
+                )
 
                 # print(hu_moments.values)
-                label = np.array([self.PARAM_MAP[self.action]['label']])
+                label = np.array([self.PARAM_MAP[self.action]["label"]])
 
                 # print(hu_moments)
                 if np.any(hu_moments):
@@ -344,7 +411,6 @@ class ActionVideo:
                 else:
                     self.frame_features = np.vstack((self.frame_features, hu_moments))
                     self.frame_labels = np.vstack((self.frame_labels, 0))
-
 
         self.frame_features = self.frame_features[1:, :]
         self.frame_labels = self.frame_labels[1:]
@@ -383,9 +449,9 @@ def generate_data(sequence):
     Xtrain = np.zeros((1, NUM_HU))
     ytrain = np.zeros(1)
 
-    for person_num in sequence[:]:
+    for person_num in sequence:
         for action in actions:
-            for background in backgrounds:
+            for background in backgrounds[:1]:
 
                 action_video = ActionVideo(person_num, action, background)
                 print(action_video.key_name)
@@ -403,16 +469,14 @@ def generate_data(sequence):
 
 
 def plot_features(features, **kwargs):
-    labels = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7']
+    labels = ["h1", "h2", "h3", "h4", "h5", "h6", "h7"]
 
     fig, ax = plt.subplots()
 
     ax.plot(features[:, :7])
     ax.legend(labels, bbox_to_anchor=(1, 1))
     ax.set(
-        xlabel='Frame number',
-        ylabel='Hu Value',
-        title=f'{kwargs.get("title", "Plot")}'
+        xlabel="Frame number", ylabel="Hu Value", title=f'{kwargs.get("title", "Plot")}'
     )
 
     plt.show()
