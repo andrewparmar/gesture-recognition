@@ -14,6 +14,7 @@ from sklearn.utils.multiclass import unique_labels
 
 import config
 import core
+from core import ActionVideo, TAU, NUM_HU
 
 # warnings.filterwarnings("ignore")
 
@@ -26,7 +27,6 @@ matplotlib.use("Qt5Agg")
 np.set_printoptions(precision=3, linewidth=200)
 
 SAVED_DATA_DIR = "saved_objects"
-TAU = core.ActionVideo.TAU
 
 
 def run_moment_calculation():
@@ -46,7 +46,7 @@ def run_moment_calculation():
 
 
 if __name__ == "__main__":
-    get_data = True
+    get_data = False
     show_graph = False
 
     if get_data:
@@ -101,9 +101,26 @@ if __name__ == "__main__":
     accuracy = accuracy_score(y_test, y_test_predicted)
     print(f"\nTesting set accuracy: {accuracy}")
 
-    import pdb
+    # import pdb; pdb.set_trace()
 
-    pdb.set_trace()
+    y_test_predictions = []
+
+    action_video = ActionVideo(22, 'boxing', 'd1')
+    for i, hu_set in enumerate(action_video.frame_hu_set_generator()):
+        hu_set[~np.isfinite(hu_set).any(axis=1)] = np.zeros(NUM_HU)
+
+        # print(hu_set)
+        hu_set_norm = normalize(hu_set, norm="l2")
+
+        action_pred = clf.predict(hu_set).astype(np.uint8)
+
+        counts = np.bincount(action_pred)
+        prediction =  np.argmax(counts)
+        if i == 10:
+            import pdb; pdb.set_trace()
+        print(prediction, clf.predict(x_test_norm[i].reshape(1, -1)))
+        y_test_predictions.append(prediction)
+
 
     if show_graph:
         cm = confusion_matrix(y_test, y_test_predicted)
