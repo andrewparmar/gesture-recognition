@@ -15,7 +15,7 @@ NUM_HU = 7 * 2
 TAU_MAX = 40
 TAU = 20
 TAU_MIN = 10
-THETA = 10
+THETA = 20
 
 
 class BinaryMotion:
@@ -406,7 +406,13 @@ class ActionVideo:
 
         return feature_sequence
 
-    def frame_hu_set_generator(self):
+    def frame_feature_set_generator(self):
+        """
+        We need a generator because we need N feature values for each frame.
+
+        Need a 3d array to store all values and them apply all log values.
+        Complicates things a bit.
+        """
         binary_image_history = 2
         theta = THETA
 
@@ -415,17 +421,16 @@ class ActionVideo:
         binary_motion = BinaryMotion(binary_image_history, theta)
         temporal_template = TemporalTemplate(TAU_MAX)
 
-        tmp_tau = self.PARAM_MAP[self.action]["tau"]
-        tmp_temporal_template = TemporalTemplate(tmp_tau)   # TODO: Remove
+        # tmp_temporal_template = TemporalTemplate(self.PARAM_MAP[self.action]["tau"])   # TODO: Remove
 
-        self.analyze_frames()   # TODO: Remove
+        # self.analyze_frames()   # TODO: Remove
 
         for i in range(self.video_frame_array.shape[-1]):
             input_image_t = self.video_frame_array[:, :, i]
 
             binary_motion.update(input_image_t)
             temporal_template.update(binary_motion.get_binary_image())
-            tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
+            # tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
 
             # binary_motion.view()
             # temporal_template.view(type='mhi')
@@ -434,23 +439,38 @@ class ActionVideo:
 
             features_sequence = self.get_feature_sequence(temporal_template._mhi)
 
-            hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
-            tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
+            ##############################################################################
+            # hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
+            # features_hu_moments_mhi_max_tau = np.log(np.abs(hu_moments_mhi_max_tau.values))
+            # if np.any(np.isinf(features_hu_moments_mhi_max_tau)):
+            #     features_hu_moments_mhi_max_tau = np.zeros(features_hu_moments_mhi_max_tau.shape)
+            #
+            # tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
+            # features_tmp_hu_moments_mhi_max_tau = np.log(np.abs(tmp_hu_moments_mhi_max_tau.values))
+            # if np.any(np.isinf(features_tmp_hu_moments_mhi_max_tau)):
+            #     features_tmp_hu_moments_mhi_max_tau = np.zeros(features_tmp_hu_moments_mhi_max_tau.shape)
+            ##############################################################################
 
-            try:
-                assert np.all(hu_moments_mhi_max_tau.values == features_sequence[0, 7:])  # TODO: Remove
-                assert np.all(tmp_hu_moments_mhi_max_tau.values == features_sequence[20, 7:])
-                assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
-            except:
-                import pdb; pdb.set_trace()
+            # try:
+            #     print("Compare 1")
+            #     assert np.all(features_hu_moments_mhi_max_tau == features_sequence[0, 7:])  # TODO: Remove
+            # except:
+            #     import pdb; pdb.set_trace()
+            #
+            # try:
+            #     print("Compare 2")
+            #     assert np.all(features_tmp_hu_moments_mhi_max_tau == features_sequence[20, 7:])
+            # except:
+            #     import pdb; pdb.set_trace()
+            #
+            # if i < 105:
+            #     try:
+            #         print("Compare 3")
+            #         assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
+            #     except:
+            #         import pdb; pdb.set_trace()
 
             yield features_sequence
-
-            # # Todo: Replace this with the real multi-window Hu
-            # features_sequence = np.log(np.abs(self.frame_features))
-            # features_sequence[~np.isfinite(features_sequence).any(axis=1)] = np.zeros(NUM_HU)
-            # print(features_sequence)
-            # yield features_sequence
 
             frame_num += 1
 

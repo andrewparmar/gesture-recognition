@@ -50,7 +50,7 @@ def run_moment_calculation():
 #     features_frames1, _ = core.generate_data(config.test_sequence)
 #
 #     action_video = ActionVideo(2, 'boxing', 'd1')
-#     action_video_gen = action_video.frame_hu_set_generator()
+#     action_video_gen = action_video.frame_feature_set_generator()
 #     features_frames2 = action_video_gen.__next__()
 #
 #     try:
@@ -117,33 +117,42 @@ if __name__ == "__main__":
     print(f"\nBaseline accuracy: {baseline_accuracy}")
     print(f"\nTesting set accuracy: {testing_accuracy}")
 
-    # y_test_predictions = []
-    #
-    # action_video = ActionVideo(2, 'boxing', 'd1')
-    #
-    # for i, hu_set in enumerate(action_video.frame_hu_set_generator()):
-    #
-    #     hu_set_norm = normalize(hu_set, norm="l2")
-    #
-    #     try:
-    #         assert np.all(hu_set_norm == x_test_norm[i])
-    #     except:
-    #         import pdb; pdb.set_trace()
-    #
-    #     # action_pred = clf.predict(hu_set_norm[20].reshape(1, -1)).astype(np.uint8)
-    #     action_pred = clf.predict(hu_set_norm.reshape(1, -1))
-    #
-    #     # counts = np.bincount(action_pred)
-    #     # prediction = np.argmax(counts)
-    #     predict_other = clf.predict(x_test_norm[i].reshape(1, -1))
-    #
-    #     print(action_pred, predict_other)
-    #
-    #     # if predict_other == 1:
-    #     #     import pdb; pdb.set_trace()
-    #
-    #     # y_test_predictions.append(prediction)
-    #     # pass
+    y_test_predictions = []
+
+    action_video = ActionVideo(2, 'boxing', 'd1')
+
+    try:
+        for i, feature_set in enumerate(action_video.frame_feature_set_generator()):
+            features_set_norm = normalize(feature_set, norm="l2")
+
+            try:
+                assert np.all(features_set_norm == x_test_norm[i])
+            except:
+                print("inside here ***************** ")
+                # import pdb; pdb.set_trace()
+                pass
+
+            # action_pred = clf.predict(features_set_norm[20].reshape(1, -1)).astype(np.uint8)
+            action_pred_proba = clf.predict_proba(features_set_norm)
+            action_pred = np.unravel_index(action_pred_proba.argmax(), action_pred_proba.shape)[1]
+
+            # import pdb; pdb.set_trace()
+
+
+            # counts = np.bincount(action_pred)
+            # prediction = np.argmax(counts)
+            predict_other = clf.predict(x_test_norm[i].reshape(1, -1))
+
+            # print(action_pred, predict_other)
+
+
+            # if predict_other == 1:
+            #     import pdb; pdb.set_trace()
+
+            y_test_predictions.append(action_pred)
+            # pass
+    except Exception as e:
+        import pdb; pdb.set_trace()
 
     if show_graph:
         cm = confusion_matrix(y_test, y_test_predicted)
