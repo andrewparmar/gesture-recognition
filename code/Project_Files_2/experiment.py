@@ -45,15 +45,28 @@ def run_moment_calculation():
         pprint.pprint(cv2.HuMoments(cv2_moments).flatten())
 
 
+# if __name__ == "__main__2":
+#
+#     features_frames1, _ = core.generate_data(config.test_sequence)
+#
+#     action_video = ActionVideo(2, 'boxing', 'd1')
+#     action_video_gen = action_video.frame_hu_set_generator()
+#     features_frames2 = action_video_gen.__next__()
+#
+#     try:
+#         assert np.all(features_frames2[:5] == features_frames1[:5])
+#     except:
+#         import pdb; pdb.set_trace()
+
+
 if __name__ == "__main__":
-    get_data = False
+    get_data = True
     show_graph = False
 
     if get_data:
-        X_train, y_train = core.generate_data(
-            config.training_sequence + config.validation_sequence
-        )
-        X_validation, y_validation = core.generate_data(config.validation_sequence)
+        X_train, y_train = core.generate_data(config.training_sequence)
+        # X_train, y_train = core.generate_data([14, 15, 16, 17, 18])
+        # X_validation, y_validation = core.generate_data(config.validation_sequence)
         X_test, y_test = core.generate_data(config.test_sequence)
 
         # Save the data
@@ -79,6 +92,8 @@ if __name__ == "__main__":
     # clf = KNeighborsClassifier(n_neighbors=10)
     clf.fit(x_train_norm, y_train)
 
+    #save the classifier as actions_rfc_model.pkl
+
     ######################################################################################
     # parameters = {'n_estimators': [50, 100, 150],
     #               'max_depth': [None, 10, 50, 100, 500, 1000]}
@@ -88,39 +103,48 @@ if __name__ == "__main__":
     ######################################################################################
 
     print("Predicting ...")
-    accuracy = clf.score(x_train_norm, y_train)
-    print(f"\nTraining set accuracy: {accuracy}")
 
-    # Todo: Add The baseline predictions use random choice.
-    # baseline_preds = test_features[:, feature_list.index('average')]
+    # training_accuracy = clf.score(x_train_norm, y_train)
+    y_train_predicted = clf.predict(x_train_norm)
+    training_accuracy = accuracy_score(y_train, y_train_predicted)
+
     y_random = np.random.choice(list(range(8)), size=y_test.shape, replace=True, p=None)
-    accuracy = accuracy_score(y_test, y_random)
-    print(f"\nBaseline accuracy: {accuracy}")
+    baseline_accuracy = accuracy_score(y_test, y_random)
 
     y_test_predicted = clf.predict(x_test_norm)
-    accuracy = accuracy_score(y_test, y_test_predicted)
-    print(f"\nTesting set accuracy: {accuracy}")
+    testing_accuracy = accuracy_score(y_test, y_test_predicted)
 
-    # import pdb; pdb.set_trace()
+    print(f"\nTraining set accuracy: {training_accuracy}")
+    print(f"\nBaseline accuracy: {baseline_accuracy}")
+    print(f"\nTesting set accuracy: {testing_accuracy}")
 
     y_test_predictions = []
 
-    action_video = ActionVideo(22, 'boxing', 'd1')
-    for i, hu_set in enumerate(action_video.frame_hu_set_generator()):
-        hu_set[~np.isfinite(hu_set).any(axis=1)] = np.zeros(NUM_HU)
+    action_video = ActionVideo(2, 'boxing', 'd1')
 
-        # print(hu_set)
-        hu_set_norm = normalize(hu_set, norm="l2")
-
-        action_pred = clf.predict(hu_set).astype(np.uint8)
-
-        counts = np.bincount(action_pred)
-        prediction =  np.argmax(counts)
-        if i == 10:
-            import pdb; pdb.set_trace()
-        print(prediction, clf.predict(x_test_norm[i].reshape(1, -1)))
-        y_test_predictions.append(prediction)
-
+    # for i, hu_set in enumerate(action_video.frame_hu_set_generator()):
+    #
+    #     hu_set_norm = normalize(hu_set, norm="l2")
+    #
+    #     try:
+    #         assert np.all(hu_set_norm == x_test_norm[i])
+    #     except:
+    #         import pdb; pdb.set_trace()
+    #
+    #     # action_pred = clf.predict(hu_set_norm[20].reshape(1, -1)).astype(np.uint8)
+    #     action_pred = clf.predict(hu_set_norm.reshape(1, -1))
+    #
+    #     # counts = np.bincount(action_pred)
+    #     # prediction = np.argmax(counts)
+    #     predict_other = clf.predict(x_test_norm[i].reshape(1, -1))
+    #
+    #     print(action_pred, predict_other)
+    #
+    #     # if predict_other == 1:
+    #     #     import pdb; pdb.set_trace()
+    #
+    #     # y_test_predictions.append(prediction)
+    #     # pass
 
     if show_graph:
         cm = confusion_matrix(y_test, y_test_predicted)

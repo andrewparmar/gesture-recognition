@@ -1,5 +1,5 @@
 import os
-
+import time
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
@@ -10,22 +10,22 @@ from config import actions, backgrounds, frame_sequences
 matplotlib.use("Qt5Agg")
 
 VID_DIR = "sample_dataset"
-WAIT_DURATION = 10
+WAIT_DURATION = 100
 NUM_HU = 7 * 2
 TAU_MAX = 40
 TAU_MIN = 10
 TAU = 20
-THETA = 20
+THETA = 10
 
 
 class BinaryMotion:
-    def __init__(self, len_img_history, threshold):
+    def __init__(self, len_img_history, threshold, ksize=2):
         self.n = len_img_history
         self.theta = threshold
         self.images = None
         self.last_image = None
         self.binary_image = None
-        self.ksize = 2
+        self.ksize = ksize
 
     def update(self, image):
         if self.images is None:
@@ -47,7 +47,7 @@ class BinaryMotion:
                 np.uint8
             )
             diff_image = cv2.absdiff(self.last_image, median_image)
-        if mode == "mean":
+        elif mode == "mean":
             median_image = np.mean(self.images[:, :, : self.n - 1], axis=2).astype(
                 np.uint8
             )
@@ -101,7 +101,6 @@ class TemporalTemplate:
         self.motion_images = None
         self._mhi = None
         self._mei = None
-        # Note: self.mei could just be mhi as float right?
 
     def update(self, motion_img):
         if self.motion_images is None:
@@ -172,7 +171,7 @@ class HuMoments:
 
         if image.sum() == 0:
             keys = ["nu11", "nu12", "nu21", "nu02", "nu20", "nu03", "nu30"]
-            moments = {k: 0 for k in keys}
+            moments = {k: 0.0 for k in keys}
             return moments
         else:
             x_mean = (x * image).sum() / image.sum()
@@ -252,12 +251,12 @@ class HuMoments:
 class ActionVideo:
 
     PARAM_MAP = {
-        "boxing":       {"label": 1, "theta": 10, "ksize": 2, "tau": TAU},  # noqa
+        "boxing":       {"label": 1, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
         "handclapping": {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
-        "handwaving":   {"label": 3, "theta": 35, "ksize": 2, "tau": TAU_MAX},  # noqa
-        "jogging":      {"label": 4, "theta": 35, "ksize": 2, "tau": TAU},  # noqa
-        "running":      {"label": 5, "theta": 35, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "walking":      {"label": 6, "theta": 35, "ksize": 2, "tau": TAU},  # noqa
+        "handwaving":   {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
+        "jogging":      {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+        "running":      {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
+        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
     }
 
     def __init__(self, num, action, background):
@@ -334,13 +333,14 @@ class ActionVideo:
         binary_image_history = 2
         theta = self.PARAM_MAP[self.action]["theta"]
         tau = self.PARAM_MAP[self.action]["tau"]
+        ksize = self.PARAM_MAP[self.action]["ksize"]
 
         self.frame_features = np.zeros((1, NUM_HU))
         self.frame_labels = np.array([0])
 
         for frame_range in self.frame_ranges:
 
-            binary_motion = BinaryMotion(binary_image_history, theta)
+            binary_motion = BinaryMotion(binary_image_history, theta, ksize)
             temporal_template = TemporalTemplate(tau)
 
             start = frame_range[0] - 1
@@ -352,188 +352,124 @@ class ActionVideo:
 
                 binary_motion.update(input_image_t)
                 temporal_template.update(binary_motion.get_binary_image())
-                # cv2.imwrite(f"output_images/{i}_binary.jpg",
-                #  binary_motion.get_binary_image() * 255)
-                # cv2.imwrite(f"output_images/{i}_mhi.jpg", temporal_template.mhi)
 
                 # binary_motion.view()
                 # binary_motion.view_image(text=i)
                 # temporal_template.view(type="mhi")
                 # temporal_template.view(type="mei")
 
-                # if self.frame_labels.shape[0] == 141:
-                #     cv2.imwrite(f"output_images/{counter}_binary.jpg",
-                #  binary_motion.get_binary_image() * 255)
-                #     cv2.imwrite(f"output_images/{counter}_mhi.jpg",
-                #  temporal_template.mhi)
-
                 hu_moments_mei = HuMoments(temporal_template._mei)
                 hu_moments_mhi = HuMoments(temporal_template._mhi/temporal_template.tau)
                 hu_moments = np.concatenate(
                     (hu_moments_mei.values, hu_moments_mhi.values)
                 )
+                hu_moments = np.log(np.abs(hu_moments))
+                # print(tmp_hu_moments)
 
-                # print(hu_moments.values)
-                label = np.array([self.PARAM_MAP[self.action]["label"]])
+                if np.any(np.isinf(hu_moments)):
+                    zero_hu= np.zeros(hu_moments.shape)
+                    self.frame_features = np.vstack((self.frame_features, zero_hu))
+                    self.frame_labels = np.vstack((self.frame_labels, 0))
+                else:
+                    label = np.array([self.PARAM_MAP[self.action]["label"]])
 
-                # print(hu_moments)
-                if np.any(hu_moments):
                     self.frame_features = np.vstack((self.frame_features, hu_moments))
                     self.frame_labels = np.vstack((self.frame_labels, label))
-                else:
-                    self.frame_features = np.vstack((self.frame_features, hu_moments))
-                    self.frame_labels = np.vstack((self.frame_labels, 0))
+
+                # print(hu_moments)
+                # if np.any(hu_moments):
+                #     self.frame_features = np.vstack((self.frame_features, hu_moments))
+                #     self.frame_labels = np.vstack((self.frame_labels, label))
+                # else:
+                #     self.frame_features = np.vstack((self.frame_features, hu_moments))
+                #     self.frame_labels = np.vstack((self.frame_labels, 0))
 
         self.frame_features = self.frame_features[1:, :]
         self.frame_labels = self.frame_labels[1:]
 
     def get_hu_moment_sequence(self, mhi):
-        diff = TAU_MAX - TAU_MIN
+        num_windows = TAU_MAX - TAU_MIN + 1
 
-        hu_sequence = np.zeros((diff, NUM_HU))
+        hu_sequence = np.zeros((num_windows, NUM_HU))
 
-        # if mhi.sum() != 0:
-        #     import pdb; pdb.set_trace()
-
-        # import pdb; pdb.set_trace()
-        for i in range(diff):
-            # tmp_mhi = (mhi - i) / (TAU_MAX - i)
+        for i in range(num_windows):
             tmp_mhi = (mhi - i)
             tmp_mhi[tmp_mhi < 0 ] = 0
             tmp_mei = np.zeros(mhi.shape)
             tmp_mei[tmp_mhi > 0] = 1
 
-            # print(f'****** {i}', tmp_mhi.min(), tmp_mhi.max())
-            # calc hu for tmp_mei
             hu_moments_mei = HuMoments(tmp_mei)
-            hu_moments_mhi = HuMoments(tmp_mhi / TAU_MAX)
-            # calc hu for tmp_mhi
-
-            # concat
+            if tmp_mhi.max():
+                hu_moments_mhi = HuMoments(tmp_mhi / tmp_mhi.max())
+            else:
+                hu_moments_mhi = HuMoments(tmp_mhi)
             hu_moments = np.concatenate((hu_moments_mei.values, hu_moments_mhi.values))
 
-            # add to sequence
             hu_sequence[i] = hu_moments
-
-        # import pdb; pdb.set_trace()
 
         return hu_sequence
 
     def frame_hu_set_generator(self):
-        # input_video_path = os.path.join(VID_DIR, self.filename)
-        # input_image_gen = self._gray_frame_generator(input_video_path)
-        # input_image_t = input_image_gen.__next__()
-
         binary_image_history = 2
         theta = THETA
-        tau = TAU_MAX
 
         frame_num = 0
 
         binary_motion = BinaryMotion(binary_image_history, theta)
         temporal_template = TemporalTemplate(TAU_MAX)
 
-        # while input_image_t is not None:
+        tmp_tau = self.PARAM_MAP[self.action]["tau"]
+        tmp_temporal_template = TemporalTemplate(tmp_tau)
+
+        self.analyze_frames()
+
+        # cat = True
+        # if cat:
+        #     return self.frame_features
+
         for i in range(self.video_frame_array.shape[-1]):
-            # if frame_num % 20 == 0:
-            #     print("Processing fame {}".format(frame_num))
-            # if frame_num == 200:
-            #     cv2.imwrite("mhi_frame_200_person01_walking_d1.png", temporal_template.mhi)
             input_image_t = self.video_frame_array[:, :, i]
 
             binary_motion.update(input_image_t)
             temporal_template.update(binary_motion.get_binary_image())
+            tmp_temporal_template.update(binary_motion.get_binary_image())
 
             # binary_motion.view()
             # temporal_template.view(type='mhi')
             # temporal_template.view(type='mei')
-
-            # print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
-            if frame_num == 10:
-                import pdb; pdb.set_trace()
+            # tmp_temporal_template.view(type='mhi')
 
             hu_sequence = self.get_hu_moment_sequence(temporal_template._mhi)
+
+            hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)
+            tmp_hu_moments_mhi_max_tau = HuMoments(
+                tmp_temporal_template._mhi / tmp_temporal_template.tau)
+
+            assert np.all(hu_moments_mhi_max_tau.values == hu_sequence[0, 7:])
+
+            try:
+                assert np.all(tmp_hu_moments_mhi_max_tau.values == hu_sequence[20, 7:])
+                # assert np.all(self.frame_features[i, 7:] == hu_sequence[20, 7:])
+                assert np.all(self.frame_features[i] == hu_sequence[20])
+            except:
+                import pdb; pdb.set_trace()
+
             hu_sequence = np.log(np.abs(hu_sequence))
+            hu_sequence[~np.isfinite(hu_sequence).any(axis=1)] = np.zeros(NUM_HU)
+            # print(hu_sequence)
 
             yield hu_sequence
+
+            # # Todo: Replace this with the real multi-window Hu
+            # hu_sequence = np.log(np.abs(self.frame_features))
+            # hu_sequence[~np.isfinite(hu_sequence).any(axis=1)] = np.zeros(NUM_HU)
+            # print(hu_sequence)
+            # yield hu_sequence
 
             frame_num += 1
 
         yield None
 
-
-# class InputVideo(ActionVideo):
-#
-#     def __init__(self, num, action, background):
-#         self.key_name = f"person{num:02d}_{action}_{background}"
-#         self.filename = f"{self.key_name}_uncomp.avi"
-#         self.action = action
-#         self.frame_ranges = frame_sequences[self.key_name]
-#         self.video_frame_array = None
-#
-#         # self._video_to_image_array()
-#
-#     def get_hu_moment_sequence(self, mhi):
-#         diff = TAU_MAX - TAU_MIN
-#
-#         hu_sequence = np.zeros((diff, NUM_HU))
-#
-#         for i in range(diff):
-#             tmp_mhi = (mhi - i) / (TAU_MAX - i)
-#             tmp_mei = np.zero(mhi.shape)
-#             tmp_mei[tmp_mhi > 0] = 1
-#
-#             # calc hu for tmp_mei
-#             hu_moments_mei = HuMoments(tmp_mei)
-#             hu_moments_mhi = HuMoments(tmp_mhi)
-#             # calc hu for tmp_mhi
-#
-#             # concat
-#             hu_moments = np.concatenate((hu_moments_mei.values, hu_moments_mhi.values))
-#
-#             # add to sequence
-#             hu_sequence[i] = hu_moments
-#
-#         return hu_sequence
-#
-#     def video_frame_sequence_analyzer(self):
-#         input_video_path = os.path.join(VID_DIR, self.filename)
-#         input_image_gen = self._gray_frame_generator(input_video_path)
-#         input_image_t = input_image_gen.__next__()
-#
-#         binary_image_history = 2
-#         theta = THETA
-#         tau = TAU_MAX
-#
-#         frame_num = 0
-#
-#         binary_motion = BinaryMotion(binary_image_history, theta)
-#         temporal_template = TemporalTemplate(tau)
-#
-#         while input_image_t is not None:
-#             # if frame_num % 20 == 0:
-#             #     print("Processing fame {}".format(frame_num))
-#             # # if frame_num == 200:
-#             # #     cv2.imwrite("mhi_frame_200_person01_walking_d1.png", temporal_template.mhi)
-#
-#             binary_motion.update(input_image_t)
-#             temporal_template.update(binary_motion.get_binary_image())
-#
-#             binary_motion.view()
-#             temporal_template.view(type='mhi')
-#             # temporal_template.view(type='mei')
-#
-#             # print(f'Frame:{frame_num}; HuMoment: {get_hu_moments(temporal_template.mhi)}')
-#
-#             self.get_hu_moment_sequence(temporal_template._mhi)
-#
-#             yield
-#
-#             input_image_t = input_image_gen.__next__()
-#
-#             frame_num += 1
-
-import time
 
 def generate_data(sequence):
 
@@ -542,28 +478,31 @@ def generate_data(sequence):
 
     times = []
 
-    for person_num in sequence:
-        for action in actions:
+    for person_num in sequence[:]:
+        for action in list(actions.keys())[:]:
             for background in backgrounds[:1]:
 
                 action_video = ActionVideo(person_num, action, background)
 
                 print(action_video.key_name)
-                start = time.time()
+                # start = time.time()
                 action_video.analyze_frames()
-                end = time.time() - start
-                times.append(end)
-                print(end)
+                # end = time.time() - start
+                # times.append(end)
+                # print(end)
 
-                features = np.log(np.abs(action_video.frame_features))
-                features[~np.isfinite(features).any(axis=1)] = np.zeros(NUM_HU)
+                # Todo: consider dropping rows that have -inf in them? Dropping now.
+                # features = np.log(np.abs(action_video.frame_features))
+                # features[~np.isfinite(features).any(axis=1)] = np.zeros(NUM_HU)
+                # features[np.isinf(features)] = 0
+                features = action_video.frame_features
 
                 # plot_features(features, title=action_video.key_name)
 
                 Xtrain = np.vstack((Xtrain, action_video.frame_features))
                 ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))
 
-    print(f"Average time {sum(times)/len(times)}")
+    # print(f"Average time {sum(times)/len(times)}")
 
     return Xtrain[1:], ytrain[1:]
 

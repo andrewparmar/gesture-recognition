@@ -14,6 +14,7 @@ backgrounds = ["d1", "d2", "d3", "d4"]
 training_sequence = [11, 12, 13, 14, 15, 16, 17, 18]
 validation_sequence = [19, 20, 21, 23, 24, 25, 1, 4]
 test_sequence = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+# test_sequence = [2]
 
 frame_sequences = {
     "person01_boxing_d1": [(1, 95), (96, 185), (186, 245), (246, 360)],
