@@ -4,6 +4,7 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.preprocessing import StandardScaler, normalize
 
 from config import actions, backgrounds, frame_sequences
 
@@ -418,63 +419,177 @@ class ActionVideo:
 
         frame_num = 0
 
-        binary_motion = BinaryMotion(binary_image_history, theta)
-        temporal_template = TemporalTemplate(TAU_MAX)
-
         # tmp_temporal_template = TemporalTemplate(self.PARAM_MAP[self.action]["tau"])   # TODO: Remove
 
         # self.analyze_frames()   # TODO: Remove
+
+        for frame_range in self.frame_ranges[:1]:
+
+            # binary_motion = BinaryMotion(binary_image_history, theta, ksize)
+            # temporal_template = TemporalTemplate(tau)
+
+            binary_motion = BinaryMotion(binary_image_history, theta)
+            temporal_template = TemporalTemplate(TAU_MAX)
+
+            start = frame_range[0] - 1
+            end = frame_range[1]
+            # print(f"{start}:{end}")
+
+            # for i in range(self.video_frame_array.shape[-1]):
+            for i in range(start, end):
+                input_image_t = self.video_frame_array[:, :, i]
+
+                binary_motion.update(input_image_t)
+                temporal_template.update(binary_motion.get_binary_image())
+                # tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
+
+                # binary_motion.view()
+                # temporal_template.view(type='mhi')
+                # temporal_template.view(type='mei')
+                # tmp_temporal_template.view(type='mhi')
+
+                features_sequence = self.get_feature_sequence(temporal_template._mhi)
+
+                ##############################################################################
+                # hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
+                # features_hu_moments_mhi_max_tau = np.log(np.abs(hu_moments_mhi_max_tau.values))
+                # if np.any(np.isinf(features_hu_moments_mhi_max_tau)):
+                #     features_hu_moments_mhi_max_tau = np.zeros(features_hu_moments_mhi_max_tau.shape)
+                #
+                # tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
+                # features_tmp_hu_moments_mhi_max_tau = np.log(np.abs(tmp_hu_moments_mhi_max_tau.values))
+                # if np.any(np.isinf(features_tmp_hu_moments_mhi_max_tau)):
+                #     features_tmp_hu_moments_mhi_max_tau = np.zeros(features_tmp_hu_moments_mhi_max_tau.shape)
+                ##############################################################################
+
+                # try:
+                #     print("Compare 1")
+                #     assert np.all(features_hu_moments_mhi_max_tau == features_sequence[0, 7:])  # TODO: Remove
+                # except:
+                #     import pdb; pdb.set_trace()
+                #
+                # try:
+                #     print("Compare 2")
+                #     assert np.all(features_tmp_hu_moments_mhi_max_tau == features_sequence[20, 7:])
+                # except:
+                #     import pdb; pdb.set_trace()
+                #
+                # if i < 105:
+                #     try:
+                #         print("Compare 3")
+                #         assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
+                #     except:
+                #         import pdb; pdb.set_trace()
+
+                yield features_sequence
+
+                frame_num += 1
+
+        raise StopIteration
+
+
+class InputActionVideo(ActionVideo):
+
+    def __init__(self, filename):
+        self.filename = filename
+
+        self._video_to_image_array()
+
+    def get_feature_sequence(self, mhi):
+        num_windows = TAU_MAX - TAU_MIN + 1
+
+        feature_sequence = np.zeros((num_windows, NUM_HU))
+
+        for i in range(num_windows):
+            mhi_t = (mhi - i)
+            mhi_t[mhi_t < 0 ] = 0
+            mei_t = np.zeros(mhi.shape)
+            mei_t[mhi_t > 0] = 1
+
+            if mhi_t.max():
+                hu_moments_mhi = HuMoments(mhi_t / mhi_t.max())
+            else:
+                hu_moments_mhi = HuMoments(mhi_t)
+            hu_moments_mei_t = HuMoments(mei_t)
+            hu_moments = np.concatenate((hu_moments_mei_t.values, hu_moments_mhi.values))
+
+            feature_arr = np.log(np.abs(hu_moments))
+
+            if np.any(np.isinf(feature_arr)):
+                feature_arr = np.zeros(feature_arr.shape)
+
+            feature_sequence[i] = feature_arr
+
+        return feature_sequence
+
+    def frame_feature_set_generator(self):
+        """
+        We need a generator because we need N feature values for each frame.
+
+        Need a 3d array to store all values and them apply all log values.
+        Complicates things a bit.
+        """
+        binary_image_history = 2
+        theta = THETA
+
+        frame_num = 0
+
+        binary_motion = BinaryMotion(binary_image_history, theta)
+        temporal_template = TemporalTemplate(TAU_MAX)
 
         for i in range(self.video_frame_array.shape[-1]):
             input_image_t = self.video_frame_array[:, :, i]
 
             binary_motion.update(input_image_t)
             temporal_template.update(binary_motion.get_binary_image())
-            # tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
-
-            # binary_motion.view()
-            # temporal_template.view(type='mhi')
-            # temporal_template.view(type='mei')
-            # tmp_temporal_template.view(type='mhi')
 
             features_sequence = self.get_feature_sequence(temporal_template._mhi)
-
-            ##############################################################################
-            # hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
-            # features_hu_moments_mhi_max_tau = np.log(np.abs(hu_moments_mhi_max_tau.values))
-            # if np.any(np.isinf(features_hu_moments_mhi_max_tau)):
-            #     features_hu_moments_mhi_max_tau = np.zeros(features_hu_moments_mhi_max_tau.shape)
-            #
-            # tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
-            # features_tmp_hu_moments_mhi_max_tau = np.log(np.abs(tmp_hu_moments_mhi_max_tau.values))
-            # if np.any(np.isinf(features_tmp_hu_moments_mhi_max_tau)):
-            #     features_tmp_hu_moments_mhi_max_tau = np.zeros(features_tmp_hu_moments_mhi_max_tau.shape)
-            ##############################################################################
-
-            # try:
-            #     print("Compare 1")
-            #     assert np.all(features_hu_moments_mhi_max_tau == features_sequence[0, 7:])  # TODO: Remove
-            # except:
-            #     import pdb; pdb.set_trace()
-            #
-            # try:
-            #     print("Compare 2")
-            #     assert np.all(features_tmp_hu_moments_mhi_max_tau == features_sequence[20, 7:])
-            # except:
-            #     import pdb; pdb.set_trace()
-            #
-            # if i < 105:
-            #     try:
-            #         print("Compare 3")
-            #         assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
-            #     except:
-            #         import pdb; pdb.set_trace()
 
             yield features_sequence
 
             frame_num += 1
 
-        yield None
+        raise StopIteration
+
+    def play(self, classifier):
+
+        y_test_predictions = []
+
+        buffer = np.zeros(5, dtype=np.uint8)
+        for i, feature_set in enumerate(self.frame_feature_set_generator()):
+
+            features_set_norm = normalize(feature_set, norm="l2")
+
+            action_pred_proba = classifier.predict_proba(features_set_norm)
+            max_val_index = np.unravel_index(
+                action_pred_proba.argmax(), action_pred_proba.shape
+            )
+
+            action_pred = max_val_index[1]
+
+            buffer = np.hstack((buffer, action_pred))
+            print(buffer[-6:])
+            freq_pred = np.argmax(np.bincount(buffer[-6:]))
+            print(action_pred, freq_pred)
+
+            y_test_predictions.append(action_pred)
+
+    # TODO: Can we set self.frame_ranges to the max number of frames. self.total_video_frames
+    # We can then run analyze_frames and have X_test and y_test.
+    # We can compare y_test to y_predicted form the play function.
+
+    @staticmethod
+    def _add_text(img, text, coordinate):
+        x, y = coordinate
+        font = cv2.FONT_ITALIC
+        fontScale = 0.7
+        color_outline = (255, 255, 255)
+        thickness_outline = 2
+        org = (x, y)
+
+        cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline)
+
+        return img
 
 
 def generate_data(sequence):
@@ -483,7 +598,7 @@ def generate_data(sequence):
 
     for person_num in sequence[:]:
         for action in list(actions.keys())[:]:
-            for background in backgrounds[:1]:
+            for background in backgrounds[:]:
 
                 action_video = ActionVideo(person_num, action, background)
                 print(action_video)

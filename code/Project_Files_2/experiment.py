@@ -1,5 +1,6 @@
 import pprint
 import warnings
+import pickle
 
 import cv2
 import matplotlib
@@ -8,17 +9,14 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_matrix
 from sklearn.model_selection import GridSearchCV
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler, normalize
 from sklearn.utils.multiclass import unique_labels
 
 import config
 import core
-from core import ActionVideo, TAU, NUM_HU
+from core import ActionVideo, TAU, NUM_HU, InputActionVideo
 
 # warnings.filterwarnings("ignore")
-
-
 
 
 # Console settings
@@ -29,69 +27,50 @@ np.set_printoptions(precision=3, linewidth=200)
 SAVED_DATA_DIR = "saved_objects"
 
 
-def run_moment_calculation():
-    # filename = "mhi_frame_200_person01_walking_d1.png"
-    filename = "output_images/0_mhi.jpg"
-    test_image = cv2.imread(filename)
-
-    for type_ in [np.uint8, np.uint16, np.float]:
-        print(f'\nType" {type_}')
-        test_image = test_image.astype(type_)
-
-        cat = core.HuMoments(test_image[:, :, 0])
-        pprint.pprint(cat.values)
-
-        cv2_moments = cv2.moments(test_image[:, :, 0])
-        pprint.pprint(cv2.HuMoments(cv2_moments).flatten())
-
-
-# if __name__ == "__main__2":
-#
-#     features_frames1, _ = core.generate_data(config.test_sequence)
-#
-#     action_video = ActionVideo(2, 'boxing', 'd1')
-#     action_video_gen = action_video.frame_feature_set_generator()
-#     features_frames2 = action_video_gen.__next__()
-#
-#     try:
-#         assert np.all(features_frames2[:5] == features_frames1[:5])
-#     except:
-#         import pdb; pdb.set_trace()
-
-
 if __name__ == "__main__":
     get_data = False
     show_graph = False
+    train = False
 
     if get_data:
-        X_train, y_train = core.generate_data(config.training_sequence)
-        # X_validation, y_validation = core.generate_data(config.validation_sequence)
-        X_test, y_test = core.generate_data(config.test_sequence)
+        # X_train, y_train = core.generate_data(config.training_sequence)
+        X_validation, y_validation = core.generate_data(config.validation_sequence)
+        # X_test, y_test = core.generate_data(config.test_sequence)
 
         # Save the data
-        np.save(f"{SAVED_DATA_DIR}/X_train_{TAU}", X_train)
-        np.save(f"{SAVED_DATA_DIR}/X_test_{TAU}", X_test)
-        np.save(f"{SAVED_DATA_DIR}/y_train_{TAU}", y_train)
-        np.save(f"{SAVED_DATA_DIR}/y_test_{TAU}", y_test)
+        # np.save(f"{SAVED_DATA_DIR}/X_train_{TAU}", X_train)
+        # np.save(f"{SAVED_DATA_DIR}/y_train_{TAU}", y_train)
+
+        np.save(f"{SAVED_DATA_DIR}/X_validation_{TAU}", X_validation)
+        np.save(f"{SAVED_DATA_DIR}/y_validation_{TAU}", y_validation)
+
+        # np.save(f"{SAVED_DATA_DIR}/X_test_{TAU}", X_test)
+        # np.save(f"{SAVED_DATA_DIR}/y_test_{TAU}", y_test)
 
     # Load the data
     print("Loading data ...")
     X_train = np.load(f"{SAVED_DATA_DIR}/X_train_{TAU}.npy")
-    X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{TAU}.npy")
     y_train = np.load(f"{SAVED_DATA_DIR}/y_train_{TAU}.npy")
-    y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{TAU}.npy")
+
+    X_validation = np.load(f"{SAVED_DATA_DIR}/X_validation_{TAU}.npy")
+    y_validation = np.load(f"{SAVED_DATA_DIR}/y_validation_{TAU}.npy")
+
+    # X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{TAU}.npy")
+    # y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{TAU}.npy")
 
     # Normalize the data
     print("Normalizing data ...")
     x_train_norm = normalize(X_train, norm="l2")
-    x_test_norm = normalize(X_test, norm="l2")
+    x_validation_norm = normalize(X_validation, norm="l2")
+    # x_test_norm = normalize(X_test, norm="l2")
 
-    print("Training classifier ...")
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    # clf = KNeighborsClassifier(n_neighbors=10)
-    clf.fit(x_train_norm, y_train)
-
-    #save the classifier as actions_rfc_model.pkl
+    if train:
+        print("Training classifier ...")
+        clf = RandomForestClassifier(n_estimators=100, random_state=42)
+        clf.fit(x_train_norm, y_train)
+        pickle.dump(clf, open('saved_objects/actions_rfc_model.pkl', 'wb'))
+    else:
+        clf = pickle.load(open('saved_objects/actions_rfc_model.pkl', 'rb'))
 
     ######################################################################################
     # parameters = {'n_estimators': [50, 100, 150],
@@ -102,60 +81,70 @@ if __name__ == "__main__":
     ######################################################################################
 
     print("Predicting ...")
-
-    # training_accuracy = clf.score(x_train_norm, y_train)
     y_train_predicted = clf.predict(x_train_norm)
     training_accuracy = accuracy_score(y_train, y_train_predicted)
-
-    y_random = np.random.choice(list(range(8)), size=y_test.shape, replace=True, p=None)
-    baseline_accuracy = accuracy_score(y_test, y_random)
-
-    y_test_predicted = clf.predict(x_test_norm)
-    testing_accuracy = accuracy_score(y_test, y_test_predicted)
-
     print(f"\nTraining set accuracy: {training_accuracy}")
+
+    y_random = np.random.choice(list(range(8)), size=y_validation.shape, replace=True, p=None)
+    baseline_accuracy = accuracy_score(y_validation, y_random)
     print(f"\nBaseline accuracy: {baseline_accuracy}")
-    print(f"\nTesting set accuracy: {testing_accuracy}")
+
+    y_validation_predicted = clf.predict(x_validation_norm)
+    validation_accuracy = accuracy_score(y_validation, y_validation_predicted)
+    print(f"\nValidation set accuracy: {validation_accuracy}")
+
 
     y_test_predictions = []
 
-    action_video = ActionVideo(2, 'boxing', 'd1')
+    filename = f"person19_jogging_d1_uncomp.avi"
+    input_action_video = InputActionVideo(filename)
+    input_action_video.play(clf)
 
-    try:
-        for i, feature_set in enumerate(action_video.frame_feature_set_generator()):
-            features_set_norm = normalize(feature_set, norm="l2")
-
-            try:
-                assert np.all(features_set_norm == x_test_norm[i])
-            except:
-                print("inside here ***************** ")
-                # import pdb; pdb.set_trace()
-                pass
-
-            # action_pred = clf.predict(features_set_norm[20].reshape(1, -1)).astype(np.uint8)
-            action_pred_proba = clf.predict_proba(features_set_norm)
-            action_pred = np.unravel_index(action_pred_proba.argmax(), action_pred_proba.shape)[1]
-
-            # import pdb; pdb.set_trace()
-
-
-            # counts = np.bincount(action_pred)
-            # prediction = np.argmax(counts)
-            predict_other = clf.predict(x_test_norm[i].reshape(1, -1))
-
-            # print(action_pred, predict_other)
-
-
-            # if predict_other == 1:
-            #     import pdb; pdb.set_trace()
-
-            y_test_predictions.append(action_pred)
-            # pass
-    except Exception as e:
-        import pdb; pdb.set_trace()
+    # # try:
+    # buffer = np.zeros(5, dtype=np.uint8)
+    # for i, feature_set in enumerate(input_action_video.frame_feature_set_generator()):
+    #     try:
+    #         features_set_norm = normalize(feature_set, norm="l2")
+    #     except:
+    #         import pdb; pdb.set_trace()
+    #
+    #
+    #     # try:
+    #     #     assert np.all(features_set_norm == x_test_norm[i])
+    #     # except:
+    #     #     print("inside here ***************** ")
+    #     #     # import pdb; pdb.set_trace()
+    #     #     pass
+    #
+    #     # action_pred = clf.predict(features_set_norm[20].reshape(1, -1)).astype(np.uint8)
+    #     action_pred_proba = clf.predict_proba(features_set_norm)
+    #     action_pred = np.unravel_index(action_pred_proba.argmax(), action_pred_proba.shape)[1]
+    #
+    #     # import pdb; pdb.set_trace()
+    #
+    #
+    #     # counts = np.bincount(action_pred)
+    #     # prediction = np.argmax(counts)
+    #     # predict_other = clf.predict(x_validation_norm[i].reshape(1, -1))
+    #
+    #     # print(action_pred, predict_other)
+    #     # import pdb; pdb.set_trace()
+    #     buffer = np.hstack((buffer, action_pred))
+    #     print(buffer[-6:])
+    #     freq_pred = np.argmax(np.bincount(buffer[-6:]))
+    #     print(action_pred, freq_pred)
+    #
+    #
+    #     # if predict_other == 1:
+    #     #     import pdb; pdb.set_trace()
+    #
+    #     y_test_predictions.append(action_pred)
+    #     # pass
+    # # except Exception as e:
+    # #     import pdb; pdb.set_trace()
 
     if show_graph:
-        cm = confusion_matrix(y_test, y_test_predicted)
+        cm = confusion_matrix(y_validation, y_validation_predicted)
 
         class_names = np.array(
             ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
@@ -178,12 +167,12 @@ if __name__ == "__main__":
         print(title)
         print(disp.confusion_matrix)
 
-        title = "Confusion Matrix - Testing Data"
+        title = "Confusion Matrix - Validation Data"
 
         disp = plot_confusion_matrix(
             clf,
-            x_test_norm,
-            y_test,
+            x_validation_norm,
+            y_validation,
             display_labels=class_names,
             cmap=plt.cm.Reds,
             normalize="true",
@@ -196,15 +185,3 @@ if __name__ == "__main__":
         plt.show()
 
         disp.figure_.savefig("confusion_matrix_testing.png")
-#
-#     # Plot normalized confusion matrix
-#     fig, ax = plot_confusion_matrix(
-#         y_test.astype(np.uint8),
-#         y_test_predicted.astype(np.uint8),
-#         classes=labels,
-#         normalize=True,
-#     )
-#
-#     fig.savefig("confusion_matrix.png")
-#
-#     plt.show()
