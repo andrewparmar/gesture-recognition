@@ -13,14 +13,14 @@ VID_DIR = "sample_dataset"
 WAIT_DURATION = 100
 NUM_HU = 7 * 2
 TAU_MAX = 40
-TAU_MIN = 10
 TAU = 20
+TAU_MIN = 10
 THETA = 10
 
 
 class BinaryMotion:
-    def __init__(self, len_img_history, threshold, ksize=2):
-        self.n = len_img_history
+    def __init__(self, n_history, threshold, ksize=2):
+        self.n = n_history
         self.theta = threshold
         self.images = None
         self.last_image = None
@@ -242,7 +242,6 @@ class HuMoments:
             3 * (nu30 + nu12) ** 2 - (nu21 + nu03) ** 2
         )  # noqa
 
-        # hu_moments = np.nan_to_num(np.array([h1, h2, h3, h4, h5, h6, h7]))
         hu_moments = np.array([h1, h2, h3, h4, h5, h6, h7])
 
         return hu_moments
@@ -267,6 +266,9 @@ class ActionVideo:
         self.video_frame_array = None
 
         self._video_to_image_array()
+
+    def __repr__(self):
+        return f'<ActionVideo {self.key_name}>'
 
     def _video_to_image_array(self):
         input_video_path = os.path.join(VID_DIR, self.filename)
@@ -313,7 +315,6 @@ class ActionVideo:
         """
         video = cv2.VideoCapture(file_path)
 
-        # Do not edit this while loop
         while video.isOpened():
             ret, frame = video.read()
 
@@ -363,51 +364,47 @@ class ActionVideo:
                 hu_moments = np.concatenate(
                     (hu_moments_mei.values, hu_moments_mhi.values)
                 )
-                hu_moments = np.log(np.abs(hu_moments))
-                # print(tmp_hu_moments)
+                feature_arr = np.log(np.abs(hu_moments))
 
-                if np.any(np.isinf(hu_moments)):
-                    zero_hu= np.zeros(hu_moments.shape)
+                if np.any(np.isinf(feature_arr)):
+                    zero_hu= np.zeros(feature_arr.shape)
                     self.frame_features = np.vstack((self.frame_features, zero_hu))
                     self.frame_labels = np.vstack((self.frame_labels, 0))
                 else:
                     label = np.array([self.PARAM_MAP[self.action]["label"]])
 
-                    self.frame_features = np.vstack((self.frame_features, hu_moments))
+                    self.frame_features = np.vstack((self.frame_features, feature_arr))
                     self.frame_labels = np.vstack((self.frame_labels, label))
-
-                # print(hu_moments)
-                # if np.any(hu_moments):
-                #     self.frame_features = np.vstack((self.frame_features, hu_moments))
-                #     self.frame_labels = np.vstack((self.frame_labels, label))
-                # else:
-                #     self.frame_features = np.vstack((self.frame_features, hu_moments))
-                #     self.frame_labels = np.vstack((self.frame_labels, 0))
 
         self.frame_features = self.frame_features[1:, :]
         self.frame_labels = self.frame_labels[1:]
 
-    def get_hu_moment_sequence(self, mhi):
+    def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1
 
-        hu_sequence = np.zeros((num_windows, NUM_HU))
+        feature_sequence = np.zeros((num_windows, NUM_HU))
 
         for i in range(num_windows):
-            tmp_mhi = (mhi - i)
-            tmp_mhi[tmp_mhi < 0 ] = 0
-            tmp_mei = np.zeros(mhi.shape)
-            tmp_mei[tmp_mhi > 0] = 1
+            mhi_t = (mhi - i)
+            mhi_t[mhi_t < 0 ] = 0
+            mei_t = np.zeros(mhi.shape)
+            mei_t[mhi_t > 0] = 1
 
-            hu_moments_mei = HuMoments(tmp_mei)
-            if tmp_mhi.max():
-                hu_moments_mhi = HuMoments(tmp_mhi / tmp_mhi.max())
+            if mhi_t.max():
+                hu_moments_mhi = HuMoments(mhi_t / mhi_t.max())
             else:
-                hu_moments_mhi = HuMoments(tmp_mhi)
-            hu_moments = np.concatenate((hu_moments_mei.values, hu_moments_mhi.values))
+                hu_moments_mhi = HuMoments(mhi_t)
+            hu_moments_mei_t = HuMoments(mei_t)
+            hu_moments = np.concatenate((hu_moments_mei_t.values, hu_moments_mhi.values))
 
-            hu_sequence[i] = hu_moments
+            feature_arr = np.log(np.abs(hu_moments))
 
-        return hu_sequence
+            if np.any(np.isinf(feature_arr)):
+                feature_arr = np.zeros(feature_arr.shape)
+
+            feature_sequence[i] = feature_arr
+
+        return feature_sequence
 
     def frame_hu_set_generator(self):
         binary_image_history = 2
@@ -419,52 +416,41 @@ class ActionVideo:
         temporal_template = TemporalTemplate(TAU_MAX)
 
         tmp_tau = self.PARAM_MAP[self.action]["tau"]
-        tmp_temporal_template = TemporalTemplate(tmp_tau)
+        tmp_temporal_template = TemporalTemplate(tmp_tau)   # TODO: Remove
 
-        self.analyze_frames()
-
-        # cat = True
-        # if cat:
-        #     return self.frame_features
+        self.analyze_frames()   # TODO: Remove
 
         for i in range(self.video_frame_array.shape[-1]):
             input_image_t = self.video_frame_array[:, :, i]
 
             binary_motion.update(input_image_t)
             temporal_template.update(binary_motion.get_binary_image())
-            tmp_temporal_template.update(binary_motion.get_binary_image())
+            tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
 
             # binary_motion.view()
             # temporal_template.view(type='mhi')
             # temporal_template.view(type='mei')
             # tmp_temporal_template.view(type='mhi')
 
-            hu_sequence = self.get_hu_moment_sequence(temporal_template._mhi)
+            features_sequence = self.get_feature_sequence(temporal_template._mhi)
 
-            hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)
-            tmp_hu_moments_mhi_max_tau = HuMoments(
-                tmp_temporal_template._mhi / tmp_temporal_template.tau)
-
-            assert np.all(hu_moments_mhi_max_tau.values == hu_sequence[0, 7:])
+            hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
+            tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
 
             try:
-                assert np.all(tmp_hu_moments_mhi_max_tau.values == hu_sequence[20, 7:])
-                # assert np.all(self.frame_features[i, 7:] == hu_sequence[20, 7:])
-                assert np.all(self.frame_features[i] == hu_sequence[20])
+                assert np.all(hu_moments_mhi_max_tau.values == features_sequence[0, 7:])  # TODO: Remove
+                assert np.all(tmp_hu_moments_mhi_max_tau.values == features_sequence[20, 7:])
+                assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
             except:
                 import pdb; pdb.set_trace()
 
-            hu_sequence = np.log(np.abs(hu_sequence))
-            hu_sequence[~np.isfinite(hu_sequence).any(axis=1)] = np.zeros(NUM_HU)
-            # print(hu_sequence)
-
-            yield hu_sequence
+            yield features_sequence
 
             # # Todo: Replace this with the real multi-window Hu
-            # hu_sequence = np.log(np.abs(self.frame_features))
-            # hu_sequence[~np.isfinite(hu_sequence).any(axis=1)] = np.zeros(NUM_HU)
-            # print(hu_sequence)
-            # yield hu_sequence
+            # features_sequence = np.log(np.abs(self.frame_features))
+            # features_sequence[~np.isfinite(features_sequence).any(axis=1)] = np.zeros(NUM_HU)
+            # print(features_sequence)
+            # yield features_sequence
 
             frame_num += 1
 
@@ -472,32 +458,19 @@ class ActionVideo:
 
 
 def generate_data(sequence):
-
     Xtrain = np.zeros((1, NUM_HU))
     ytrain = np.zeros(1)
-
-    times = []
 
     for person_num in sequence[:]:
         for action in list(actions.keys())[:]:
             for background in backgrounds[:1]:
 
                 action_video = ActionVideo(person_num, action, background)
+                print(action_video)
 
-                print(action_video.key_name)
-                # start = time.time()
                 action_video.analyze_frames()
-                # end = time.time() - start
-                # times.append(end)
-                # print(end)
 
-                # Todo: consider dropping rows that have -inf in them? Dropping now.
-                # features = np.log(np.abs(action_video.frame_features))
-                # features[~np.isfinite(features).any(axis=1)] = np.zeros(NUM_HU)
-                # features[np.isinf(features)] = 0
-                features = action_video.frame_features
-
-                # plot_features(features, title=action_video.key_name)
+                # plot_features(action_video.frame_features, title=action_video.key_name)
 
                 Xtrain = np.vstack((Xtrain, action_video.frame_features))
                 ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))

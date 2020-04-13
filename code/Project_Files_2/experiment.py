@@ -60,12 +60,11 @@ def run_moment_calculation():
 
 
 if __name__ == "__main__":
-    get_data = True
+    get_data = False
     show_graph = False
 
     if get_data:
         X_train, y_train = core.generate_data(config.training_sequence)
-        # X_train, y_train = core.generate_data([14, 15, 16, 17, 18])
         # X_validation, y_validation = core.generate_data(config.validation_sequence)
         X_test, y_test = core.generate_data(config.test_sequence)
 
@@ -118,10 +117,10 @@ if __name__ == "__main__":
     print(f"\nBaseline accuracy: {baseline_accuracy}")
     print(f"\nTesting set accuracy: {testing_accuracy}")
 
-    y_test_predictions = []
-
-    action_video = ActionVideo(2, 'boxing', 'd1')
-
+    # y_test_predictions = []
+    #
+    # action_video = ActionVideo(2, 'boxing', 'd1')
+    #
     # for i, hu_set in enumerate(action_video.frame_hu_set_generator()):
     #
     #     hu_set_norm = normalize(hu_set, norm="l2")

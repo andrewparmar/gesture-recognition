@@ -11,3 +11,4 @@ venv-cv/*
 **.synctex.gz
 **.toc
 **code/Project_Files_2/sample_dataset
+**code/Project_Files_2/saved_objects
