@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_matrix
 from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.preprocessing import normalize
 from sklearn.utils.multiclass import unique_labels
 
 import config
@@ -18,45 +18,44 @@ from core import ActionVideo, TAU, NUM_HU, InputActionVideo, LiveActonVideo
 
 warnings.filterwarnings("ignore")
 
-
 # Console settings
 matplotlib.use("Qt5Agg")
 
 np.set_printoptions(precision=3, linewidth=200)
 
 SAVED_DATA_DIR = "saved_objects"
-
+SUFFIX = '0414'
 
 if __name__ == "__main__":
-    get_data = False
+    get_data = True
     show_graph = False
-    train = False
+    train = True
 
     if get_data:
-        # X_train, y_train = core.generate_data(config.training_sequence)
+        X_train, y_train = core.generate_data(config.training_sequence)
         X_validation, y_validation = core.generate_data(config.validation_sequence)
         # X_test, y_test = core.generate_data(config.test_sequence)
 
         # Save the data
-        # np.save(f"{SAVED_DATA_DIR}/X_train_{TAU}", X_train)
-        # np.save(f"{SAVED_DATA_DIR}/y_train_{TAU}", y_train)
+        np.save(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}", X_train)
+        np.save(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}", y_train)
 
-        np.save(f"{SAVED_DATA_DIR}/X_validation_{TAU}", X_validation)
-        np.save(f"{SAVED_DATA_DIR}/y_validation_{TAU}", y_validation)
+        np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
+        np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
 
-        # np.save(f"{SAVED_DATA_DIR}/X_test_{TAU}", X_test)
-        # np.save(f"{SAVED_DATA_DIR}/y_test_{TAU}", y_test)
+        # np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
+        # np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
 
     # Load the data
     print("Loading data ...")
-    X_train = np.load(f"{SAVED_DATA_DIR}/X_train_{TAU}.npy")
-    y_train = np.load(f"{SAVED_DATA_DIR}/y_train_{TAU}.npy")
+    X_train = np.load(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}.npy")
+    y_train = np.load(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}.npy")
 
-    X_validation = np.load(f"{SAVED_DATA_DIR}/X_validation_{TAU}.npy")
-    y_validation = np.load(f"{SAVED_DATA_DIR}/y_validation_{TAU}.npy")
+    X_validation = np.load(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}.npy")
+    y_validation = np.load(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}.npy")
 
-    # X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{TAU}.npy")
-    # y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{TAU}.npy")
+    # X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}.npy")
+    # y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}.npy")
 
     # Normalize the data
     print("Normalizing data ...")
@@ -92,7 +91,6 @@ if __name__ == "__main__":
     y_validation_predicted = clf.predict(x_validation_norm)
     validation_accuracy = accuracy_score(y_validation, y_validation_predicted)
     print(f"\nValidation set accuracy: {validation_accuracy}")
-
 
     y_test_predictions = []
 
@@ -143,14 +141,14 @@ if __name__ == "__main__":
     # # except Exception as e:
     # #     import pdb; pdb.set_trace()
 
-    live_action_video = LiveActonVideo(clf, filename, 25)
-    live_action_video.create_annotated_video()
+    # live_action_video = LiveActonVideo(clf, filename, 25)
+    # live_action_video.create_annotated_video()
 
     if show_graph:
         cm = confusion_matrix(y_validation, y_validation_predicted)
 
         class_names = np.array(
-            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
+            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking", ]
         )
 
         title = "Confusion Matrix - Training Data"

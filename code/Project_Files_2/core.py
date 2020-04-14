@@ -1,20 +1,20 @@
 import os
-import time
+
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.preprocessing import normalize
 
 from config import actions, backgrounds, frame_sequences
 
 matplotlib.use("Qt5Agg")
 
 VID_DIR = "sample_dataset"
-OUTPUT_DIR = 'output_images'
+OUTPUT_DIR = 'output_files'
 WAIT_DURATION = 10
 NUM_HU = 7 * 2
-TAU_MAX = 40
+TAU_MAX = 30
 TAU = 20
 TAU_MIN = 10
 THETA = 20
@@ -101,14 +101,14 @@ class TemporalTemplate:
     def __init__(self, tau):
         self.tau = tau
         self.motion_images = None
-        self._mhi = None
-        self._mei = None
+        self.mhi = None
+        self.mei = None
 
     def update(self, motion_img):
         if self.motion_images is None:
             h, w = motion_img.shape
             self.motion_images = np.zeros((h, w, self.tau), dtype=np.uint8)
-            self._mhi = np.zeros((h, w))
+            self.mhi = np.zeros((h, w))
         else:
             self.motion_images[:, :, : self.tau - 1] = self.motion_images[
                 :, :, 1 : self.tau
@@ -127,39 +127,39 @@ class TemporalTemplate:
         idx = self.motion_images[:, :, -1] == 1
 
         mhi[idx] = self.tau
-        mhi[~idx] = self._mhi[~idx] - 1
+        mhi[~idx] = self.mhi[~idx] - 1
         mhi[mhi < 0] = 0
 
-        self._mhi = mhi
+        self.mhi = mhi
 
     def _make_motion_energy_image(self):
         mei = np.zeros(self.mhi.shape)
-        mei[self._mhi > 0] = 1
+        mei[self.mhi > 0] = 1
 
-        self._mei = mei
+        self.mei = mei
 
     @property
-    def mhi(self):
+    def _mhi(self):
         return cv2.normalize(
-            self._mhi, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+            self.mhi, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
         )
 
     @property
-    def mei(self):
+    def _mei(self):
         return cv2.normalize(
-            self._mei, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+            self.mei, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
         )
 
     def view(self, type):
         if type == "mhi":
             cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("motion_history_image", (600, 600))
-            cv2.imshow("motion_history_image", self.mhi)
+            cv2.imshow("motion_history_image", self._mhi)
             cv2.waitKey(WAIT_DURATION)
         elif type == "mei":
             cv2.namedWindow("motion_energy_image", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("motion_energy_image", (600, 600))
-            cv2.imshow("motion_energy_image", self.mei)
+            cv2.imshow("motion_energy_image", self._mei)
             cv2.waitKey(WAIT_DURATION)
 
 
@@ -330,57 +330,43 @@ class ActionVideo:
         video.release()
         yield None
 
-    def analyze_frames(self):
-        """
-        Uses vstack to accumulate frame arrays.
-        """
+    def analyze_frames(self): # todo generate_frame_features
         binary_image_history = 2
         theta = self.PARAM_MAP[self.action]["theta"]
         tau = self.PARAM_MAP[self.action]["tau"]
         ksize = self.PARAM_MAP[self.action]["ksize"]
 
-        self.frame_features = np.zeros((1, NUM_HU))
-        self.frame_labels = np.array([0])
+        self.frame_features = np.zeros((self.total_video_frames, NUM_HU))
+        self.frame_labels = np.zeros(self.total_video_frames)
 
-        for frame_range in self.frame_ranges:
+        full_set = self.get_range_set()
 
-            binary_motion = BinaryMotion(binary_image_history, theta, ksize)
-            temporal_template = TemporalTemplate(tau)
+        binary_motion = BinaryMotion(binary_image_history, theta, ksize)
+        temporal_template = TemporalTemplate(tau)
 
-            start = frame_range[0] - 1
-            end = frame_range[1]
-            # print(f"{start}:{end}")
+        for i in range(self.total_video_frames):
+            input_image_t = self.video_frame_array[:, :, i]
 
-            for i in range(start, end):
-                input_image_t = self.video_frame_array[:, :, i]
+            binary_motion.update(input_image_t)
+            temporal_template.update(binary_motion.get_binary_image())
 
-                binary_motion.update(input_image_t)
-                temporal_template.update(binary_motion.get_binary_image())
+            # binary_motion.view()
+            # binary_motion.view_image(text=i)
+            # temporal_template.view(type="mhi")
+            # temporal_template.view(type="mei")
 
-                # binary_motion.view()
-                # binary_motion.view_image(text=i)
-                # temporal_template.view(type="mhi")
-                # temporal_template.view(type="mei")
+            hu_mei = HuMoments(temporal_template.mei)
+            hu_mhi = HuMoments(temporal_template.mhi / temporal_template.tau)
+            hu_all = np.concatenate((hu_mei.values, hu_mhi.values))
+            feature_arr = np.log(np.abs(hu_all))
 
-                hu_moments_mei = HuMoments(temporal_template._mei)
-                hu_moments_mhi = HuMoments(temporal_template._mhi/temporal_template.tau)
-                hu_moments = np.concatenate(
-                    (hu_moments_mei.values, hu_moments_mhi.values)
-                )
-                feature_arr = np.log(np.abs(hu_moments))
-
-                if np.any(np.isinf(feature_arr)):
-                    zero_hu= np.zeros(feature_arr.shape)
-                    self.frame_features = np.vstack((self.frame_features, zero_hu))
-                    self.frame_labels = np.vstack((self.frame_labels, 0))
-                else:
-                    label = np.array([self.PARAM_MAP[self.action]["label"]])
-
-                    self.frame_features = np.vstack((self.frame_features, feature_arr))
-                    self.frame_labels = np.vstack((self.frame_labels, label))
-
-        self.frame_features = self.frame_features[1:, :]
-        self.frame_labels = self.frame_labels[1:]
+            if np.any(np.isinf(feature_arr)):
+                self.frame_features[i] = np.zeros(feature_arr.shape)
+            elif i not in full_set:
+                self.frame_features[i] = feature_arr
+            else:
+                self.frame_features[i] = feature_arr
+                self.frame_labels[i] = np.array([self.PARAM_MAP[self.action]["label"]])
 
     def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1
@@ -409,85 +395,16 @@ class ActionVideo:
 
         return feature_sequence
 
-    def frame_feature_set_generator(self):
-        """
-        We need a generator because we need N feature values for each frame.
+    def get_range_set(self):
+        full_set = set()
 
-        Need a 3d array to store all values and them apply all log values.
-        Complicates things a bit.
-        """
-        binary_image_history = 2
-        theta = THETA
+        for frame_range in self.frame_ranges:
+            a, b = frame_range
+            range_set = {x for x in range(a-1, b)}
 
-        frame_num = 0
+            full_set = full_set | range_set
 
-        # tmp_temporal_template = TemporalTemplate(self.PARAM_MAP[self.action]["tau"])   # TODO: Remove
-
-        # self.analyze_frames()   # TODO: Remove
-
-        for frame_range in self.frame_ranges[:1]:
-
-            # binary_motion = BinaryMotion(binary_image_history, theta, ksize)
-            # temporal_template = TemporalTemplate(tau)
-
-            binary_motion = BinaryMotion(binary_image_history, theta)
-            temporal_template = TemporalTemplate(TAU_MAX)
-
-            start = frame_range[0] - 1
-            end = frame_range[1]
-            # print(f"{start}:{end}")
-
-            # for i in range(self.video_frame_array.shape[-1]):
-            for i in range(start, end):
-                input_image_t = self.video_frame_array[:, :, i]
-
-                binary_motion.update(input_image_t)
-                temporal_template.update(binary_motion.get_binary_image())
-                # tmp_temporal_template.update(binary_motion.get_binary_image())   # TODO: Remove
-
-                # binary_motion.view()
-                # temporal_template.view(type='mhi')
-                # temporal_template.view(type='mei')
-                # tmp_temporal_template.view(type='mhi')
-
-                features_sequence = self.get_feature_sequence(temporal_template._mhi)
-
-                ##############################################################################
-                # hu_moments_mhi_max_tau = HuMoments(temporal_template._mhi / TAU_MAX)   # TODO: Remove
-                # features_hu_moments_mhi_max_tau = np.log(np.abs(hu_moments_mhi_max_tau.values))
-                # if np.any(np.isinf(features_hu_moments_mhi_max_tau)):
-                #     features_hu_moments_mhi_max_tau = np.zeros(features_hu_moments_mhi_max_tau.shape)
-                #
-                # tmp_hu_moments_mhi_max_tau = HuMoments(tmp_temporal_template._mhi / tmp_temporal_template.tau)   # TODO: Remove
-                # features_tmp_hu_moments_mhi_max_tau = np.log(np.abs(tmp_hu_moments_mhi_max_tau.values))
-                # if np.any(np.isinf(features_tmp_hu_moments_mhi_max_tau)):
-                #     features_tmp_hu_moments_mhi_max_tau = np.zeros(features_tmp_hu_moments_mhi_max_tau.shape)
-                ##############################################################################
-
-                # try:
-                #     print("Compare 1")
-                #     assert np.all(features_hu_moments_mhi_max_tau == features_sequence[0, 7:])  # TODO: Remove
-                # except:
-                #     import pdb; pdb.set_trace()
-                #
-                # try:
-                #     print("Compare 2")
-                #     assert np.all(features_tmp_hu_moments_mhi_max_tau == features_sequence[20, 7:])
-                # except:
-                #     import pdb; pdb.set_trace()
-                #
-                # if i < 105:
-                #     try:
-                #         print("Compare 3")
-                #         assert np.all(self.frame_features[i] == features_sequence[20])   # TODO: Remove
-                #     except:
-                #         import pdb; pdb.set_trace()
-
-                yield features_sequence
-
-                frame_num += 1
-
-        raise StopIteration
+        return full_set
 
 
 class InputActionVideo(ActionVideo):
@@ -553,7 +470,7 @@ class InputActionVideo(ActionVideo):
             binary_motion.update(input_image_t)
             temporal_template.update(binary_motion.get_binary_image())
 
-            features_sequence = self.get_feature_sequence(temporal_template._mhi)
+            features_sequence = self.get_feature_sequence(temporal_template.mhi)
 
             yield features_sequence
 
@@ -596,6 +513,10 @@ class InputActionVideo(ActionVideo):
 
 
 class LiveActonVideo(InputActionVideo):
+    """
+    Use a video generator and frame by frame, we can get do the prediction, apply the
+    text and output the image frame.
+    """
     LABELS = {
         0: "no action",
         1: "boxing",
@@ -606,10 +527,6 @@ class LiveActonVideo(InputActionVideo):
         6: "walking"
     }
 
-    """
-    Use a video generator and frame by frame, we can get do the prediction, apply the
-    text and output the image frame.
-    """
     def __init__(self, classifier, filename, fps):
         self.fps = fps
         super(LiveActonVideo, self).__init__(classifier, filename)
@@ -673,7 +590,7 @@ def generate_data(sequence):
 
     for person_num in sequence[:]:
         for action in list(actions.keys())[:]:
-            for background in backgrounds[:]:
+            for background in backgrounds[:1]:
 
                 action_video = ActionVideo(person_num, action, background)
                 print(action_video)
