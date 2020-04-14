@@ -11,6 +11,7 @@ from config import actions, backgrounds, frame_sequences
 matplotlib.use("Qt5Agg")
 
 VID_DIR = "sample_dataset"
+OUTPUT_DIR = 'output_images'
 WAIT_DURATION = 100
 NUM_HU = 7 * 2
 TAU_MAX = 40
@@ -256,7 +257,8 @@ class ActionVideo:
         "handwaving":   {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
         "jogging":      {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
         "running":      {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
+        'undefined':    {"label": 7, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
     }
 
     def __init__(self, num, action, background):
@@ -490,10 +492,18 @@ class ActionVideo:
 
 class InputActionVideo(ActionVideo):
 
-    def __init__(self, filename):
+    def __init__(self, classifier, filename, action='undefined'):
+        self.classifier = classifier
         self.filename = filename
+        self.action = action
+        self.buffer_len = 15
+
 
         self._video_to_image_array()
+
+        self.frame_ranges = [(1, self.total_video_frames)]
+
+        self.analyze_frames()
 
     def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1
@@ -551,32 +561,103 @@ class InputActionVideo(ActionVideo):
 
         raise StopIteration
 
+    def predict_from_feature_set(self, feature_set):
+        features_set_norm = normalize(feature_set, norm="l2")
+
+        action_pred_proba = self.classifier.predict_proba(features_set_norm)
+        max_val_index = np.unravel_index(
+            action_pred_proba.argmax(), action_pred_proba.shape
+        )
+
+        action_pred = max_val_index[1]
+
+        self.buffer = np.hstack((self.buffer[-self.buffer_len-1:], action_pred))
+        # import pdb; pdb.set_trace()
+        freq_pred = np.argmax(np.bincount(self.buffer))
+        print(action_pred, freq_pred)
+
+        return action_pred, freq_pred
+
     def play(self, classifier):
 
-        y_test_predictions = []
+        self.y_label_predictions = np.zeros(self.total_video_frames)
+        self.y_label_predictions_freq = np.zeros(self.total_video_frames)
 
-        buffer = np.zeros(5, dtype=np.uint8)
+        self.buffer = np.zeros(self.buffer_len, dtype=np.uint8)
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
-            features_set_norm = normalize(feature_set, norm="l2")
+            action_pred, freq_pred = self.predict_from_feature_set(feature_set)
 
-            action_pred_proba = classifier.predict_proba(features_set_norm)
-            max_val_index = np.unravel_index(
-                action_pred_proba.argmax(), action_pred_proba.shape
-            )
+            self.y_label_predictions[i] = action_pred
+            self.y_label_predictions_freq[i] = freq_pred
 
-            action_pred = max_val_index[1]
+        print(np.unique(self.y_label_predictions, return_counts=True))
+        print(np.unique(self.y_label_predictions_freq, return_counts=True))
 
-            buffer = np.hstack((buffer, action_pred))
-            print(buffer[-6:])
-            freq_pred = np.argmax(np.bincount(buffer[-6:]))
-            print(action_pred, freq_pred)
 
-            y_test_predictions.append(action_pred)
+class LiveActonVideo(InputActionVideo):
+    LABELS = {
+        0: "blank",
+        1:"boxing",
+        2:"clapping",
+        3: "waving",
+        4: "jogging",
+        5: "running",
+        6: "walking"
+    }
 
-    # TODO: Can we set self.frame_ranges to the max number of frames. self.total_video_frames
-    # We can then run analyze_frames and have X_test and y_test.
-    # We can compare y_test to y_predicted form the play function.
+    """
+    I'm thinking this should be the way to do the final video.
+
+    Use a video generator and frame by frame, we can get do the prediction, apply the
+    text and output the image frame.
+    """
+    def __init__(self, classifier, filename, fps):
+        self.fps = fps
+        super(LiveActonVideo, self).__init__(classifier, filename)
+
+    def create_annotated_video(self):
+        # input_video_path = os.path.join(VID_DIR, self.filename)
+        # input_image_gen = self._gray_frame_generator(input_video_path)
+        # input_image_t = input_image_gen.__next__()
+        #
+        # h, w, d = input_image_t.shape
+        h, w, _ = self.video_frame_array.shape
+
+        out_path = "{}/{}-labeled".format(OUTPUT_DIR, self.filename)
+        video_out = mp4_video_writer(out_path, (w, h), self.fps)
+
+        # binary_image_history = 2
+        # theta = THETA
+
+        frame_num = 0
+
+        # binary_motion = BinaryMotion(binary_image_history, theta)
+        # temporal_template = TemporalTemplate(TAU_MAX)
+
+        self.buffer = np.zeros(self.buffer_len, dtype=np.uint8)
+
+        for i, feature_set in enumerate(self.frame_feature_set_generator()):
+
+            # predict action
+            action_pred, freq_pred = self.predict_from_feature_set(feature_set)
+
+            self.y_label_predictions[i] = action_pred
+            self.y_label_predictions_freq[i] = freq_pred
+
+            label = self.LABELS[freq_pred]
+            annotated_frame = np.copy(self.video_frame_array[i])
+            annotated_frame = self._add_text(annotated_frame, label, 100, 100)
+
+            cv2.imshow(annotated_frame)
+
+            # video_out.write(image)
+            #
+            # input_image_t = input_image_gen.__next__()
+
+            frame_num += 1
+
+        video_out.release()
 
     @staticmethod
     def _add_text(img, text, coordinate):
@@ -613,6 +694,7 @@ def generate_data(sequence):
     # print(f"Average time {sum(times)/len(times)}")
 
     return Xtrain[1:], ytrain[1:]
+    # TODO: Add a plot for each type of action.
 
 
 def plot_features(features, **kwargs):
@@ -627,3 +709,18 @@ def plot_features(features, **kwargs):
     )
 
     plt.show()
+
+
+def mp4_video_writer(filename, frame_size, fps=20):
+    """Opens and returns a video for writing.
+    Use the VideoWriter's `write` method to save images.
+    Remember to 'release' when finished.
+    Args:
+        filename (string): Filename for saved video
+        frame_size (tuple): Width, height tuple of output video
+        fps (int): Frames per second
+    Returns:
+        VideoWriter: Instance of VideoWriter ready for writing
+    """
+    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    return cv2.VideoWriter(filename, fourcc, fps, frame_size)
