@@ -97,8 +97,8 @@ if __name__ == "__main__":
     y_test_predictions = []
 
     filename = f"person19_jogging_d1_uncomp.avi"
-    input_action_video = InputActionVideo(clf, filename, 'jogging')
-    input_action_video.play(clf)
+    # input_action_video = InputActionVideo(clf, filename, 'jogging')
+    # input_action_video.play(clf)
 
     # # try:
     # buffer = np.zeros(5, dtype=np.uint8)
@@ -143,9 +143,9 @@ if __name__ == "__main__":
     # # except Exception as e:
     # #     import pdb; pdb.set_trace()
 
-    # live_action_video = LiveActonVideo(clf, filename, 25)
-    # live_action_video.create_annotated_video()
-    #
+    live_action_video = LiveActonVideo(clf, filename, 25)
+    live_action_video.create_annotated_video()
+
     if show_graph:
         cm = confusion_matrix(y_validation, y_validation_predicted)
 

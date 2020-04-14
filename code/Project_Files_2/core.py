@@ -12,7 +12,7 @@ matplotlib.use("Qt5Agg")
 
 VID_DIR = "sample_dataset"
 OUTPUT_DIR = 'output_images'
-WAIT_DURATION = 100
+WAIT_DURATION = 10
 NUM_HU = 7 * 2
 TAU_MAX = 40
 TAU = 20
@@ -574,7 +574,7 @@ class InputActionVideo(ActionVideo):
         self.buffer = np.hstack((self.buffer[-self.buffer_len-1:], action_pred))
         # import pdb; pdb.set_trace()
         freq_pred = np.argmax(np.bincount(self.buffer))
-        print(action_pred, freq_pred)
+        # print(action_pred, freq_pred)
 
         return action_pred, freq_pred
 
@@ -607,8 +607,6 @@ class LiveActonVideo(InputActionVideo):
     }
 
     """
-    I'm thinking this should be the way to do the final video.
-
     Use a video generator and frame by frame, we can get do the prediction, apply the
     text and output the image frame.
     """
@@ -617,43 +615,40 @@ class LiveActonVideo(InputActionVideo):
         super(LiveActonVideo, self).__init__(classifier, filename)
 
     def create_annotated_video(self):
-        # input_video_path = os.path.join(VID_DIR, self.filename)
-        # input_image_gen = self._gray_frame_generator(input_video_path)
-        # input_image_t = input_image_gen.__next__()
-        #
-        # h, w, d = input_image_t.shape
         h, w, _ = self.video_frame_array.shape
 
-        out_path = "{}/{}-labeled".format(OUTPUT_DIR, self.filename)
+        filename = self.filename.split('.')[0]
+
+        # out_path = f"{OUTPUT_DIR}/labeled-{filename}.mp4"
+        # out_path = f"{OUTPUT_DIR}/labeled-video.mp4"
+        out_path = "something.mp4"
         video_out = mp4_video_writer(out_path, (w, h), self.fps)
 
-        # binary_image_history = 2
-        # theta = THETA
-
         frame_num = 0
-
-        # binary_motion = BinaryMotion(binary_image_history, theta)
-        # temporal_template = TemporalTemplate(TAU_MAX)
 
         self.buffer = np.zeros(self.buffer_len, dtype=np.uint8)
 
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
-            # predict action
             action_pred, freq_pred = self.predict_from_feature_set(feature_set)
 
-            self.y_label_predictions[i] = action_pred
-            self.y_label_predictions_freq[i] = freq_pred
+            if action_pred  == 0:
+                label = self.LABELS[0]
+            else:
+                label = self.LABELS[freq_pred]
 
-            label = self.LABELS[freq_pred]
-            annotated_frame = np.copy(self.video_frame_array[i])
-            annotated_frame = self._add_text(annotated_frame, label, 100, 100)
+            annotated_frame = np.copy(self.video_frame_array[:, :, i])
+            annotated_frame = self._add_text(annotated_frame, label, (100, 100))
 
-            cv2.imshow(annotated_frame)
+            # cv2.namedWindow("annotated_frames", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("annotated_frames", (600, 600))
+            # cv2.imshow("annotated_frames", annotated_frame)
+            # cv2.waitKey(WAIT_DURATION)
+            print(f'Predicted {label}')
+            print(annotated_frame.dtype)
+            out_frame = cv2.cvtColor(self.video_frame_array[:, :, i], cv2.COLOR_GRAY2BGR)
+            video_out.write(out_frame)
 
-            # video_out.write(image)
-            #
-            # input_image_t = input_image_gen.__next__()
 
             frame_num += 1
 
@@ -711,7 +706,7 @@ def plot_features(features, **kwargs):
     plt.show()
 
 
-def mp4_video_writer(filename, frame_size, fps=20):
+def mp4_video_writer(filename, frame_size, fps=25):
     """Opens and returns a video for writing.
     Use the VideoWriter's `write` method to save images.
     Remember to 'release' when finished.
@@ -722,5 +717,5 @@ def mp4_video_writer(filename, frame_size, fps=20):
     Returns:
         VideoWriter: Instance of VideoWriter ready for writing
     """
-    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     return cv2.VideoWriter(filename, fourcc, fps, frame_size)
