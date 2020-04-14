@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     y_test_predictions = []
 
-    filename = f"person19_jogging_d1_uncomp.avi"
+    filename = f"person19_running_d1_uncomp.avi"
     # input_action_video = InputActionVideo(clf, filename, 'jogging')
     # input_action_video.play(clf)
 

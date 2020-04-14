@@ -565,6 +565,7 @@ class InputActionVideo(ActionVideo):
         features_set_norm = normalize(feature_set, norm="l2")
 
         action_pred_proba = self.classifier.predict_proba(features_set_norm)
+
         max_val_index = np.unravel_index(
             action_pred_proba.argmax(), action_pred_proba.shape
         )
@@ -572,9 +573,8 @@ class InputActionVideo(ActionVideo):
         action_pred = max_val_index[1]
 
         self.buffer = np.hstack((self.buffer[-self.buffer_len-1:], action_pred))
-        # import pdb; pdb.set_trace()
+
         freq_pred = np.argmax(np.bincount(self.buffer))
-        # print(action_pred, freq_pred)
 
         return action_pred, freq_pred
 
@@ -597,9 +597,9 @@ class InputActionVideo(ActionVideo):
 
 class LiveActonVideo(InputActionVideo):
     LABELS = {
-        0: "blank",
-        1:"boxing",
-        2:"clapping",
+        0: "no action",
+        1: "boxing",
+        2: "clapping",
         3: "waving",
         4: "jogging",
         5: "running",
@@ -619,9 +619,8 @@ class LiveActonVideo(InputActionVideo):
 
         filename = self.filename.split('.')[0]
 
-        # out_path = f"{OUTPUT_DIR}/labeled-{filename}.mp4"
-        # out_path = f"{OUTPUT_DIR}/labeled-video.mp4"
-        out_path = "something.mp4"
+        out_path = f"{OUTPUT_DIR}/labeled_{filename}.mp4"
+
         video_out = mp4_video_writer(out_path, (w, h), self.fps)
 
         frame_num = 0
@@ -632,23 +631,23 @@ class LiveActonVideo(InputActionVideo):
 
             action_pred, freq_pred = self.predict_from_feature_set(feature_set)
 
-            if action_pred  == 0:
+            if action_pred == 0:
                 label = self.LABELS[0]
             else:
                 label = self.LABELS[freq_pred]
 
             annotated_frame = np.copy(self.video_frame_array[:, :, i])
-            annotated_frame = self._add_text(annotated_frame, label, (100, 100))
+            annotated_frame = self._add_text(annotated_frame, label, (50, 100))
+            out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
 
-            # cv2.namedWindow("annotated_frames", cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow("annotated_frames", (600, 600))
-            # cv2.imshow("annotated_frames", annotated_frame)
-            # cv2.waitKey(WAIT_DURATION)
-            print(f'Predicted {label}')
-            print(annotated_frame.dtype)
-            out_frame = cv2.cvtColor(self.video_frame_array[:, :, i], cv2.COLOR_GRAY2BGR)
+            cv2.namedWindow("annotated_frames", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("annotated_frames", (600, 600))
+            cv2.imshow("annotated_frames", out_frame)
+            cv2.waitKey(1)
+
+            out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
+
             video_out.write(out_frame)
-
 
             frame_num += 1
 
