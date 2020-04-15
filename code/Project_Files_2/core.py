@@ -10,13 +10,13 @@ from config import actions, backgrounds, frame_sequences
 
 matplotlib.use("Qt5Agg")
 
-VID_DIR = "sample_dataset"
-OUTPUT_DIR = 'output_files'
+VID_DIR = "input_videos"
+OUTPUT_DIR = 'output_media'
 WAIT_DURATION = 10
 NUM_HU = 7 * 2
-TAU_MAX = 30
+TAU_MAX = 20
 TAU = 20
-TAU_MIN = 10
+TAU_MIN = 20
 THETA = 20
 
 
@@ -590,7 +590,7 @@ def generate_data(sequence):
 
     for person_num in sequence[:]:
         for action in list(actions.keys())[:]:
-            for background in backgrounds[:1]:
+            for background in backgrounds[:]:
 
                 action_video = ActionVideo(person_num, action, background)
                 print(action_video)

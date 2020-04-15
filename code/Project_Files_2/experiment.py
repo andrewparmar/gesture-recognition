@@ -14,7 +14,7 @@ from sklearn.utils.multiclass import unique_labels
 
 import config
 import core
-from core import ActionVideo, TAU, NUM_HU, InputActionVideo, LiveActonVideo
+from core import ActionVideo, TAU, NUM_HU, InputActionVideo, LiveActonVideo, VID_DIR
 
 warnings.filterwarnings("ignore")
 
@@ -27,14 +27,14 @@ SAVED_DATA_DIR = "saved_objects"
 SUFFIX = '0414'
 
 if __name__ == "__main__":
-    get_data = True
+    get_data = False
+    train = False
     show_graph = False
-    train = True
 
     if get_data:
         X_train, y_train = core.generate_data(config.training_sequence)
         X_validation, y_validation = core.generate_data(config.validation_sequence)
-        # X_test, y_test = core.generate_data(config.test_sequence)
+        X_test, y_test = core.generate_data(config.test_sequence)
 
         # Save the data
         np.save(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}", X_train)
@@ -43,8 +43,8 @@ if __name__ == "__main__":
         np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
         np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
 
-        # np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
-        # np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
+        np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
+        np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
 
     # Load the data
     print("Loading data ...")
@@ -54,14 +54,14 @@ if __name__ == "__main__":
     X_validation = np.load(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}.npy")
     y_validation = np.load(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}.npy")
 
-    # X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}.npy")
-    # y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}.npy")
+    X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}.npy")
+    y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}.npy")
 
     # Normalize the data
     print("Normalizing data ...")
     x_train_norm = normalize(X_train, norm="l2")
     x_validation_norm = normalize(X_validation, norm="l2")
-    # x_test_norm = normalize(X_test, norm="l2")
+    x_test_norm = normalize(X_test, norm="l2")
 
     if train:
         print("Training classifier ...")
@@ -92,7 +92,9 @@ if __name__ == "__main__":
     validation_accuracy = accuracy_score(y_validation, y_validation_predicted)
     print(f"\nValidation set accuracy: {validation_accuracy}")
 
-    y_test_predictions = []
+    y_test_predicted = clf.predict(x_test_norm)
+    test_accuracy = accuracy_score(y_test, y_test_predicted)
+    print(f"\nTest set accuracy: {test_accuracy}")
 
     filename = f"person19_running_d1_uncomp.avi"
     # input_action_video = InputActionVideo(clf, filename, 'jogging')
@@ -141,8 +143,9 @@ if __name__ == "__main__":
     # # except Exception as e:
     # #     import pdb; pdb.set_trace()
 
-    # live_action_video = LiveActonVideo(clf, filename, 25)
-    # live_action_video.create_annotated_video()
+    filename = "spliced_action_video.mp4"
+    live_action_video = LiveActonVideo(clf, filename, 25)
+    live_action_video.create_annotated_video()
 
     if show_graph:
         cm = confusion_matrix(y_validation, y_validation_predicted)
