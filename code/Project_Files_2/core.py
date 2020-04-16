@@ -1,29 +1,18 @@
-from scipy import stats
 import os
+from collections import deque
 
 import cv2
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 from sklearn.preprocessing import normalize
 
-from sklearn.ensemble import RandomForestClassifier
-
-from config import actions, backgrounds, frame_sequences
-
-from collections import deque
+import utils
+from config import WAIT_DURATION, TAU_MIN, TAU_MAX, TAU, VID_DIR, NUM_HU, THETA
+from config import frame_sequences
+import config
 
 matplotlib.use("Qt5Agg")
-
-VID_DIR = "input_videos"
-OUTPUT_DIR = 'output_media'
-WAIT_DURATION = 10
-NUM_HU = 7 * 2
-THETA = 20
-
-TAU_MAX = 30
-TAU     = 20
-TAU_MIN = 10
 
 
 class BinaryMotion:
@@ -82,25 +71,12 @@ class BinaryMotion:
     def view_image(self, text=None):
         img = np.copy(self.last_image)
         if text:
-            img = self._add_text(img, str(text), (100, 100))
+            img = utils.add_text_to_img(img, str(text), (100, 100))
 
         cv2.namedWindow("last_image", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("last_image", (600, 600))
         cv2.imshow("last_image", img)
         cv2.waitKey(WAIT_DURATION)
-
-    @staticmethod
-    def _add_text(img, text, coordinate):
-        x, y = coordinate
-        font = cv2.FONT_ITALIC
-        fontScale = 0.7
-        color_outline = (255, 255, 255)
-        thickness_outline = 2
-        org = (x, y)
-
-        cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline)
-
-        return img
 
 
 class TemporalTemplate:
@@ -282,9 +258,9 @@ class ActionVideo:
     def _video_to_image_array(self):
         input_video_path = os.path.join(VID_DIR, self.filename)
 
-        self.total_video_frames = self._get_video_frame_count(input_video_path)
+        self.total_video_frames = utils.get_video_frame_count(input_video_path)
 
-        input_image_gen = self._gray_frame_generator(input_video_path)
+        input_image_gen = utils.gray_frame_generator(input_video_path)
         input_image = input_image_gen.__next__()
 
         self.video_frame_array = np.zeros(
@@ -301,42 +277,18 @@ class ActionVideo:
 
             frame_num += 1
 
-    def _get_video_frame_count(self, file_path):
-        video = cv2.VideoCapture(file_path)
+    def _get_range_set(self):
+        full_set = set()
 
-        total = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+        for frame_range in self.frame_ranges:
+            a, b = frame_range
+            range_set = {x for x in range(a-1, b)}
 
-        video.release()
+            full_set = full_set | range_set
 
-        return total
+        return full_set
 
-    @staticmethod
-    def _gray_frame_generator(file_path):
-        """A generator function that returns a frame on each 'next()' call.
-
-        Will return 'None' when there are no frames left.
-
-        Args:
-            file_path (string): Relative file path.
-
-        Returns:
-            None.
-        """
-        video = cv2.VideoCapture(file_path)
-
-        while video.isOpened():
-            ret, frame = video.read()
-
-            if ret:
-                gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                yield gray_image
-            else:
-                break
-
-        video.release()
-        yield None
-
-    def analyze_frames(self): # todo rename to generate_frame_features, but analyze_frames is distinguishable
+    def analyze_frames(self):
         binary_image_history = 2
         theta = self.PARAM_MAP[self.action]["theta"]
         tau = self.PARAM_MAP[self.action]["tau"]
@@ -345,7 +297,7 @@ class ActionVideo:
         self.frame_features = np.zeros((self.total_video_frames, NUM_HU))
         self.frame_labels = np.zeros(self.total_video_frames)
 
-        full_set = self.get_range_set()
+        full_set = self._get_range_set()
 
         binary_motion = BinaryMotion(binary_image_history, theta, ksize)
         temporal_template = TemporalTemplate(tau)
@@ -374,22 +326,13 @@ class ActionVideo:
                 self.frame_features[i] = feature_arr
                 self.frame_labels[i] = np.array([self.PARAM_MAP[self.action]["label"]])
 
-    def get_range_set(self):
-        full_set = set()
-
-        for frame_range in self.frame_ranges:
-            a, b = frame_range
-            range_set = {x for x in range(a-1, b)}
-
-            full_set = full_set | range_set
-
-        return full_set
+            utils.print_fraction(i, self.total_video_frames)
 
 
 class InputActionVideo(ActionVideo):
     num_windows = TAU_MAX - TAU_MIN + 1
 
-    def __init__(self, classifier, filename, action='undefined'):
+    def __init__(self, classifier, filename, action='undefined', analyze=True):
         self.classifier = classifier
         self.filename = filename
         self.action = action
@@ -397,13 +340,14 @@ class InputActionVideo(ActionVideo):
 
         self._video_to_image_array()
 
-        self.frame_ranges = [(1, self.total_video_frames)]
+        self.frame_ranges = [(1, self.total_video_frames)] # TODO: What is this? Why?
 
-        print("Starting analyze frames")
-        self.analyze_frames()
+        if analyze:
+            print("Starting analyze frames")
+            self.analyze_frames()
 
-        print("Starting analyze frames backwards tau")
-        self.analyze_frame_backwards_tau()
+            print("Starting analyze frames backwards tau")
+            self.analyze_frame_backwards_tau()
 
     def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1
@@ -445,7 +389,7 @@ class InputActionVideo(ActionVideo):
         binary_motion = BinaryMotion(binary_image_history, theta)
         temporal_template = TemporalTemplate(TAU_MAX)
 
-        for i in range(self.video_frame_array.shape[-1]):
+        for i in range(self.total_video_frames):
             input_image_t = self.video_frame_array[:, :, i]
 
             binary_motion.update(input_image_t)
@@ -464,47 +408,12 @@ class InputActionVideo(ActionVideo):
 
             n_features_sequence[:, :, i] = features_set
 
-        self.n_features_sequence = n_features_sequence
+            utils.print_fraction(i, self.total_video_frames)
 
-    # def predict_from_feature_set(self, feature_set):
-    #     features_set_norm = normalize(feature_set, norm="l2")
-    #
-    #     action_pred_proba = self.classifier.predict_proba(features_set_norm)
-    #
-    #     max_val_index = np.unravel_index(
-    #         action_pred_proba.argmax(), action_pred_proba.shape
-    #     )
-    #
-    #     action_pred = max_val_index[1]
-    #
-    #     self.buffer.append(action_pred)
-    #     freq_pred = stats.mode(self.buffer)[0]
-    #
-    #     return action_pred, freq_pred
-    #
-    # def play(self, classifier):
-    #
-    #     self.y_label_predictions = np.zeros(self.total_video_frames)
-    #     self.y_label_predictions_freq = np.zeros(self.total_video_frames)
-    #
-    #     for i, feature_set in enumerate(self.frame_feature_set_generator()):
-    #
-    #         assert np.all(self.n_features_sequence[:, :, i] == feature_set)
-    #
-    #         action_pred, freq_pred = self.predict_from_feature_set(feature_set)
-    #
-    #         self.y_label_predictions[i] = action_pred
-    #         self.y_label_predictions_freq[i] = freq_pred
-    #
-    #     print(np.unique(self.y_label_predictions, return_counts=True))
-    #     print(np.unique(self.y_label_predictions_freq, return_counts=True))
+        self.n_features_sequence = n_features_sequence
 
 
 class LiveActonVideo(InputActionVideo):
-    """
-    Use a video generator and frame by frame, we can get do the prediction, apply the
-    text and output the image frame.
-    """
     LABELS = {
         0: "no action",
         1: "boxing",
@@ -517,22 +426,20 @@ class LiveActonVideo(InputActionVideo):
 
     def __init__(self, classifier, filename, fps):
         self.fps = fps
-        super(LiveActonVideo, self).__init__(classifier, filename)
+        super(LiveActonVideo, self).__init__(classifier, filename, analyze=False)
 
     def create_annotated_video(self):
         h, w, _ = self.video_frame_array.shape
 
         filename = self.filename.split('.')[0]
 
-        out_path = f"{OUTPUT_DIR}/labeled_{filename}.mp4"
+        out_path = f"{config.OUTPUT_DIR}/labeled_{filename}.mp4"
 
-        video_out = mp4_video_writer(out_path, (w, h), self.fps)
-
-        frame_num = 0
+        video_out = utils.mp4_video_writer(out_path, (w, h), self.fps)
 
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
-            action_pred, freq_pred = self.predict_from_feature_set(feature_set)
+            action_pred, freq_pred = self.classifier._predict_from_feature_set(feature_set)
 
             if action_pred == 0:
                 label = self.LABELS[0]
@@ -540,7 +447,7 @@ class LiveActonVideo(InputActionVideo):
                 label = self.LABELS[freq_pred]
 
             annotated_frame = np.copy(self.video_frame_array[:, :, i])
-            annotated_frame = self._add_text(annotated_frame, label, (50, 100))
+            annotated_frame = utils.add_text_to_img(annotated_frame, label, (50, 100))
             out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
 
             cv2.namedWindow("annotated_frames", cv2.WINDOW_NORMAL)
@@ -552,75 +459,9 @@ class LiveActonVideo(InputActionVideo):
 
             video_out.write(out_frame)
 
-            frame_num += 1
+            utils.print_fraction(i, self.total_video_frames)
 
         video_out.release()
-
-    @staticmethod
-    def _add_text(img, text, coordinate):
-        x, y = coordinate
-        font = cv2.FONT_ITALIC
-        fontScale = 0.7
-        color_outline = (255, 255, 255)
-        thickness_outline = 2
-        org = (x, y)
-
-        cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline)
-
-        return img
-
-
-def generate_data(sequence):
-    Xtrain = np.zeros((1, NUM_HU))
-    ytrain = np.zeros(1)
-
-    for person_num in sequence[:]:
-        for action in list(actions.keys())[:]:
-            for background in backgrounds[:]:
-
-                action_video = ActionVideo(person_num, action, background)
-                print(action_video)
-
-                action_video.analyze_frames()
-
-                # plot_features(action_video.frame_features, title=action_video.key_name)
-
-                Xtrain = np.vstack((Xtrain, action_video.frame_features))
-                ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))
-
-    # print(f"Average time {sum(times)/len(times)}")
-
-    return Xtrain[1:], ytrain[1:]
-    # TODO: Add a plot for each type of action.
-
-
-def plot_features(features, **kwargs):
-    labels = ["h1", "h2", "h3", "h4", "h5", "h6", "h7"]
-
-    fig, ax = plt.subplots()
-
-    ax.plot(features[:, :7])
-    ax.legend(labels, bbox_to_anchor=(1, 1))
-    ax.set(
-        xlabel="Frame number", ylabel="Hu Value", title=f'{kwargs.get("title", "Plot")}'
-    )
-
-    plt.show()
-
-
-def mp4_video_writer(filename, frame_size, fps=25):
-    """Opens and returns a video for writing.
-    Use the VideoWriter's `write` method to save images.
-    Remember to 'release' when finished.
-    Args:
-        filename (string): Filename for saved video
-        frame_size (tuple): Width, height tuple of output video
-        fps (int): Frames per second
-    Returns:
-        VideoWriter: Instance of VideoWriter ready for writing
-    """
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    return cv2.VideoWriter(filename, fourcc, fps, frame_size)
 
 
 class ModifiedRandomForest():
@@ -634,7 +475,6 @@ class ModifiedRandomForest():
         self._estimator_type = 'classifier'
         self.buffer = deque([], maxlen=buffer_len)
         self.use_action = use_action
-
 
     def _predict_from_feature_set(self, feature_set):
         features_set_norm = normalize(feature_set, norm="l2")
@@ -650,7 +490,7 @@ class ModifiedRandomForest():
         self.buffer.append(action_pred)
         freq_pred = stats.mode(self.buffer)[0]
 
-        return action_pred, freq_pred
+        return action_pred, freq_pred[0]
 
     def predict(self, n_features_sets):
         if len(n_features_sets.shape) == 3:
@@ -671,17 +511,20 @@ class ModifiedRandomForest():
         elif len(n_features_sets.shape) == 2:
             y_pred = np.zeros(1)
 
-            n = 1
+            features_set = n_features_sets
+            #
+            # n = 1
+            #
+            # for i in range(n):
+            #     import pdb; pdb.set_trace()
+            # features_set = n_features_sets[:, :, i]
 
-            for i in range(n):
-                features_set = n_features_sets[:, :, i]
+            action_pred, freq_pred = self._predict_from_feature_set(features_set)
 
-                action_pred, freq_pred = self._predict_from_feature_set(features_set)
-
-                if self.use_action:
-                    y_pred[i] = action_pred
-                else:
-                    y_pred[i] = freq_pred
+            if self.use_action:
+                y_pred[0] = action_pred
+            else:
+                y_pred[0] = freq_pred
         else:
             raise ValueError("Expected 2D array")
 

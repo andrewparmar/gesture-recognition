@@ -1,4 +1,14 @@
+# Constants
+
 SAVED_DATA_DIR = "saved_objects"
+VID_DIR = "input_videos"
+OUTPUT_DIR = 'output_media'
+WAIT_DURATION = 10
+NUM_HU = 7 * 2
+THETA = 20
+TAU_MAX = 30
+TAU     = 20
+TAU_MIN = 10
 
 # subdivision of sequences
 

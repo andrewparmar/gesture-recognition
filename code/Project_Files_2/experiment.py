@@ -1,7 +1,6 @@
 import pprint
 import warnings
 import pickle
-
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
@@ -11,29 +10,80 @@ from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_mat
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import normalize
 from sklearn.utils.multiclass import unique_labels
-
+from config import SAVED_DATA_DIR
+from config import actions, backgrounds, NUM_HU, VID_DIR, OUTPUT_DIR
 import config
 import core
-from core import ActionVideo, TAU, NUM_HU, InputActionVideo, LiveActonVideo, VID_DIR, OUTPUT_DIR, ModifiedRandomForest
+from core import ActionVideo, NUM_HU, InputActionVideo, LiveActonVideo, ModifiedRandomForest
 
-warnings.filterwarnings("ignore")
 
 # Console settings
+warnings.filterwarnings("ignore")
 matplotlib.use("Qt5Agg")
-
 np.set_printoptions(precision=3, linewidth=200)
 
-from config import SAVED_DATA_DIR
-SUFFIX = '0415'
-# SUFFIX = '0414_test'
+
+# SUFFIX = '0415_0' # all-persons | all-actions | d1
+SUFFIX = '0415_1' # all-persons | all-actions | all-backgrounds
+# SUFFIX = '0415_2' # 1-persons | 1actions | d1
+# SUFFIX = 'Final'
 
 
-def label_final_spliced_action_video():
-    clf = pickle.load(open('saved_objects/actions_rfc_model.pkl', 'rb'))
+def generate_data(sequence):
+    Xtrain = np.zeros((1, NUM_HU))
+    ytrain = np.zeros(1)
 
-    filename = "spliced_action_video.mp4"
-    live_action_video = LiveActonVideo(clf, filename, 25)
-    live_action_video.create_annotated_video()
+    for person_num in sequence[:1]:
+        for action in list(actions.keys())[:1]:
+            for background in backgrounds[:1]:
+
+                action_video = ActionVideo(person_num, action, background)
+                print(action_video)
+
+                action_video.analyze_frames()
+
+                # plot_features(action_video.frame_features, title=action_video.key_name)
+
+                Xtrain = np.vstack((Xtrain, action_video.frame_features))
+                ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))
+
+    # print(f"Average time {sum(times)/len(times)}")
+
+    return Xtrain[1:], ytrain[1:]
+    # TODO: Add a plot for each type of action.
+
+
+def generate_data_and_train_classifier():
+    print("Generate data ...")
+    X_train, y_train = generate_data(config.training_sequence)
+    X_validation, y_validation = generate_data(config.validation_sequence)
+    X_test, y_test = generate_data(config.test_sequence)
+
+    print("Normalizing data ...")
+    x_train_norm = normalize(X_train, norm="l2")
+
+    print("Training classifier ...")
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+
+    ######################################################################################
+    # clf = RandomForestClassifier(random_state=42)
+    # parameters = {'n_estimators': [5, 50, 100, 150, 200],
+    #               'max_depth': [None, 10, 50, 100, 500, 1000]}
+    # clf = GridSearchCV(clf, parameters, cv=10, refit=True)
+    ######################################################################################
+
+    clf.fit(x_train_norm, y_train)
+
+    print("Saving data and classifier ...")
+    np.save(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}", X_train)
+    np.save(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}", y_train)
+
+    np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
+    np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
+
+    np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
+    np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
+    pickle.dump(clf, open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'wb'))
 
 
 def compare_classifier_accuracy(show_confusion_matrix=False):
@@ -61,8 +111,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
     training_accuracy = accuracy_score(y_train, y_train_predicted)
     print(f"\nTraining set accuracy: {training_accuracy}")
 
-    y_random = np.random.choice(list(range(8)), size=y_validation.shape, replace=True,
-                                p=None)
+    y_random = np.random.choice(list(range(8)), size=y_validation.shape, replace=True)
     baseline_accuracy = accuracy_score(y_validation, y_random)
     print(f"\nBaseline validation set randomized pick accuracy: {baseline_accuracy}")
 
@@ -76,10 +125,12 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
 
 
     if show_confusion_matrix:
-
         class_names = np.array(
             ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking", ]
         )
+
+        f, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, sharey=True, figsize=(24, 4))
+        f.tight_layout()
 
         title = "Confusion Matrix - Training Data"
 
@@ -90,14 +141,15 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             display_labels=class_names,
             cmap=plt.cm.Blues,
             normalize="true",
+            ax=ax1
         )
         disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
 
-        disp.ax_.set_title(title)
+        # disp.ax_.set_title(title)
+        ax1.set_title(title)
 
         print(title)
         print(disp.confusion_matrix)
-        plt.show()
 
         ##################################################################################
 
@@ -108,52 +160,42 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             x_validation_norm,
             y_validation,
             display_labels=class_names,
-            cmap=plt.cm.Reds,
+            cmap=plt.cm.Oranges,
             normalize="true",
+            ax=ax2
         )
         disp.ax_.set_title(title)
 
         print(title)
         print(disp.confusion_matrix)
 
-        plt.show()
-
         disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_validation.png")
 
+        ##################################################################################
 
-def generate_data_and_train_classifier():
-    # Generate frame features fom video files.
-    print("Generate data ...")
-    X_train, y_train = core.generate_data(config.training_sequence)
-    X_validation, y_validation = core.generate_data(config.validation_sequence)
-    X_test, y_test = core.generate_data(config.test_sequence)
+        title = "Confusion Matrix - Test Data"
 
-    # Save the data
-    np.save(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}", X_train)
-    np.save(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}", y_train)
+        disp = plot_confusion_matrix(
+            clf,
+            x_test_norm,
+            y_test,
+            display_labels=class_names,
+            cmap=plt.cm.Greens,
+            normalize="true",
+            ax=ax3
+        )
+        disp.ax_.set_title(title)
 
-    np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
-    np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
+        print(title)
+        print(disp.confusion_matrix)
 
-    np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
-    np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
+        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_test.png")
 
-    # Normalize the data
-    print("Normalizing data ...")
-    x_train_norm = normalize(X_train, norm="l2")
+        # import pdb; pdb.set_trace()
 
-    print("Training classifier ...")
-    # clf = RandomForestClassifier(n_estimators=100, random_state=42)
+        # plt.tight_layout()
+        plt.show()
 
-    ######################################################################################
-    clf = RandomForestClassifier(random_state=42)
-    parameters = {'n_estimators': [5, 50, 100, 150, 200],
-                  'max_depth': [None, 10, 50, 100, 500, 1000]}
-    clf = GridSearchCV(clf, parameters, cv=10, refit=True)
-    ######################################################################################
-
-    clf.fit(x_train_norm, y_train)
-    pickle.dump(clf, open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'wb'))
 
 def compare_backward_looking_tau_accuracy(filename):
     class_names = np.array(
@@ -230,18 +272,27 @@ def compare_backward_looking_tau_accuracy(filename):
     print(disp.confusion_matrix)
     plt.show()
 
+
+def label_final_spliced_action_video():
+    filename = "spliced_action_video.mp4"
+
+    clf = pickle.load(open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'rb'))
+    modified_clf = ModifiedRandomForest(clf, buffer_len=10)
+
+    live_action_video = LiveActonVideo(modified_clf, filename, 25)
+    live_action_video.create_annotated_video()
+
+
 if __name__ == "__main__":
     #todo Add argparse
     # get_data = False
     # train = False
     # show_graph = False
 
-    generate_data_and_train_classifier()
+    # generate_data_and_train_classifier()
 
-    compare_classifier_accuracy(show_confusion_matrix=True)
-
-    # label_final_spliced_action_video()
+    # compare_classifier_accuracy(show_confusion_matrix=True)
 
     # compare_backward_looking_tau_accuracy(filename = f"person19_running_d1_uncomp.avi")
 
-
+    label_final_spliced_action_video()

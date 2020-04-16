@@ -1,8 +1,8 @@
 from config import training_sequence, test_sequence
 from core import ActionVideo
-from config import actions, backgrounds, frame_sequences
+from config import actions, backgrounds, frame_sequences, OUTPUT_DIR, VID_DIR
 import numpy as np
-from core import mp4_video_writer, OUTPUT_DIR, VID_DIR
+from utils import mp4_video_writer
 import cv2
 from config import SAVED_DATA_DIR
 
