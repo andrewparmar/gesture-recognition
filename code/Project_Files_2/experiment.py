@@ -1,21 +1,25 @@
-import pprint
-import warnings
+import os
 import pickle
-import cv2
+import warnings
+from argparse import ArgumentParser, RawTextHelpFormatter
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_matrix
+from sklearn.metrics import accuracy_score, plot_confusion_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import normalize
-from sklearn.utils.multiclass import unique_labels
-from config import SAVED_DATA_DIR
-from config import actions, backgrounds, NUM_HU, VID_DIR, OUTPUT_DIR
-import config
-import core
-from core import ActionVideo, NUM_HU, InputActionVideo, LiveActonVideo, ModifiedRandomForest
 
+import config
+from config import OUTPUT_DIR, SAVED_DATA_DIR, actions, backgrounds
+from core import (
+    ActionVideo,
+    ActionVideoUnknownTau,
+    ModifiedRandomForest,
+    VideoActionLabeler,
+)
+from utils import plot_features
 
 # Console settings
 warnings.filterwarnings("ignore")
@@ -24,13 +28,14 @@ np.set_printoptions(precision=3, linewidth=200)
 
 
 # SUFFIX = '0415_0' # all-persons | all-actions | d1
-SUFFIX = '0415_1' # all-persons | all-actions | all-backgrounds
-# SUFFIX = '0415_2' # 1-persons | 1actions | d1
+# SUFFIX = '0415_1' # all-persons | all-actions | all-backgrounds
+SUFFIX = "0415_2"  # 1-persons | 1actions | d1
+# SUFFIX = '0415_3' # all-persons | all-actions | all-backgrounds | Grid Search
 # SUFFIX = 'Final'
 
 
 def generate_data(sequence):
-    Xtrain = np.zeros((1, NUM_HU))
+    Xtrain = np.zeros((1, config.NUM_HU))
     ytrain = np.zeros(1)
 
     for person_num in sequence[:1]:
@@ -53,7 +58,7 @@ def generate_data(sequence):
     # TODO: Add a plot for each type of action.
 
 
-def generate_data_and_train_classifier():
+def generate_data_and_train_classifier(use_grid_search=False):
     print("Generate data ...")
     X_train, y_train = generate_data(config.training_sequence)
     X_validation, y_validation = generate_data(config.validation_sequence)
@@ -66,10 +71,14 @@ def generate_data_and_train_classifier():
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
 
     ######################################################################################
-    # clf = RandomForestClassifier(random_state=42)
-    # parameters = {'n_estimators': [5, 50, 100, 150, 200],
-    #               'max_depth': [None, 10, 50, 100, 500, 1000]}
-    # clf = GridSearchCV(clf, parameters, cv=10, refit=True)
+    if use_grid_search:
+        print("Applying Grid Search ...")
+        clf = RandomForestClassifier(random_state=42)
+        parameters = {
+            "n_estimators": [5, 50, 100, 150, 200],
+            "max_depth": [None, 10, 50, 100, 500, 1000],
+        }
+        clf = GridSearchCV(clf, parameters, cv=10, refit=True)
     ######################################################################################
 
     clf.fit(x_train_norm, y_train)
@@ -83,7 +92,7 @@ def generate_data_and_train_classifier():
 
     np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
     np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
-    pickle.dump(clf, open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'wb'))
+    pickle.dump(clf, open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "wb"))
 
 
 def compare_classifier_accuracy(show_confusion_matrix=False):
@@ -104,7 +113,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
     x_validation_norm = normalize(X_validation, norm="l2")
     x_test_norm = normalize(X_test, norm="l2")
 
-    clf = pickle.load(open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'rb'))
+    clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
 
     print("Predicting ...")
     y_train_predicted = clf.predict(x_train_norm)
@@ -123,13 +132,14 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
     test_accuracy = accuracy_score(y_test, y_test_predicted)
     print(f"\nTest set accuracy: {test_accuracy}")
 
-
     if show_confusion_matrix:
         class_names = np.array(
-            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking", ]
+            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
         )
 
-        f, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, sharey=True, figsize=(24, 4))
+        f, (ax1, ax2, ax3) = plt.subplots(
+            nrows=1, ncols=3, sharey=True, figsize=(24, 4)
+        )
         f.tight_layout()
 
         title = "Confusion Matrix - Training Data"
@@ -141,7 +151,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             display_labels=class_names,
             cmap=plt.cm.Blues,
             normalize="true",
-            ax=ax1
+            ax=ax1,
         )
         disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
 
@@ -162,7 +172,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             display_labels=class_names,
             cmap=plt.cm.Oranges,
             normalize="true",
-            ax=ax2
+            ax=ax2,
         )
         disp.ax_.set_title(title)
 
@@ -182,7 +192,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             display_labels=class_names,
             cmap=plt.cm.Greens,
             normalize="true",
-            ax=ax3
+            ax=ax3,
         )
         disp.ax_.set_title(title)
 
@@ -199,13 +209,15 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
 
 def compare_backward_looking_tau_accuracy(filename):
     class_names = np.array(
-        ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking", ]
+        ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
     )
     labels = np.array(list(range(7)))
 
-    clf = pickle.load(open('saved_objects/actions_rfc_model.pkl', 'rb'))
+    clf = pickle.load(open("saved_objects/actions_rfc_model.pkl", "rb"))
 
-    input_action_video = InputActionVideo(clf, filename, 'running') # TODO Why are you proviiding the filename here??
+    input_action_video = ActionVideoUnknownTau(
+        clf, filename, "running"
+    )  # TODO Why are you providing the filename here??
 
     title = "Confusion Matrix - Fixed Tau"
     print("Starting predict fixed tau")
@@ -225,7 +237,6 @@ def compare_backward_looking_tau_accuracy(filename):
     print(title)
     print(disp.confusion_matrix)
     # plt.show()
-
 
     # input_action_video.play(clf)
 
@@ -276,23 +287,88 @@ def compare_backward_looking_tau_accuracy(filename):
 def label_final_spliced_action_video():
     filename = "spliced_action_video.mp4"
 
-    clf = pickle.load(open(f'saved_objects/actions_rfc_model_{SUFFIX}.pkl', 'rb'))
+    clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
     modified_clf = ModifiedRandomForest(clf, buffer_len=10)
 
-    live_action_video = LiveActonVideo(modified_clf, filename, 25)
+    live_action_video = VideoActionLabeler(modified_clf, filename, 25)
     live_action_video.create_annotated_video()
 
 
+def process_cmdline_args():
+    """Processes command line arguments"""
+    desc = """Runs scripts used to generate output in the report.
+
+        NOTE: Larger required data files that are not included in this package can be
+              downloaded from https://alksjdflsj.com
+
+        exp 0:  [Runtime ~ 1 hr]
+                Desc: Generates data, trains classifier, and saves both to disk.
+                Requires:
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+
+        exp 1:  [Runtime 1 min]
+                Desc: Compares prediction accuracies and generates confusion matrix plots
+                Requires:
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+
+        exp 2:  [Runtime ~ 1 hr]
+                Desc: Generates data, trains classifier, and saves both to disk.
+                Requires:
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+
+        exp 3:  [Runtime ~ 1 hr]
+                Desc: Generates data, trains classifier, and saves both to disk.
+                Requires:
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+
+        exp 4:  [Runtime ~ 1 hr]
+                Desc: Generates data, trains classifier, and saves both to disk.
+                Requires:
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+                   ./saved_objects/....
+    """
+    examples = """
+    examples:
+        Generate confusion matrix plots
+            python experiment.py --exp 1
+    """
+    parser = ArgumentParser(
+        description=desc, epilog=examples, formatter_class=RawTextHelpFormatter
+    )
+    parser.add_argument("--exp", help="Experiment number", default="exp1", type=str)
+
+    args = parser.parse_args()
+
+    return args
+
+
 if __name__ == "__main__":
-    #todo Add argparse
-    # get_data = False
-    # train = False
-    # show_graph = False
+    try:
+        os.mkdir(OUTPUT_DIR)
+    except OSError:
+        pass
 
-    # generate_data_and_train_classifier()
+    args = process_cmdline_args()
 
-    # compare_classifier_accuracy(show_confusion_matrix=True)
+    if args.exp == "exp1":
+        generate_data_and_train_classifier()
 
-    # compare_backward_looking_tau_accuracy(filename = f"person19_running_d1_uncomp.avi")
+        compare_classifier_accuracy(show_confusion_matrix=True)
 
-    label_final_spliced_action_video()
+        # compare_backward_looking_tau_accuracy(filename = f"person19_running_d1_uncomp.avi")
+
+        # label_final_spliced_action_video()

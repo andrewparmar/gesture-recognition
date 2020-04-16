@@ -7,10 +7,18 @@ import numpy as np
 from scipy import stats
 from sklearn.preprocessing import normalize
 
-import utils
-from config import WAIT_DURATION, TAU_MIN, TAU_MAX, TAU, VID_DIR, NUM_HU, THETA
-from config import frame_sequences
 import config
+import utils
+from config import (
+    NUM_HU,
+    TAU,
+    TAU_MAX,
+    TAU_MIN,
+    THETA,
+    VID_DIR,
+    WAIT_DURATION,
+    frame_sequences,
+)
 
 matplotlib.use("Qt5Agg")
 
@@ -234,13 +242,13 @@ class HuMoments:
 class ActionVideo:
 
     PARAM_MAP = {
-        'undefined':    {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
-        "boxing":       {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
+        "undefined": {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
+        "boxing": {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
         "handclapping": {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
-        "handwaving":   {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
-        "jogging":      {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
-        "running":      {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa,
+        "handwaving": {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
+        "jogging": {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+        "running": {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
+        "walking": {"label": 6, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa,
     }
 
     def __init__(self, num, action, background):
@@ -253,7 +261,7 @@ class ActionVideo:
         self._video_to_image_array()
 
     def __repr__(self):
-        return f'<ActionVideo {self.key_name}>'
+        return f"<ActionVideo {self.key_name}>"
 
     def _video_to_image_array(self):
         input_video_path = os.path.join(VID_DIR, self.filename)
@@ -282,7 +290,7 @@ class ActionVideo:
 
         for frame_range in self.frame_ranges:
             a, b = frame_range
-            range_set = {x for x in range(a-1, b)}
+            range_set = {x for x in range(a - 1, b)}
 
             full_set = full_set | range_set
 
@@ -329,10 +337,10 @@ class ActionVideo:
             utils.print_fraction(i, self.total_video_frames)
 
 
-class InputActionVideo(ActionVideo):
+class ActionVideoUnknownTau(ActionVideo):
     num_windows = TAU_MAX - TAU_MIN + 1
 
-    def __init__(self, classifier, filename, action='undefined', analyze=True):
+    def __init__(self, classifier, filename, action="undefined", analyze=True):
         self.classifier = classifier
         self.filename = filename
         self.action = action
@@ -340,7 +348,8 @@ class InputActionVideo(ActionVideo):
 
         self._video_to_image_array()
 
-        self.frame_ranges = [(1, self.total_video_frames)] # TODO: What is this? Why?
+        # This lets _get_range_set return all frames ids.
+        self.frame_ranges = [(1, self.total_video_frames)]  # TODO: What is this? Why?
 
         if analyze:
             print("Starting analyze frames")
@@ -355,8 +364,8 @@ class InputActionVideo(ActionVideo):
         feature_sequence = np.zeros((num_windows, NUM_HU))
 
         for i in range(num_windows):
-            mhi_t = (mhi - i)
-            mhi_t[mhi_t < 0 ] = 0
+            mhi_t = mhi - i
+            mhi_t[mhi_t < 0] = 0
             mei_t = np.zeros(mhi.shape)
             mei_t[mhi_t > 0] = 1
 
@@ -365,7 +374,9 @@ class InputActionVideo(ActionVideo):
             else:
                 hu_moments_mhi = HuMoments(mhi_t)
             hu_moments_mei_t = HuMoments(mei_t)
-            hu_moments = np.concatenate((hu_moments_mei_t.values, hu_moments_mhi.values))
+            hu_moments = np.concatenate(
+                (hu_moments_mei_t.values, hu_moments_mhi.values)
+            )
 
             feature_arr = np.log(np.abs(hu_moments))
 
@@ -402,7 +413,9 @@ class InputActionVideo(ActionVideo):
         raise StopIteration
 
     def analyze_frame_backwards_tau(self):
-        n_features_sequence = np.zeros((self.num_windows, NUM_HU, self.total_video_frames))
+        n_features_sequence = np.zeros(
+            (self.num_windows, NUM_HU, self.total_video_frames)
+        )
 
         for i, features_set in enumerate(self.frame_feature_set_generator()):
 
@@ -413,7 +426,7 @@ class InputActionVideo(ActionVideo):
         self.n_features_sequence = n_features_sequence
 
 
-class LiveActonVideo(InputActionVideo):
+class VideoActionLabeler(ActionVideoUnknownTau):
     LABELS = {
         0: "no action",
         1: "boxing",
@@ -421,17 +434,17 @@ class LiveActonVideo(InputActionVideo):
         3: "waving",
         4: "jogging",
         5: "running",
-        6: "walking"
+        6: "walking",
     }
 
     def __init__(self, classifier, filename, fps):
         self.fps = fps
-        super(LiveActonVideo, self).__init__(classifier, filename, analyze=False)
+        super(VideoActionLabeler, self).__init__(classifier, filename, analyze=False)
 
     def create_annotated_video(self):
         h, w, _ = self.video_frame_array.shape
 
-        filename = self.filename.split('.')[0]
+        filename = self.filename.split(".")[0]
 
         out_path = f"{config.OUTPUT_DIR}/labeled_{filename}.mp4"
 
@@ -439,7 +452,9 @@ class LiveActonVideo(InputActionVideo):
 
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
-            action_pred, freq_pred = self.classifier._predict_from_feature_set(feature_set)
+            action_pred, freq_pred = self.classifier._predict_from_feature_set(
+                feature_set
+            )
 
             if action_pred == 0:
                 label = self.LABELS[0]
@@ -464,7 +479,7 @@ class LiveActonVideo(InputActionVideo):
         video_out.release()
 
 
-class ModifiedRandomForest():
+class ModifiedRandomForest:
     """
     This is pretty much a regular random forest with a wrapper around it to allow us to
     call predict on a backward looking tau feature set.
@@ -472,7 +487,7 @@ class ModifiedRandomForest():
 
     def __init__(self, trained_rfc, buffer_len=15, use_action=False):
         self.classifier = trained_rfc
-        self._estimator_type = 'classifier'
+        self._estimator_type = "classifier"
         self.buffer = deque([], maxlen=buffer_len)
         self.use_action = use_action
 
@@ -512,12 +527,6 @@ class ModifiedRandomForest():
             y_pred = np.zeros(1)
 
             features_set = n_features_sets
-            #
-            # n = 1
-            #
-            # for i in range(n):
-            #     import pdb; pdb.set_trace()
-            # features_set = n_features_sets[:, :, i]
 
             action_pred, freq_pred = self._predict_from_feature_set(features_set)
 
