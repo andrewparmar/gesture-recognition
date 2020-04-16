@@ -1,3 +1,4 @@
+from scipy import stats
 import os
 
 import cv2
@@ -6,7 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import normalize
 
+from sklearn.ensemble import RandomForestClassifier
+
 from config import actions, backgrounds, frame_sequences
+
+from collections import deque
 
 matplotlib.use("Qt5Agg")
 
@@ -14,10 +19,11 @@ VID_DIR = "input_videos"
 OUTPUT_DIR = 'output_media'
 WAIT_DURATION = 10
 NUM_HU = 7 * 2
-TAU_MAX = 20
-TAU = 20
-TAU_MIN = 20
 THETA = 20
+
+TAU_MAX = 30
+TAU     = 20
+TAU_MIN = 10
 
 
 class BinaryMotion:
@@ -252,13 +258,13 @@ class HuMoments:
 class ActionVideo:
 
     PARAM_MAP = {
-        "boxing":       {"label": 1, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+        'undefined':    {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
+        "boxing":       {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
         "handclapping": {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
         "handwaving":   {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
         "jogging":      {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
         "running":      {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
-        'undefined':    {"label": 7, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
+        "walking":      {"label": 6, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa,
     }
 
     def __init__(self, num, action, background):
@@ -330,7 +336,7 @@ class ActionVideo:
         video.release()
         yield None
 
-    def analyze_frames(self): # todo generate_frame_features
+    def analyze_frames(self): # todo rename to generate_frame_features, but analyze_frames is distinguishable
         binary_image_history = 2
         theta = self.PARAM_MAP[self.action]["theta"]
         tau = self.PARAM_MAP[self.action]["tau"]
@@ -368,33 +374,6 @@ class ActionVideo:
                 self.frame_features[i] = feature_arr
                 self.frame_labels[i] = np.array([self.PARAM_MAP[self.action]["label"]])
 
-    def get_feature_sequence(self, mhi):
-        num_windows = TAU_MAX - TAU_MIN + 1
-
-        feature_sequence = np.zeros((num_windows, NUM_HU))
-
-        for i in range(num_windows):
-            mhi_t = (mhi - i)
-            mhi_t[mhi_t < 0 ] = 0
-            mei_t = np.zeros(mhi.shape)
-            mei_t[mhi_t > 0] = 1
-
-            if mhi_t.max():
-                hu_moments_mhi = HuMoments(mhi_t / mhi_t.max())
-            else:
-                hu_moments_mhi = HuMoments(mhi_t)
-            hu_moments_mei_t = HuMoments(mei_t)
-            hu_moments = np.concatenate((hu_moments_mei_t.values, hu_moments_mhi.values))
-
-            feature_arr = np.log(np.abs(hu_moments))
-
-            if np.any(np.isinf(feature_arr)):
-                feature_arr = np.zeros(feature_arr.shape)
-
-            feature_sequence[i] = feature_arr
-
-        return feature_sequence
-
     def get_range_set(self):
         full_set = set()
 
@@ -408,19 +387,23 @@ class ActionVideo:
 
 
 class InputActionVideo(ActionVideo):
+    num_windows = TAU_MAX - TAU_MIN + 1
 
     def __init__(self, classifier, filename, action='undefined'):
         self.classifier = classifier
         self.filename = filename
         self.action = action
-        self.buffer_len = 15
-
+        self.buffer = deque([], maxlen=15)
 
         self._video_to_image_array()
 
         self.frame_ranges = [(1, self.total_video_frames)]
 
+        print("Starting analyze frames")
         self.analyze_frames()
+
+        print("Starting analyze frames backwards tau")
+        self.analyze_frame_backwards_tau()
 
     def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1
@@ -459,8 +442,6 @@ class InputActionVideo(ActionVideo):
         binary_image_history = 2
         theta = THETA
 
-        frame_num = 0
-
         binary_motion = BinaryMotion(binary_image_history, theta)
         temporal_template = TemporalTemplate(TAU_MAX)
 
@@ -474,42 +455,49 @@ class InputActionVideo(ActionVideo):
 
             yield features_sequence
 
-            frame_num += 1
-
         raise StopIteration
 
-    def predict_from_feature_set(self, feature_set):
-        features_set_norm = normalize(feature_set, norm="l2")
+    def analyze_frame_backwards_tau(self):
+        n_features_sequence = np.zeros((self.num_windows, NUM_HU, self.total_video_frames))
 
-        action_pred_proba = self.classifier.predict_proba(features_set_norm)
+        for i, features_set in enumerate(self.frame_feature_set_generator()):
 
-        max_val_index = np.unravel_index(
-            action_pred_proba.argmax(), action_pred_proba.shape
-        )
+            n_features_sequence[:, :, i] = features_set
 
-        action_pred = max_val_index[1]
+        self.n_features_sequence = n_features_sequence
 
-        self.buffer = np.hstack((self.buffer[-self.buffer_len-1:], action_pred))
-
-        freq_pred = np.argmax(np.bincount(self.buffer))
-
-        return action_pred, freq_pred
-
-    def play(self, classifier):
-
-        self.y_label_predictions = np.zeros(self.total_video_frames)
-        self.y_label_predictions_freq = np.zeros(self.total_video_frames)
-
-        self.buffer = np.zeros(self.buffer_len, dtype=np.uint8)
-        for i, feature_set in enumerate(self.frame_feature_set_generator()):
-
-            action_pred, freq_pred = self.predict_from_feature_set(feature_set)
-
-            self.y_label_predictions[i] = action_pred
-            self.y_label_predictions_freq[i] = freq_pred
-
-        print(np.unique(self.y_label_predictions, return_counts=True))
-        print(np.unique(self.y_label_predictions_freq, return_counts=True))
+    # def predict_from_feature_set(self, feature_set):
+    #     features_set_norm = normalize(feature_set, norm="l2")
+    #
+    #     action_pred_proba = self.classifier.predict_proba(features_set_norm)
+    #
+    #     max_val_index = np.unravel_index(
+    #         action_pred_proba.argmax(), action_pred_proba.shape
+    #     )
+    #
+    #     action_pred = max_val_index[1]
+    #
+    #     self.buffer.append(action_pred)
+    #     freq_pred = stats.mode(self.buffer)[0]
+    #
+    #     return action_pred, freq_pred
+    #
+    # def play(self, classifier):
+    #
+    #     self.y_label_predictions = np.zeros(self.total_video_frames)
+    #     self.y_label_predictions_freq = np.zeros(self.total_video_frames)
+    #
+    #     for i, feature_set in enumerate(self.frame_feature_set_generator()):
+    #
+    #         assert np.all(self.n_features_sequence[:, :, i] == feature_set)
+    #
+    #         action_pred, freq_pred = self.predict_from_feature_set(feature_set)
+    #
+    #         self.y_label_predictions[i] = action_pred
+    #         self.y_label_predictions_freq[i] = freq_pred
+    #
+    #     print(np.unique(self.y_label_predictions, return_counts=True))
+    #     print(np.unique(self.y_label_predictions_freq, return_counts=True))
 
 
 class LiveActonVideo(InputActionVideo):
@@ -541,8 +529,6 @@ class LiveActonVideo(InputActionVideo):
         video_out = mp4_video_writer(out_path, (w, h), self.fps)
 
         frame_num = 0
-
-        self.buffer = np.zeros(self.buffer_len, dtype=np.uint8)
 
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
@@ -635,3 +621,68 @@ def mp4_video_writer(filename, frame_size, fps=25):
     """
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     return cv2.VideoWriter(filename, fourcc, fps, frame_size)
+
+
+class ModifiedRandomForest():
+    """
+    This is pretty much a regular random forest with a wrapper around it to allow us to
+    call predict on a backward looking tau feature set.
+    """
+
+    def __init__(self, trained_rfc, buffer_len=15, use_action=False):
+        self.classifier = trained_rfc
+        self._estimator_type = 'classifier'
+        self.buffer = deque([], maxlen=buffer_len)
+        self.use_action = use_action
+
+
+    def _predict_from_feature_set(self, feature_set):
+        features_set_norm = normalize(feature_set, norm="l2")
+
+        action_pred_proba = self.classifier.predict_proba(features_set_norm)
+
+        max_val_index = np.unravel_index(
+            action_pred_proba.argmax(), action_pred_proba.shape
+        )
+
+        action_pred = max_val_index[1]
+
+        self.buffer.append(action_pred)
+        freq_pred = stats.mode(self.buffer)[0]
+
+        return action_pred, freq_pred
+
+    def predict(self, n_features_sets):
+        if len(n_features_sets.shape) == 3:
+            y_pred = np.zeros(n_features_sets.shape[2])
+
+            n = n_features_sets.shape[2]
+
+            for i in range(n):
+                features_set = n_features_sets[:, :, i]
+
+                action_pred, freq_pred = self._predict_from_feature_set(features_set)
+
+                if self.use_action:
+                    y_pred[i] = action_pred
+                else:
+                    y_pred[i] = freq_pred
+
+        elif len(n_features_sets.shape) == 2:
+            y_pred = np.zeros(1)
+
+            n = 1
+
+            for i in range(n):
+                features_set = n_features_sets[:, :, i]
+
+                action_pred, freq_pred = self._predict_from_feature_set(features_set)
+
+                if self.use_action:
+                    y_pred[i] = action_pred
+                else:
+                    y_pred[i] = freq_pred
+        else:
+            raise ValueError("Expected 2D array")
+
+        return y_pred

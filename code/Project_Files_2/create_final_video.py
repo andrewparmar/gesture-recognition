@@ -4,6 +4,8 @@ from config import actions, backgrounds, frame_sequences
 import numpy as np
 from core import mp4_video_writer, OUTPUT_DIR, VID_DIR
 import cv2
+from config import SAVED_DATA_DIR
+
 
 def get_action_video_objects():
     action_videos = []
@@ -50,22 +52,21 @@ if __name__ == '__main__':
     action_video_tuples = get_action_video_objects()
 
     filename = 'spliced_action_video'
-
     out_path = f"{VID_DIR}/{filename}.mp4"
-
     fps = 25
-
     h, w, _ = action_video_tuples[0][0].video_frame_array.shape
 
     video_out = mp4_video_writer(out_path, (w, h), fps)
 
+    true_frame_labels = np.zeros(1)
+
+    print('Writing action frames to video ...')
+
     for av, frame_range in action_video_tuples:
-        print(av, frame_range)
+        print(av.key_name, frame_range)
 
         start = frame_range[0] - 1
         end = frame_range[1]
-
-        print('Writing video ...')
 
         for i in range(start, end):
 
@@ -75,4 +76,11 @@ if __name__ == '__main__':
 
             video_out.write(out_frame)
 
+            true_frame_labels = np.hstack((true_frame_labels, av.action))
+
     video_out.release()
+
+    np.save(f"{SAVED_DATA_DIR}/true_frame_labels_{filename}", true_frame_labels)
+
+    print("Distribution of actions")
+    print(np.unique(true_frame_labels, return_counts=True))

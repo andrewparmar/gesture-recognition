@@ -1,3 +1,5 @@
+SAVED_DATA_DIR = "saved_objects"
+
 # subdivision of sequences
 
 actions = {
