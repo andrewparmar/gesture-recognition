@@ -3,6 +3,7 @@ from collections import deque
 
 import cv2
 import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 from sklearn.preprocessing import normalize
@@ -335,6 +336,28 @@ class ActionVideo:
                 self.frame_labels[i] = np.array([self.PARAM_MAP[self.action]["label"]])
 
             utils.print_fraction(i, self.total_video_frames)
+
+    def plot_features_by_frame(self, ax=None):
+        print(f"Generating plot for video {self.key_name}")
+
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
+
+        labels = ["h1", "h2", "h3", "h4", "h5", "h6", "h7"]
+        theta = self.PARAM_MAP[self.action]["theta"]
+        tau = self.PARAM_MAP[self.action]["tau"]
+        title = f"""{self.key_name} \u03C4={tau}; \u03B8={theta}"""
+        features = np.abs(self.frame_features[:100, :7])
+
+        lines = ax.plot(features)
+
+        ax.set_ylim([0, features.max() * 1.1])
+        ax.set(xlabel="Frame number", ylabel="log(abs(HuValue))")
+        ax.set_title(title, fontsize=15)  # title of plo
+        ax.legend(lines, labels, loc=(0.005, 0.92), ncol=7, columnspacing=1)
+        ax.grid(True)
 
 
 class ActionVideoUnknownTau(ActionVideo):

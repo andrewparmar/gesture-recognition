@@ -47,15 +47,12 @@ def generate_data(sequence):
 
                 action_video.analyze_frames()
 
-                # plot_features(action_video.frame_features, title=action_video.key_name)
-
                 Xtrain = np.vstack((Xtrain, action_video.frame_features))
                 ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))
 
     # print(f"Average time {sum(times)/len(times)}")
 
     return Xtrain[1:], ytrain[1:]
-    # TODO: Add a plot for each type of action.
 
 
 def generate_data_and_train_classifier(use_grid_search=False):
@@ -284,6 +281,36 @@ def compare_backward_looking_tau_accuracy(filename):
     plt.show()
 
 
+def generate_plots_for_different_actions(person_num=10, background="d1"):
+    person_num = person_num
+    background = background
+
+    rows = 2
+    cols = 3
+
+    fig, axs, = plt.subplots(nrows=2, ncols=3, figsize=(24, 12))
+    fig.tight_layout()
+
+    axs_list = []
+    for row in range(rows):
+        for col in range(cols):
+            axs_list.append(axs[row, col])
+
+    for action in config.actions:
+        action_video = ActionVideo(person_num, action, background)
+        print(action_video)
+        action_video.analyze_frames()
+        action_video.plot_features_by_frame(axs_list.pop())
+
+    plt.subplots_adjust(
+        top=0.927, bottom=0.063, left=0.035, right=0.969, hspace=0.322, wspace=0.15
+    )
+
+    plt.tight_layout()
+    fig.savefig(f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.svg", format="svg")
+    # plt.show()
+
+
 def label_final_spliced_action_video():
     filename = "spliced_action_video.mp4"
 
@@ -298,8 +325,8 @@ def process_cmdline_args():
     """Processes command line arguments"""
     desc = """Runs scripts used to generate output in the report.
 
-        NOTE: Larger required data files that are not included in this package can be
-              downloaded from https://alksjdflsj.com
+        NOTE: Large data files required to run some experiments are not included in the
+              package. They can be downloaded from https://alksjdflsj.com
 
         exp 0:  [Runtime ~ 1 hr]
                 Desc: Generates data, trains classifier, and saves both to disk.
@@ -317,13 +344,16 @@ def process_cmdline_args():
                    ./saved_objects/....
                    ./saved_objects/....
 
-        exp 2:  [Runtime ~ 1 hr]
-                Desc: Generates data, trains classifier, and saves both to disk.
+        exp 2:  [Runtime ~ 30 secs]
+                Desc: Generates plots for hu-moment representation of action over frames.
+                      Defaults to person 10 over d1 background in dataset.
                 Requires:
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
+                   ./input_videos/person10_boxing_d1_uncomp.avi
+                   ./input_videos/person10_handwaving_d1_uncomp.avi
+                   ./input_videos/person10_handclapping_d1_uncomp.avi
+                   ./input_videos/person10_running_d1_uncomp.avi
+                   ./input_videos/person10_jogging_d1_uncomp.avi
+                   ./input_videos/person10_walking_d1_uncomp.avi
 
         exp 3:  [Runtime ~ 1 hr]
                 Desc: Generates data, trains classifier, and saves both to disk.
@@ -364,10 +394,12 @@ if __name__ == "__main__":
 
     args = process_cmdline_args()
 
-    if args.exp == "exp1":
+    if args.exp == "1":
         generate_data_and_train_classifier()
-
         compare_classifier_accuracy(show_confusion_matrix=True)
+
+    elif args.exp == "2":
+        generate_plots_for_different_actions()
 
         # compare_backward_looking_tau_accuracy(filename = f"person19_running_d1_uncomp.avi")
 
