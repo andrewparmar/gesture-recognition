@@ -1,10 +1,9 @@
-from config import training_sequence, test_sequence
-from core import ActionVideo
-from config import actions, backgrounds, frame_sequences, OUTPUT_DIR, VID_DIR
-import numpy as np
-from utils import mp4_video_writer
 import cv2
-from config import SAVED_DATA_DIR
+import numpy as np
+
+from config import INPUT_DIR, SAVED_DATA_DIR, actions, frame_sequences, test_sequence
+from core import ActionVideo
+from utils import mp4_video_writer
 
 
 def get_action_video_objects():
@@ -20,25 +19,23 @@ def get_action_video_objects():
 
     for num in sequence:
         for action in actions:
-            background = 'd1'
+            background = "d1"
             key_name = f"person{num:02d}_{action}_{background}"
 
             range_indx = np.random.choice(
-                list(range(len(frame_sequences[key_name]))),
-                replace=True
+                list(range(len(frame_sequences[key_name]))), replace=True
             )
 
             frame_range = frame_sequences[key_name][range_indx]
 
-            print(f'{key_name}: {frame_sequences[key_name][range_indx]}')
+            print(f"{key_name}: {frame_sequences[key_name][range_indx]}")
 
             total += frame_range[1] - frame_range[0] + 1
 
             cumulative_time = total / 25 / 60
 
             if cumulative_time <= len_final_video:
-                print(f'Total: {total}: Time: {cumulative_time}')
-                # pass
+                print(f"Total: {total}: Video Duration: {cumulative_time}")
                 av = ActionVideo(num, action, background)
                 action_videos.append((av, frame_range))
             else:
@@ -47,12 +44,12 @@ def get_action_video_objects():
     return action_videos
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     action_video_tuples = get_action_video_objects()
 
-    filename = 'spliced_action_video'
-    out_path = f"{VID_DIR}/{filename}.mp4"
+    filename = "spliced_action_video"
+    out_path = f"{INPUT_DIR}/{filename}.mp4"
     fps = 25
     h, w, _ = action_video_tuples[0][0].video_frame_array.shape
 
@@ -60,7 +57,7 @@ if __name__ == '__main__':
 
     true_frame_labels = np.zeros(1)
 
-    print('Writing action frames to video ...')
+    print("Writing action frames to video ...")
 
     for av, frame_range in action_video_tuples:
         print(av.key_name, frame_range)

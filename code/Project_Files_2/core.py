@@ -11,12 +11,12 @@ from sklearn.preprocessing import normalize
 import config
 import utils
 from config import (
+    INPUT_DIR,
     NUM_HU,
     TAU,
     TAU_MAX,
     TAU_MIN,
     THETA,
-    VID_DIR,
     WAIT_DURATION,
     frame_sequences,
 )
@@ -265,7 +265,7 @@ class ActionVideo:
         return f"<ActionVideo {self.key_name}>"
 
     def _video_to_image_array(self):
-        input_video_path = os.path.join(VID_DIR, self.filename)
+        input_video_path = os.path.join(INPUT_DIR, self.filename)
 
         self.total_video_frames = utils.get_video_frame_count(input_video_path)
 

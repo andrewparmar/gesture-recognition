@@ -1,8 +1,8 @@
 # Constants
 
 SAVED_DATA_DIR = "saved_objects"
-VID_DIR = "input_videos"
-OUTPUT_DIR = 'output_media'
+INPUT_DIR = "input_files"
+OUTPUT_DIR = 'output_files'
 WAIT_DURATION = 10
 NUM_HU = 7 * 2
 THETA = 20
@@ -19,6 +19,15 @@ actions = {
     'jogging': 4,
     'running': 5,
     "walking": 6
+}
+labels = {
+     0: 'blank',
+     1: 'boxing',
+     2: 'handclapping',
+     3: 'handwaving',
+     4: 'jogging',
+     5: 'running',
+     6: 'walking'
 }
 backgrounds = ["d1", "d2", "d3", "d4"]
 

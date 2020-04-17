@@ -7,9 +7,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, plot_confusion_matrix
+from sklearn.metrics import accuracy_score, auc, plot_confusion_matrix, roc_curve
 from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import normalize
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import label_binarize, normalize
 
 import config
 from config import OUTPUT_DIR, SAVED_DATA_DIR, actions, backgrounds
@@ -19,19 +22,18 @@ from core import (
     ModifiedRandomForest,
     VideoActionLabeler,
 )
-from utils import plot_features
 
 # Console settings
 warnings.filterwarnings("ignore")
 matplotlib.use("Qt5Agg")
 np.set_printoptions(precision=3, linewidth=200)
 
-
+# Data and Model Version
 # SUFFIX = '0415_0' # all-persons | all-actions | d1
-# SUFFIX = '0415_1' # all-persons | all-actions | all-backgrounds
-SUFFIX = "0415_2"  # 1-persons | 1actions | d1
+SUFFIX = "0415_1"  # all-persons | all-actions | all-backgrounds
+# SUFFIX = "0415_2"  # 1-persons | 1actions | d1
 # SUFFIX = '0415_3' # all-persons | all-actions | all-backgrounds | Grid Search
-# SUFFIX = 'Final'
+# SUFFIX = 'Final' # all-persons | all-actions | all-backgrounds
 
 
 def generate_data(sequence):
@@ -67,7 +69,6 @@ def generate_data_and_train_classifier(use_grid_search=False):
     print("Training classifier ...")
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
 
-    ######################################################################################
     if use_grid_search:
         print("Applying Grid Search ...")
         clf = RandomForestClassifier(random_state=42)
@@ -76,7 +77,6 @@ def generate_data_and_train_classifier(use_grid_search=False):
             "max_depth": [None, 10, 50, 100, 500, 1000],
         }
         clf = GridSearchCV(clf, parameters, cv=10, refit=True)
-    ######################################################################################
 
     clf.fit(x_train_norm, y_train)
 
@@ -92,23 +92,21 @@ def generate_data_and_train_classifier(use_grid_search=False):
     pickle.dump(clf, open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "wb"))
 
 
+def load_data(data_type):
+    print(f"Loading and normalizing {data_type} data ...")
+    X_ = np.load(f"{SAVED_DATA_DIR}/X_{data_type}_{SUFFIX}.npy")
+    y_ = np.load(f"{SAVED_DATA_DIR}/y_{data_type}_{SUFFIX}.npy")
+
+    x_norm = normalize(X_, norm="l2")
+
+    return x_norm, y_
+
+
 def compare_classifier_accuracy(show_confusion_matrix=False):
     # Load the data
-    print("Loading data ...")
-    X_train = np.load(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}.npy")
-    y_train = np.load(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}.npy")
-
-    X_validation = np.load(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}.npy")
-    y_validation = np.load(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}.npy")
-
-    X_test = np.load(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}.npy")
-    y_test = np.load(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}.npy")
-
-    # Normalize the data
-    print("Normalizing data ...")
-    x_train_norm = normalize(X_train, norm="l2")
-    x_validation_norm = normalize(X_validation, norm="l2")
-    x_test_norm = normalize(X_test, norm="l2")
+    x_train_norm, y_train = load_data("train")
+    x_validation_norm, y_validation = load_data("validation")
+    x_test_norm, y_test = load_data("test")
 
     clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
 
@@ -150,7 +148,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             normalize="true",
             ax=ax1,
         )
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
+        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training-{SUFFIX}.png")
 
         # disp.ax_.set_title(title)
         ax1.set_title(title)
@@ -171,12 +169,12 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             normalize="true",
             ax=ax2,
         )
-        disp.ax_.set_title(title)
+        ax2.set_title(title)
 
         print(title)
         print(disp.confusion_matrix)
 
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_validation.png")
+        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_validation-{SUFFIX}.png")
 
         ##################################################################################
 
@@ -191,17 +189,96 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             normalize="true",
             ax=ax3,
         )
-        disp.ax_.set_title(title)
+        ax3.set_title(title)
 
         print(title)
         print(disp.confusion_matrix)
 
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_test.png")
+        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_test-{SUFFIX}.png")
 
-        # import pdb; pdb.set_trace()
-
-        # plt.tight_layout()
         plt.show()
+
+
+def plot_roc_curve(
+    x_train_norm,
+    y_train_binarized,
+    x_test_norm,
+    y_test_binarized,
+    n_classes,
+    clf,
+    title,
+):
+    classifier = OneVsRestClassifier(clf)
+    y_test_score = classifier.fit(x_train_norm, y_train_binarized).predict_proba(
+        x_test_norm
+    )
+
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test_binarized[:, i], y_test_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    plt.figure()
+    lw = 2
+    for i in range(n_classes):
+        plt.plot(
+            fpr[i], tpr[i], lw=lw, label=f"{config.labels[i]} (area = {roc_auc[i]:.2f})"
+        )
+    plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC {title}")
+    plt.legend(loc="lower right")
+    plt.savefig(f"{OUTPUT_DIR}/roc_{title}_{SUFFIX}.svg", format="svg")
+
+
+def generate_roc_curves():
+    x_train_norm, y_train = load_data("train")
+    x_test_norm, y_test = load_data("test")
+
+    y_train_binarized = label_binarize(y_train, classes=list(range(7)))
+    y_test_binarized = label_binarize(y_test, classes=list(range(7)))
+    n_classes = y_test_binarized.shape[1]
+
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    title = "random_forest"
+    plot_roc_curve(
+        x_train_norm,
+        y_train_binarized,
+        x_test_norm,
+        y_test_binarized,
+        n_classes,
+        clf,
+        title,
+    )
+
+    clf = GaussianNB()
+    title = "naive_bayes"
+    plot_roc_curve(
+        x_train_norm,
+        y_train_binarized,
+        x_test_norm,
+        y_test_binarized,
+        n_classes,
+        clf,
+        title,
+    )
+
+    clf = KNeighborsClassifier(n_neighbors=3)
+    title = "knn"
+    plot_roc_curve(
+        x_train_norm,
+        y_train_binarized,
+        x_test_norm,
+        y_test_binarized,
+        n_classes,
+        clf,
+        title,
+    )
 
 
 def compare_backward_looking_tau_accuracy(filename):
@@ -227,7 +304,7 @@ def compare_backward_looking_tau_accuracy(filename):
         # cmap=plt.cm.Blues,
         normalize="true",
     )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
+    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
 
     disp.ax_.set_title(title)
 
@@ -253,7 +330,7 @@ def compare_backward_looking_tau_accuracy(filename):
         # cmap=plt.cm.Blues,
         normalize="true",
     )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
+    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
 
     disp.ax_.set_title(title)
 
@@ -272,7 +349,7 @@ def compare_backward_looking_tau_accuracy(filename):
         # cmap=plt.cm.Blues,
         normalize="true",
     )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training.png")
+    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
 
     disp.ax_.set_title(title)
 
@@ -308,7 +385,6 @@ def generate_plots_for_different_actions(person_num=10, background="d1"):
 
     plt.tight_layout()
     fig.savefig(f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.svg", format="svg")
-    # plt.show()
 
 
 def label_final_spliced_action_video():
@@ -328,58 +404,49 @@ def process_cmdline_args():
         NOTE: Large data files required to run some experiments are not included in the
               package. They can be downloaded from https://alksjdflsj.com
 
-        exp 0:  [Runtime ~ 1 hr]
+        exp 0:  Runtime: ~ 1 hr
                 Desc: Generates data, trains classifier, and saves both to disk.
                 Requires:
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
+                   ./input_files directory with all raw video dataset.
 
-        exp 1:  [Runtime 1 min]
+        exp 1:  Runtime: ~ 1 min
                 Desc: Compares prediction accuracies and generates confusion matrix plots
                 Requires:
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
+                   ./saved_objects directory with trained model and saved training/testing data.
 
-        exp 2:  [Runtime ~ 30 secs]
-                Desc: Generates plots for hu-moment representation of action over frames.
+        exp 2:  Runtime: ~ 30 secs
+                Desc: Generates plots for hu-moments by frame to for each action.
                       Defaults to person 10 over d1 background in dataset.
                 Requires:
-                   ./input_videos/person10_boxing_d1_uncomp.avi
-                   ./input_videos/person10_handwaving_d1_uncomp.avi
-                   ./input_videos/person10_handclapping_d1_uncomp.avi
-                   ./input_videos/person10_running_d1_uncomp.avi
-                   ./input_videos/person10_jogging_d1_uncomp.avi
-                   ./input_videos/person10_walking_d1_uncomp.avi
+                   ./input_files person 10 action videos
 
-        exp 3:  [Runtime ~ 1 hr]
-                Desc: Generates data, trains classifier, and saves both to disk.
+        exp 3:  Runtime: ~ 4 min
+                Desc: Generates ROC curves for various classifiers.
+                Requires:
+                   ./saved_objects directory with trained model and saved training/testing data.
+
+        exp 4:  Runtime: ~
+                Desc: Compare fixed tau prediction with backward looking tau.
                 Requires:
                    ./saved_objects/....
                    ./saved_objects/....
                    ./saved_objects/....
                    ./saved_objects/....
 
-        exp 4:  [Runtime ~ 1 hr]
-                Desc: Generates data, trains classifier, and saves both to disk.
+        exp 5:  Runtime: ~ 5 mins
+                Desc: Analyzes video frames and outputs video with overlay action labels.
                 Requires:
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
+                   ./saved_objects directory with trained model.
     """
     examples = """
     examples:
-        Generate confusion matrix plots
-            python experiment.py --exp 1
+        Generate hu moments plots for all actions
+            python experiment.py --exp 2
     """
     parser = ArgumentParser(
         description=desc, epilog=examples, formatter_class=RawTextHelpFormatter
     )
-    parser.add_argument("--exp", help="Experiment number", default="exp1", type=str)
+    parser.add_argument("--exp", help="experiment number", default="exp1", type=str)
 
     args = parser.parse_args()
 
@@ -394,13 +461,24 @@ if __name__ == "__main__":
 
     args = process_cmdline_args()
 
-    if args.exp == "1":
-        generate_data_and_train_classifier()
+    if args.exp == "0":
+        print(
+            "Are you sure about this? This takes a while. "
+            "Uncomment the next line and run again."
+        )
+        # generate_data_and_train_classifier()
+
+    elif args.exp == "1":
         compare_classifier_accuracy(show_confusion_matrix=True)
 
     elif args.exp == "2":
         generate_plots_for_different_actions()
 
-        # compare_backward_looking_tau_accuracy(filename = f"person19_running_d1_uncomp.avi")
+    elif args.exp == "3":
+        generate_roc_curves()
 
-        # label_final_spliced_action_video()
+    elif args.exp == "4":
+        compare_backward_looking_tau_accuracy(filename=f"person19_running_d1_uncomp.avi")
+
+    elif args.exp == "5":
+        label_final_spliced_action_video()
