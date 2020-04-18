@@ -33,6 +33,9 @@ np.set_printoptions(precision=3, linewidth=200)
 SUFFIX = "0415_1"  # all-persons | all-actions | all-backgrounds
 # SUFFIX = "0415_2"  # 1-persons | 1actions | d1
 # SUFFIX = '0415_3' # all-persons | all-actions | all-backgrounds | Grid Search
+
+# SUFFIX = '0417_0' # all-persons | all-actions | d1 |
+
 # SUFFIX = 'Final' # all-persons | all-actions | all-backgrounds
 
 
@@ -393,8 +396,9 @@ def label_final_spliced_action_video():
     clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
     modified_clf = ModifiedRandomForest(clf, buffer_len=10)
 
+    frames_to_save = [50, 150, 250, 350, 450, 650, 750, 850, 950]
     live_action_video = VideoActionLabeler(modified_clf, filename, 25)
-    live_action_video.create_annotated_video()
+    live_action_video.create_annotated_video(frame_ids=frames_to_save)
 
 
 def process_cmdline_args():

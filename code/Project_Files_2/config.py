@@ -3,12 +3,13 @@
 SAVED_DATA_DIR = "saved_objects"
 INPUT_DIR = "input_files"
 OUTPUT_DIR = 'output_files'
-WAIT_DURATION = 10
+WAIT_DURATION = 1
 NUM_HU = 7 * 2
 THETA = 20
 TAU_MAX = 30
 TAU     = 20
 TAU_MIN = 10
+BUFFER = 10
 
 # subdivision of sequences
 

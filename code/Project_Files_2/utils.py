@@ -1,5 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
+import os
+import config
 
 
 def plot_features(features, **kwargs):
@@ -39,12 +41,12 @@ def print_fraction(i, total):
         print('\r', 'Progress [{:>7.2%}]'.format(fraction))
 
 
-def add_text_to_img(img, text, coordinate):
+def add_text_to_img(img, text, coordinate, size=0.7):
     x, y = coordinate
     font = cv2.FONT_ITALIC
-    fontScale = 0.7
+    fontScale = size
     color_outline = (255, 255, 255)
-    thickness_outline = 2
+    thickness_outline = 1
     org = (x, y)
 
     cv2.putText(img, text, org, font, fontScale, color_outline, thickness_outline)
@@ -86,3 +88,8 @@ def get_video_frame_count(file_path):
     video.release()
 
     return total
+
+
+def save_image(filename, image):
+    """Convenient wrapper for writing images to the output directory."""
+    cv2.imwrite(os.path.join(config.OUTPUT_DIR, filename), image)

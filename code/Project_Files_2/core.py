@@ -367,7 +367,7 @@ class ActionVideoUnknownTau(ActionVideo):
         self.classifier = classifier
         self.filename = filename
         self.action = action
-        self.buffer = deque([], maxlen=15)
+        self.buffer = deque([], maxlen=config.BUFFER)
 
         self._video_to_image_array()
 
@@ -464,7 +464,7 @@ class VideoActionLabeler(ActionVideoUnknownTau):
         self.fps = fps
         super(VideoActionLabeler, self).__init__(classifier, filename, analyze=False)
 
-    def create_annotated_video(self):
+    def create_annotated_video(self, frame_ids=[]):
         h, w, _ = self.video_frame_array.shape
 
         filename = self.filename.split(".")[0]
@@ -485,6 +485,7 @@ class VideoActionLabeler(ActionVideoUnknownTau):
                 label = self.LABELS[freq_pred]
 
             annotated_frame = np.copy(self.video_frame_array[:, :, i])
+            annotated_frame = utils.add_text_to_img(annotated_frame, f'Frame: {i}', (10, 10), 0.4)
             annotated_frame = utils.add_text_to_img(annotated_frame, label, (50, 100))
             out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
 
@@ -496,6 +497,10 @@ class VideoActionLabeler(ActionVideoUnknownTau):
             out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
 
             video_out.write(out_frame)
+
+            if i in frame_ids:
+                out_filename = f'{filename}_frame_{i}.png'
+                utils.save_image(out_filename, out_frame)
 
             utils.print_fraction(i, self.total_video_frames)
 
