@@ -2,7 +2,6 @@ import os
 from collections import deque
 
 import cv2
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
@@ -13,15 +12,12 @@ import utils
 from config import (
     INPUT_DIR,
     NUM_HU,
-    TAU,
     TAU_MAX,
     TAU_MIN,
     THETA,
     WAIT_DURATION,
     frame_sequences,
 )
-
-matplotlib.use("Qt5Agg")
 
 
 class BinaryMotion:
@@ -141,6 +137,12 @@ class TemporalTemplate:
             self.mei, -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
         )
 
+    @property
+    def _bin(self):
+        return cv2.normalize(
+            self.motion_images[:, :, -1], -1, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
+        )
+
     def view(self, type):
         if type == "mhi":
             cv2.namedWindow("motion_history_image", cv2.WINDOW_NORMAL)
@@ -242,16 +244,6 @@ class HuMoments:
 
 class ActionVideo:
 
-    PARAM_MAP = {
-        "undefined": {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
-        "boxing": {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "handclapping": {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
-        "handwaving": {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
-        "jogging": {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
-        "running": {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
-        "walking": {"label": 6, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa,
-    }
-
     def __init__(self, num, action, background):
         self.key_name = f"person{num:02d}_{action}_{background}"
         self.filename = f"{self.key_name}_uncomp.avi"
@@ -297,11 +289,11 @@ class ActionVideo:
 
         return full_set
 
-    def analyze_frames(self):
+    def analyze_frames(self, save_frames=[]):
         binary_image_history = 2
-        theta = self.PARAM_MAP[self.action]["theta"]
-        tau = self.PARAM_MAP[self.action]["tau"]
-        ksize = self.PARAM_MAP[self.action]["ksize"]
+        theta = config.PARAM_MAP[self.action]["theta"]
+        tau = config.PARAM_MAP[self.action]["tau"]
+        ksize = config.PARAM_MAP[self.action]["ksize"]
 
         self.frame_features = np.zeros((self.total_video_frames, NUM_HU))
         self.frame_labels = np.zeros(self.total_video_frames)
@@ -321,11 +313,17 @@ class ActionVideo:
             # binary_motion.view_image(text=i)
             # temporal_template.view(type="mhi")
             # temporal_template.view(type="mei")
+            # print(i)
+
+            if i in save_frames:
+                cv2.imwrite(f'{config.OUTPUT_DIR}/bin_frame_{i}_{self.key_name}.png', temporal_template._bin)
+                cv2.imwrite(f'{config.OUTPUT_DIR}/mhi_frame_{i}_{self.key_name}.png', temporal_template._mhi)
+                cv2.imwrite(f'{config.OUTPUT_DIR}/mei_frame_{i}_{self.key_name}.png', temporal_template._mei)
 
             hu_mei = HuMoments(temporal_template.mei)
             hu_mhi = HuMoments(temporal_template.mhi / temporal_template.tau)
             hu_all = np.concatenate((hu_mei.values, hu_mhi.values))
-            feature_arr = np.log(np.abs(hu_all))
+            feature_arr = np.log(np.abs(hu_all)) # TODO: try without np.log np.abs?
 
             if np.any(np.isinf(feature_arr)):
                 self.frame_features[i] = np.zeros(feature_arr.shape)
@@ -333,7 +331,7 @@ class ActionVideo:
                 self.frame_features[i] = feature_arr
             else:
                 self.frame_features[i] = feature_arr
-                self.frame_labels[i] = np.array([self.PARAM_MAP[self.action]["label"]])
+                self.frame_labels[i] = np.array([config.PARAM_MAP[self.action]["label"]])
 
             utils.print_fraction(i, self.total_video_frames)
 
@@ -346,8 +344,8 @@ class ActionVideo:
             fig = ax.figure
 
         labels = ["h1", "h2", "h3", "h4", "h5", "h6", "h7"]
-        theta = self.PARAM_MAP[self.action]["theta"]
-        tau = self.PARAM_MAP[self.action]["tau"]
+        theta = config.PARAM_MAP[self.action]["theta"]
+        tau = config.PARAM_MAP[self.action]["tau"]
         title = f"""{self.key_name} \u03C4={tau}; \u03B8={theta}"""
         features = np.abs(self.frame_features[:100, :7])
 
@@ -475,14 +473,18 @@ class VideoActionLabeler(ActionVideoUnknownTau):
 
         for i, feature_set in enumerate(self.frame_feature_set_generator()):
 
-            action_pred, freq_pred = self.classifier._predict_from_feature_set(
-                feature_set
-            )
+            # action_pred, freq_pred = self.classifier._predict_from_feature_set(
+            #     feature_set
+            # )
+            #
+            # if action_pred == 0:
+            #     label = self.LABELS[0]
+            # else:
+            #     label = self.LABELS[freq_pred]
 
-            if action_pred == 0:
-                label = self.LABELS[0]
-            else:
-                label = self.LABELS[freq_pred]
+            prediction = self.classifier.predict(feature_set)
+            label = self.LABELS[prediction[0]]
+
 
             annotated_frame = np.copy(self.video_frame_array[:, :, i])
             annotated_frame = utils.add_text_to_img(annotated_frame, f'Frame: {i}', (10, 10), 0.4)

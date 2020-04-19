@@ -11,6 +11,16 @@ TAU     = 20
 TAU_MIN = 10
 BUFFER = 10
 
+PARAM_MAP = {
+    "undefined":     {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
+    "boxing":        {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
+    "handclapping":  {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+    "handwaving":    {"label": 3, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa
+    "running":       {"label": 5, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
+    "jogging":       {"label": 4, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
+    "walking":       {"label": 6, "theta": 20, "ksize": 2, "tau": TAU_MAX},  # noqa,
+}
+
 # subdivision of sequences
 
 actions = {
@@ -22,7 +32,7 @@ actions = {
     "walking": 6
 }
 labels = {
-     0: 'blank',
+     0: 'no action',
      1: 'boxing',
      2: 'handclapping',
      3: 'handwaving',

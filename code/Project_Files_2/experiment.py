@@ -3,7 +3,6 @@ import pickle
 import warnings
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -25,16 +24,19 @@ from core import (
 
 # Console settings
 warnings.filterwarnings("ignore")
-matplotlib.use("Qt5Agg")
+# matplotlib.use("Qt5Agg")
 np.set_printoptions(precision=3, linewidth=200)
 
 # Data and Model Version
 # SUFFIX = '0415_0' # all-persons | all-actions | d1
-SUFFIX = "0415_1"  # all-persons | all-actions | all-backgrounds
+# SUFFIX = "0415_1"  # all-persons | all-actions | all-backgrounds
 # SUFFIX = "0415_2"  # 1-persons | 1actions | d1
 # SUFFIX = '0415_3' # all-persons | all-actions | all-backgrounds | Grid Search
 
-# SUFFIX = '0417_0' # all-persons | all-actions | d1 |
+# SUFFIX = '0417_0' # all-persons | all-actions | d1 | 5-10-15;20
+# SUFFIX = '0417_1' # all-persons | all-actions | d1 | 5-10-15;10 | training includes validation set
+
+SUFFIX = '0418_0' # all-persons | all-actions | d1 | 5-10-15;10 | training includes validation set
 
 # SUFFIX = 'Final' # all-persons | all-actions | all-backgrounds
 
@@ -43,8 +45,10 @@ def generate_data(sequence):
     Xtrain = np.zeros((1, config.NUM_HU))
     ytrain = np.zeros(1)
 
-    for person_num in sequence[:1]:
-        for action in list(actions.keys())[:1]:
+    counter = 0
+
+    for person_num in sequence[:]:
+        for action in list(actions.keys())[:]:
             for background in backgrounds[:1]:
 
                 action_video = ActionVideo(person_num, action, background)
@@ -55,7 +59,9 @@ def generate_data(sequence):
                 Xtrain = np.vstack((Xtrain, action_video.frame_features))
                 ytrain = np.hstack((ytrain, action_video.frame_labels.reshape(-1)))
 
-    # print(f"Average time {sum(times)/len(times)}")
+                counter += 1
+
+    print(f"Total videos analyzed: {counter}")
 
     return Xtrain[1:], ytrain[1:]
 
@@ -63,21 +69,21 @@ def generate_data(sequence):
 def generate_data_and_train_classifier(use_grid_search=False):
     print("Generate data ...")
     X_train, y_train = generate_data(config.training_sequence)
-    X_validation, y_validation = generate_data(config.validation_sequence)
+    # X_validation, y_validation = generate_data(config.validation_sequence)
     X_test, y_test = generate_data(config.test_sequence)
 
     print("Normalizing data ...")
     x_train_norm = normalize(X_train, norm="l2")
 
     print("Training classifier ...")
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced_subsample')
 
     if use_grid_search:
         print("Applying Grid Search ...")
         clf = RandomForestClassifier(random_state=42)
         parameters = {
             "n_estimators": [5, 50, 100, 150, 200],
-            "max_depth": [None, 10, 50, 100, 500, 1000],
+            "max_depth": [None, 5, 10, 50, 100, 500, 1000],
         }
         clf = GridSearchCV(clf, parameters, cv=10, refit=True)
 
@@ -87,8 +93,8 @@ def generate_data_and_train_classifier(use_grid_search=False):
     np.save(f"{SAVED_DATA_DIR}/X_train_{SUFFIX}", X_train)
     np.save(f"{SAVED_DATA_DIR}/y_train_{SUFFIX}", y_train)
 
-    np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
-    np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
+    # np.save(f"{SAVED_DATA_DIR}/X_validation_{SUFFIX}", X_validation)
+    # np.save(f"{SAVED_DATA_DIR}/y_validation_{SUFFIX}", y_validation)
 
     np.save(f"{SAVED_DATA_DIR}/X_test_{SUFFIX}", X_test)
     np.save(f"{SAVED_DATA_DIR}/y_test_{SUFFIX}", y_test)
@@ -108,9 +114,9 @@ def load_data(data_type):
 def compare_classifier_accuracy(show_confusion_matrix=False):
     # Load the data
     x_train_norm, y_train = load_data("train")
-    x_validation_norm, y_validation = load_data("validation")
+    # x_validation_norm, y_validation = load_data("validation")
     x_test_norm, y_test = load_data("test")
-
+    print(y_train.shape)
     clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
 
     print("Predicting ...")
@@ -118,13 +124,17 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
     training_accuracy = accuracy_score(y_train, y_train_predicted)
     print(f"\nTraining set accuracy: {training_accuracy}")
 
-    y_random = np.random.choice(list(range(8)), size=y_validation.shape, replace=True)
-    baseline_accuracy = accuracy_score(y_validation, y_random)
-    print(f"\nBaseline validation set randomized pick accuracy: {baseline_accuracy}")
+    y_random = np.random.choice(list(range(8)), size=y_test.shape, replace=True)
+    baseline_accuracy = accuracy_score(y_test, y_random)
+    print(f"\nTest set accuracy baseline (randomized pick): {baseline_accuracy}")
 
-    y_validation_predicted = clf.predict(x_validation_norm)
-    validation_accuracy = accuracy_score(y_validation, y_validation_predicted)
-    print(f"\nValidation set accuracy: {validation_accuracy}")
+    # y_random = np.random.choice(list(range(8)), size=y_validation.shape, replace=True)
+    # baseline_accuracy = accuracy_score(y_validation, y_random)
+    # print(f"\nBaseline validation set randomized pick accuracy: {baseline_accuracy}")
+    #
+    # y_validation_predicted = clf.predict(x_validation_norm)
+    # validation_accuracy = accuracy_score(y_validation, y_validation_predicted)
+    # print(f"\nValidation set accuracy: {validation_accuracy}")
 
     y_test_predicted = clf.predict(x_test_norm)
     test_accuracy = accuracy_score(y_test, y_test_predicted)
@@ -132,17 +142,12 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
 
     if show_confusion_matrix:
         class_names = np.array(
-            ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
+            ["no action", "boxing", "clapping", "waving", "jogging", "running", "walking",]
         )
 
-        f, (ax1, ax2, ax3) = plt.subplots(
-            nrows=1, ncols=3, sharey=True, figsize=(24, 4)
-        )
-        f.tight_layout()
+        f, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(18, 6))
 
-        title = "Confusion Matrix - Training Data"
-
-        disp = plot_confusion_matrix(
+        plot_confusion_matrix(
             clf,
             x_train_norm,
             y_train,
@@ -151,55 +156,24 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
             normalize="true",
             ax=ax1,
         )
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training-{SUFFIX}.png")
+        ax1.set_title("Confusion Matrix - Training Data")
 
-        # disp.ax_.set_title(title)
-        ax1.set_title(title)
-
-        print(title)
-        print(disp.confusion_matrix)
-
-        ##################################################################################
-
-        title = "Confusion Matrix - Validation Data"
-
-        disp = plot_confusion_matrix(
-            clf,
-            x_validation_norm,
-            y_validation,
-            display_labels=class_names,
-            cmap=plt.cm.Oranges,
-            normalize="true",
-            ax=ax2,
-        )
-        ax2.set_title(title)
-
-        print(title)
-        print(disp.confusion_matrix)
-
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_validation-{SUFFIX}.png")
-
-        ##################################################################################
-
-        title = "Confusion Matrix - Test Data"
-
-        disp = plot_confusion_matrix(
+        plot_confusion_matrix(
             clf,
             x_test_norm,
             y_test,
             display_labels=class_names,
             cmap=plt.cm.Greens,
             normalize="true",
-            ax=ax3,
+            ax=ax2,
         )
-        ax3.set_title(title)
+        ax2.set_title("Confusion Matrix - Test Data")
 
-        print(title)
-        print(disp.confusion_matrix)
-
-        disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_test-{SUFFIX}.png")
-
-        plt.show()
+        f.tight_layout()
+        filename = f"{OUTPUT_DIR}/confusion_matrix-{SUFFIX}.png"
+        f.savefig(filename)
+        print(f"\n******* Saved image to {filename}")
+        plt.show() #TODO remove
 
 
 def plot_roc_curve(
@@ -236,7 +210,11 @@ def plot_roc_curve(
     plt.ylabel("True Positive Rate")
     plt.title(f"ROC {title}")
     plt.legend(loc="lower right")
-    plt.savefig(f"{OUTPUT_DIR}/roc_{title}_{SUFFIX}.svg", format="svg")
+
+    filename = f"{OUTPUT_DIR}/roc_{title}_{SUFFIX}.png"
+    plt.savefig(filename)
+    print(f"\n******* Saved image to {filename}")
+    # plt.show()  # TODO remove
 
 
 def generate_roc_curves():
@@ -247,7 +225,7 @@ def generate_roc_curves():
     y_test_binarized = label_binarize(y_test, classes=list(range(7)))
     n_classes = y_test_binarized.shape[1]
 
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced_subsample')
     title = "random_forest"
     plot_roc_curve(
         x_train_norm,
@@ -286,8 +264,8 @@ def generate_roc_curves():
 
 def compare_backward_looking_tau_accuracy(filename):
     class_names = np.array(
-        ["blank", "boxing", "clapping", "waving", "jogging", "running", "walking",]
-    )
+        ["no action", "boxing", "clapping", "waving", "jogging", "running", "walking",]
+    ) # Todo: Move this to config
     labels = np.array(list(range(7)))
 
     clf = pickle.load(open("saved_objects/actions_rfc_model.pkl", "rb"))
@@ -386,15 +364,17 @@ def generate_plots_for_different_actions(person_num=10, background="d1"):
         top=0.927, bottom=0.063, left=0.035, right=0.969, hspace=0.322, wspace=0.15
     )
 
-    plt.tight_layout()
-    fig.savefig(f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.svg", format="svg")
+    outfile = f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png"
+    fig.savefig(outfile)
+    print(f"\n******* Saved image to {OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png")
+    plt.show() # TODO Remove.
 
 
 def label_final_spliced_action_video():
     filename = "spliced_action_video.mp4"
 
     clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
-    modified_clf = ModifiedRandomForest(clf, buffer_len=10)
+    modified_clf = ModifiedRandomForest(clf, buffer_len=15)
 
     frames_to_save = [50, 150, 250, 350, 450, 650, 750, 850, 950]
     live_action_video = VideoActionLabeler(modified_clf, filename, 25)
@@ -408,29 +388,29 @@ def process_cmdline_args():
         NOTE: Large data files required to run some experiments are not included in the
               package. They can be downloaded from https://alksjdflsj.com
 
-        exp 0:  Runtime: ~ 1 hr
-                Desc: Generates data, trains classifier, and saves both to disk.
+        exp 0:  Desc: Generates data, trains classifier, and saves both to disk.
+                Runtime: ~ 1 hr
                 Requires:
                    ./input_files directory with all raw video dataset.
 
-        exp 1:  Runtime: ~ 1 min
-                Desc: Compares prediction accuracies and generates confusion matrix plots
+        exp 1:  Desc: Compares classifier accuracy and generates confusion matrix plots
+                Runtime: ~ 1 min
                 Requires:
                    ./saved_objects directory with trained model and saved training/testing data.
 
-        exp 2:  Runtime: ~ 30 secs
-                Desc: Generates plots for hu-moments by frame to for each action.
+        exp 2:  Desc: Generates plots for hu-moments by frame to for each action.
                       Defaults to person 10 over d1 background in dataset.
+                Runtime: ~ 30 secs
                 Requires:
                    ./input_files person 10 action videos
 
-        exp 3:  Runtime: ~ 4 min
-                Desc: Generates ROC curves for various classifiers.
+        exp 3:  Desc: Generates ROC curves for various classifiers.
+                Runtime: ~ 4 min
                 Requires:
                    ./saved_objects directory with trained model and saved training/testing data.
 
-        exp 4:  Runtime: ~
-                Desc: Compare fixed tau prediction with backward looking tau.
+        exp 4:  Desc: Compare fixed tau prediction with backward looking tau.
+                Runtime: ~
                 Requires:
                    ./saved_objects/....
                    ./saved_objects/....
@@ -468,7 +448,8 @@ if __name__ == "__main__":
     if args.exp == "0":
         print(
             "Are you sure about this? This takes a while. "
-            "Uncomment the next line and run again."
+            "Uncomment this next line and run again."
+            "\n# generate_data_and_train_classifier()"
         )
         # generate_data_and_train_classifier()
 
