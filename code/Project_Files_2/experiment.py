@@ -364,9 +364,9 @@ def generate_plots_for_different_actions(person_num=10, background="d1"):
         top=0.927, bottom=0.063, left=0.035, right=0.969, hspace=0.322, wspace=0.15
     )
 
-    outfile = f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png"
-    fig.savefig(outfile)
-    print(f"\n******* Saved image to {OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png")
+    filename = f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png"
+    fig.savefig(filename)
+    print(f"\n******* Saved image to {filename}")
     plt.show() # TODO Remove.
 
 
