@@ -289,7 +289,7 @@ class ActionVideo:
 
         return full_set
 
-    def analyze_frames(self, save_frames=[]):
+    def analyze_frames(self, save_frames=[], label_override=None):
         binary_image_history = 2
         theta = config.PARAM_MAP[self.action]["theta"]
         tau = config.PARAM_MAP[self.action]["tau"]
@@ -331,7 +331,11 @@ class ActionVideo:
                 self.frame_features[i] = feature_arr
             else:
                 self.frame_features[i] = feature_arr
-                self.frame_labels[i] = np.array([config.PARAM_MAP[self.action]["label"]])
+                if label_override:
+                    # self.frame_labels[i] = np.array(label_override)
+                    self.frame_labels[i] = np.array([config.PARAM_MAP[label_override]["label"]])
+                else:
+                    self.frame_labels[i] = np.array([config.PARAM_MAP[self.action]["label"]])
 
             utils.print_fraction(i, self.total_video_frames)
 
@@ -361,23 +365,26 @@ class ActionVideo:
 class ActionVideoUnknownTau(ActionVideo):
     num_windows = TAU_MAX - TAU_MIN + 1
 
-    def __init__(self, classifier, filename, action="undefined", analyze=True):
+    def __init__(self, classifier, filename, label_override, analyze=True):
         self.classifier = classifier
         self.filename = filename
-        self.action = action
+        self.action = "undefined"
         self.buffer = deque([], maxlen=config.BUFFER)
 
         self._video_to_image_array()
 
-        # This lets _get_range_set return all frames ids.
-        self.frame_ranges = [(1, self.total_video_frames)]  # TODO: What is this? Why?
+        # This lets _get_range_set return all frames ids. We are forcing it to use all frames.
+        self.frame_ranges = [(1, self.total_video_frames)]
 
         if analyze:
             print("Starting analyze frames")
-            self.analyze_frames()
+            self.analyze_frames(label_override=label_override)
 
             print("Starting analyze frames backwards tau")
             self.analyze_frame_backwards_tau()
+
+    def __repr__(self):
+        return self.filename
 
     def get_feature_sequence(self, mhi):
         num_windows = TAU_MAX - TAU_MIN + 1

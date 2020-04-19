@@ -5,13 +5,20 @@ INPUT_DIR = "input_files"
 OUTPUT_DIR = 'output_files'
 WAIT_DURATION = 1
 NUM_HU = 7 * 2
+# TAU_MIN = 10
+# TAU     = 20
+# TAU_MAX = 30
+# THETA = 10
+TAU_MIN = 5
+TAU     = 10
+TAU_MAX = 15
 THETA = 20
-TAU_MAX = 30
-TAU     = 20
-TAU_MIN = 10
 BUFFER = 10
 
+NUM_WINDOWS = TAU_MAX - TAU_MIN + 1
+
 PARAM_MAP = {
+    # Todo change label to -1?
     "undefined":     {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
     "boxing":        {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
     "handclapping":  {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa

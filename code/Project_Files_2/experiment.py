@@ -3,6 +3,7 @@ import pickle
 import warnings
 from argparse import ArgumentParser, RawTextHelpFormatter
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -30,13 +31,18 @@ np.set_printoptions(precision=3, linewidth=200)
 # Data and Model Version
 # SUFFIX = '0415_0' # all-persons | all-actions | d1
 # SUFFIX = "0415_1"  # all-persons | all-actions | all-backgrounds
-# SUFFIX = "0415_2"  # 1-persons | 1actions | d1
+# SUFFIX = "0415_2"  # 1-persons | 1-actions | d1
 # SUFFIX = '0415_3' # all-persons | all-actions | all-backgrounds | Grid Search
 
 # SUFFIX = '0417_0' # all-persons | all-actions | d1 | 5-10-15;20
 # SUFFIX = '0417_1' # all-persons | all-actions | d1 | 5-10-15;10 | training includes validation set
 
 SUFFIX = '0418_0' # all-persons | all-actions | d1 | 5-10-15;10 | training includes validation set
+
+# SUFFIX = '0419_5-10-15-10' # all-persons | all-actions | d1
+SUFFIX = '0419_5-10-15-20' # all-persons | all-actions | d1
+# SUFFIX = '0419_10-20-30-10' # all-persons | all-actions | d1
+# SUFFIX = '0419_10-20-30-20' # all-persons | all-actions | d1
 
 # SUFFIX = 'Final' # all-persons | all-actions | all-backgrounds
 
@@ -262,81 +268,109 @@ def generate_roc_curves():
     )
 
 
-def compare_backward_looking_tau_accuracy(filename):
-    class_names = np.array(
-        ["no action", "boxing", "clapping", "waving", "jogging", "running", "walking",]
-    ) # Todo: Move this to config
+def _generate_data_lookback_tau(sequence, clf):
+    X = np.zeros((1, config.NUM_HU))
+    y = np.zeros(1)
+
+    X_set = np.zeros((config.NUM_WINDOWS, config.NUM_HU, 1))
+
+    counter = 0
+
+    for num in sequence[:1]:
+        # for action, action_label in actions.items()[:1]:
+        for action in list(actions.keys())[:]:
+            for background in backgrounds[:1]:
+                key_name = f"person{num:02d}_{action}_{background}"
+                filename = f"{key_name}_uncomp.avi"
+
+                action_video = ActionVideoUnknownTau(clf, filename, action)
+                print(action_video)
+
+                X = np.vstack((X, action_video.frame_features))
+                y = np.hstack((y, action_video.frame_labels.reshape(-1)))
+
+                import pdb; pdb.set_trace()
+                X_set = np.append(X_set, action_video.n_features_sequence, axis=2)
+
+                counter += 1
+
+    print(f"Total videos analyzed: {counter}")
+
+    return X[1:], y[1:], X_set[:, :, 1:]
+
+
+def compare_backward_looking_tau_accuracy(generate_data=False):
+    class_names = np.array(np.array([v for k,v in config.labels.items()]))
     labels = np.array(list(range(7)))
 
-    clf = pickle.load(open("saved_objects/actions_rfc_model.pkl", "rb"))
+    clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
 
-    input_action_video = ActionVideoUnknownTau(
-        clf, filename, "running"
-    )  # TODO Why are you providing the filename here??
+    if generate_data:
+        # sequence = config.validation_sequence
+        sequence = [10]
+        frame_features, frame_labels, n_features_sequence = _generate_data_lookback_tau(sequence, clf)
+        print("Saving lookback tau data")
+        np.save(f"{SAVED_DATA_DIR}/frame_features_max_tau_{SUFFIX}", frame_features)
+        np.save(f"{SAVED_DATA_DIR}/frame_labels_max_tau_{SUFFIX}", frame_labels)
+        np.save(f"{SAVED_DATA_DIR}/n_features_sequence_lookback_tau_{SUFFIX}", n_features_sequence)
+    else:
+        print("Loading lookback tau data")
+        frame_features  = np.load(f"{SAVED_DATA_DIR}/frame_features_max_tau_{SUFFIX}.npy")
+        frame_labels  = np.load(f"{SAVED_DATA_DIR}/frame_labels_max_tau_{SUFFIX}.npy")
+        n_features_sequence  = np.load(f"{SAVED_DATA_DIR}/n_features_sequence_lookback_tau_{SUFFIX}.npy")
 
-    title = "Confusion Matrix - Fixed Tau"
+    #######################################################################################
+    f, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(24, 6))
+    import pdb; pdb.set_trace()
+    title = "Confusion Matrix - Fixed \u03C4 (Max)"
     print("Starting predict fixed tau")
-    disp = plot_confusion_matrix(
+    plot_confusion_matrix(
         clf,
-        input_action_video.frame_features,
-        input_action_video.frame_labels,
+        frame_features,
+        frame_labels,
         labels=labels,
         display_labels=class_names,
-        # cmap=plt.cm.Blues,
+        cmap=plt.cm.Purples,
         normalize="true",
+        ax=ax1
     )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
+    ax1.set_title(title)
 
-    disp.ax_.set_title(title)
-
-    print(title)
-    print(disp.confusion_matrix)
-    # plt.show()
-
-    # input_action_video.play(clf)
-
-    modified_random_forest_clf_freq = ModifiedRandomForest(clf, buffer_len=5)
     modified_random_forest_clf_action = ModifiedRandomForest(clf, use_action=True)
-
-    # y_pred = modified_random_forest_clf.predict(input_action_video.n_features_sequence)
-
-    title = "Confusion Matrix - Backward tau action probability with frequency"
-    print("Starting predict freq")
-    disp = plot_confusion_matrix(
-        modified_random_forest_clf_freq,
-        input_action_video.n_features_sequence,
-        input_action_video.frame_labels,
-        labels=labels,
-        display_labels=class_names,
-        # cmap=plt.cm.Blues,
-        normalize="true",
-    )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
-
-    disp.ax_.set_title(title)
-
-    print(title)
-    print(disp.confusion_matrix)
-    # plt.show()
-
-    title = "Confusion Matrix - Backward tau action probability"
-    print("Starting predict")
-    disp = plot_confusion_matrix(
+    title = "Confusion Matrix - Lookback \u03C4"
+    print("Starting predict lookback tau")
+    plot_confusion_matrix(
         modified_random_forest_clf_action,
-        input_action_video.n_features_sequence,
-        input_action_video.frame_labels,
+        n_features_sequence,
+        frame_labels,
         labels=labels,
         display_labels=class_names,
-        # cmap=plt.cm.Blues,
+        cmap=plt.cm.Oranges,
         normalize="true",
+        ax=ax2
     )
-    disp.figure_.savefig(f"{OUTPUT_DIR}/confusion_matrix_training_{SUFFIX}.png")
+    ax2.set_title(title)
 
-    disp.ax_.set_title(title)
+    modified_random_forest_clf_freq = ModifiedRandomForest(clf, buffer_len=10)
+    title = "Confusion Matrix - Lookback \u03C4 with frequency counter"
+    print("Starting predict lookback tau with frequency buffer")
+    plot_confusion_matrix(
+        modified_random_forest_clf_freq,
+        n_features_sequence,
+        frame_labels,
+        labels=labels,
+        display_labels=class_names,
+        cmap=plt.cm.Blues,
+        normalize="true",
+        ax=ax3
+    )
+    ax3.set_title(title)
 
-    print(title)
-    print(disp.confusion_matrix)
-    plt.show()
+    f.tight_layout()
+    filename = f"{OUTPUT_DIR}/confusion_matrix_lookback_tau_{SUFFIX}.png"
+    f.savefig(filename)
+    print(f"\n******* Saved image to {filename}")
+    plt.show() # TODO remove
 
 
 def generate_plots_for_different_actions(person_num=10, background="d1"):
@@ -463,7 +497,7 @@ if __name__ == "__main__":
         generate_roc_curves()
 
     elif args.exp == "4":
-        compare_backward_looking_tau_accuracy(filename=f"person19_running_d1_uncomp.avi")
+        compare_backward_looking_tau_accuracy(generate_data=True)
 
     elif args.exp == "5":
         label_final_spliced_action_video()
