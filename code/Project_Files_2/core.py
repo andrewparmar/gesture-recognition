@@ -442,12 +442,12 @@ class ActionVideoUnknownTau(ActionVideo):
 
     def analyze_frame_backwards_tau(self):
         n_features_sequence = np.zeros(
-            (self.num_windows, NUM_HU, self.total_video_frames)
+            (self.total_video_frames, self.num_windows, NUM_HU)
         )
 
         for i, features_set in enumerate(self.frame_feature_set_generator()):
 
-            n_features_sequence[:, :, i] = features_set
+            n_features_sequence[i, :, :] = features_set
 
             utils.print_fraction(i, self.total_video_frames)
 
@@ -536,7 +536,6 @@ class ModifiedRandomForest:
         max_val_index = np.unravel_index(
             action_pred_proba.argmax(), action_pred_proba.shape
         )
-
         action_pred = max_val_index[1]
 
         self.buffer.append(action_pred)
@@ -546,12 +545,12 @@ class ModifiedRandomForest:
 
     def predict(self, n_features_sets):
         if len(n_features_sets.shape) == 3:
-            y_pred = np.zeros(n_features_sets.shape[2])
+            y_pred = np.zeros(n_features_sets.shape[0])
 
-            n = n_features_sets.shape[2]
+            n = n_features_sets.shape[0]
 
             for i in range(n):
-                features_set = n_features_sets[:, :, i]
+                features_set = n_features_sets[i, :, :]
 
                 action_pred, freq_pred = self._predict_from_feature_set(features_set)
 

@@ -5,20 +5,15 @@ INPUT_DIR = "input_files"
 OUTPUT_DIR = 'output_files'
 WAIT_DURATION = 1
 NUM_HU = 7 * 2
-# TAU_MIN = 10
-# TAU     = 20
-# TAU_MAX = 30
-# THETA = 10
-TAU_MIN = 5
-TAU     = 10
-TAU_MAX = 15
+TAU_MIN = 10
+TAU     = 20
+TAU_MAX = 30
 THETA = 20
 BUFFER = 10
 
 NUM_WINDOWS = TAU_MAX - TAU_MIN + 1
 
 PARAM_MAP = {
-    # Todo change label to -1?
     "undefined":     {"label": 0, "theta": 20, "ksize": 2, "tau": TAU},  # noqa,
     "boxing":        {"label": 1, "theta": 20, "ksize": 2, "tau": TAU_MIN},  # noqa
     "handclapping":  {"label": 2, "theta": 20, "ksize": 2, "tau": TAU},  # noqa
@@ -41,8 +36,8 @@ actions = {
 labels = {
      0: 'no action',
      1: 'boxing',
-     2: 'handclapping',
-     3: 'handwaving',
+     2: 'clapping',
+     3: 'waving',
      4: 'jogging',
      5: 'running',
      6: 'walking'
@@ -52,7 +47,8 @@ backgrounds = ["d1", "d2", "d3", "d4"]
 # person number split
 training_sequence = [11, 12, 13, 14, 15, 16, 17, 18]
 validation_sequence = [19, 20, 21, 23, 24, 25, 1, 4]
-test_sequence = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+# test_sequence = [22, 2, 3, 5, 6, 7, 8, 9, 10]
+test_sequence = [2, 3, 5, 6, 7, 8, 9, 10]
 
 frame_sequences = {
     "person01_boxing_d1": [(1, 95), (96, 185), (186, 245), (246, 360)],
