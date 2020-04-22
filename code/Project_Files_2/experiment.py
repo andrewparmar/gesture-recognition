@@ -155,16 +155,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
         plt.show() #TODO remove
 
 
-def plot_roc_curve(
-    x_train_norm,
-    y_train_binarized,
-    x_test_norm,
-    y_test_binarized,
-    n_classes,
-    clf,
-    title,
-    ax
-):
+def plot_roc_curve(x_train_norm,y_train_binarized,x_test_norm,y_test_binarized,n_classes,clf,title,ax):
     classifier = OneVsRestClassifier(clf)
     # print(classifier)
     y_test_score = classifier.fit(x_train_norm, y_train_binarized).predict_proba(
@@ -190,11 +181,6 @@ def plot_roc_curve(
     ax.set_ylabel("True Positive Rate")
     ax.set_title(f"ROC {title}")
     ax.legend(loc="lower right")
-
-    # filename = f"{OUTPUT_DIR}/roc_{title}_{SUFFIX}.png"
-    # plt.savefig(filename)
-    # print(f"\n******* Saved image to {filename}")
-    # plt.show()  # TODO remove
 
 
 def generate_roc_curves():
@@ -224,6 +210,7 @@ def generate_roc_curves():
     filename = f"{OUTPUT_DIR}/roc_classifier_comparison_{SUFFIX}.png"
     f.savefig(filename)
     print(f"\n******* Saved image to {filename}")
+
 
 def _generate_data_lookback_tau(sequence, clf):
     X = np.zeros((1, config.NUM_HU))
@@ -374,13 +361,11 @@ def generate_plots_for_different_actions(person_num=10, background="d1"):
     plt.show() # TODO Remove.
 
 
-def label_final_spliced_action_video():
-    filename = "spliced_action_video.mp4"
-
+def label_final_spliced_action_video(filename):
     clf = pickle.load(open(f"saved_objects/actions_rfc_model_{SUFFIX}.pkl", "rb"))
     modified_clf = ModifiedRandomForest(clf, buffer_len=15)
 
-    frames_to_save = [50, 150, 250, 350, 450, 650, 750, 850, 950]
+    frames_to_save = [5, 50, 150, 250, 342]
     live_action_video = VideoActionLabeler(modified_clf, filename, 25)
     live_action_video.create_annotated_video(frame_ids=frames_to_save)
 
@@ -414,15 +399,12 @@ def process_cmdline_args():
                    ./saved_objects directory with trained model and saved training/testing data.
 
         exp 4:  Desc: Compare fixed tau prediction with backward looking tau.
-                Runtime: ~
+                Runtime: ~ 5 min
                 Requires:
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
-                   ./saved_objects/....
+                   ./saved_objects directory with trained model and saved training/testing data.
 
-        exp 5:  Runtime: ~ 5 mins
-                Desc: Analyzes video frames and outputs video with overlay action labels.
+        exp 5:  Desc: Analyzes video frames and outputs video with overlay action labels.
+                Runtime: ~ 5 mins
                 Requires:
                    ./saved_objects directory with trained model.
     """
@@ -470,4 +452,5 @@ if __name__ == "__main__":
         compare_backward_looking_tau_accuracy(generate_data=False)
 
     elif args.exp == "5":
-        label_final_spliced_action_video()
+        video_filename = "spliced_action_video.mp4"
+        label_final_spliced_action_video(video_filename)

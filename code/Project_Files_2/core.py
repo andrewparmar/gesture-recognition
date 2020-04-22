@@ -436,7 +436,7 @@ class ActionVideoUnknownTau(ActionVideo):
 
             features_sequence = self.get_feature_sequence(temporal_template.mhi)
 
-            yield features_sequence
+            yield (features_sequence, temporal_template)
 
         raise StopIteration
 
@@ -445,7 +445,8 @@ class ActionVideoUnknownTau(ActionVideo):
             (self.total_video_frames, self.num_windows, NUM_HU)
         )
 
-        for i, features_set in enumerate(self.frame_feature_set_generator()):
+        for i, item in enumerate(self.frame_feature_set_generator()):
+            features_set, _ = item
 
             n_features_sequence[i, :, :] = features_set
 
@@ -467,7 +468,7 @@ class VideoActionLabeler(ActionVideoUnknownTau):
 
     def __init__(self, classifier, filename, fps):
         self.fps = fps
-        super(VideoActionLabeler, self).__init__(classifier, filename, analyze=False)
+        super(VideoActionLabeler, self).__init__(classifier, filename, label_override=None, analyze=False)
 
     def create_annotated_video(self, frame_ids=[]):
         h, w, _ = self.video_frame_array.shape
@@ -476,18 +477,11 @@ class VideoActionLabeler(ActionVideoUnknownTau):
 
         out_path = f"{config.OUTPUT_DIR}/labeled_{filename}.mp4"
 
-        video_out = utils.mp4_video_writer(out_path, (w, h), self.fps)
+        video_out = utils.mp4_video_writer(out_path, (w*2, h), self.fps)
 
-        for i, feature_set in enumerate(self.frame_feature_set_generator()):
+        for i, item in enumerate(self.frame_feature_set_generator()):
 
-            # action_pred, freq_pred = self.classifier._predict_from_feature_set(
-            #     feature_set
-            # )
-            #
-            # if action_pred == 0:
-            #     label = self.LABELS[0]
-            # else:
-            #     label = self.LABELS[freq_pred]
+            feature_set, temporal_template = item
 
             prediction = self.classifier.predict(feature_set)
             label = self.LABELS[prediction[0]]
@@ -496,22 +490,23 @@ class VideoActionLabeler(ActionVideoUnknownTau):
             annotated_frame = np.copy(self.video_frame_array[:, :, i])
             annotated_frame = utils.add_text_to_img(annotated_frame, f'Frame: {i}', (10, 10), 0.4)
             annotated_frame = utils.add_text_to_img(annotated_frame, label, (50, 100))
-            out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
+
+            joined_frame = np.hstack((annotated_frame, temporal_template._mhi))
+
+            out_frame = cv2.cvtColor(joined_frame, cv2.COLOR_GRAY2BGR)
 
             cv2.namedWindow("annotated_frames", cv2.WINDOW_NORMAL)
-            cv2.resizeWindow("annotated_frames", (600, 600))
+            cv2.resizeWindow("annotated_frames", (1200, 600))
             cv2.imshow("annotated_frames", out_frame)
-            cv2.waitKey(1)
-
-            out_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_GRAY2BGR)
+            cv2.waitKey(WAIT_DURATION)
 
             video_out.write(out_frame)
 
             if i in frame_ids:
-                out_filename = f'{filename}_frame_{i}.png'
+                out_filename = f'labeled_{filename}_frame_{i}.png'
                 utils.save_image(out_filename, out_frame)
 
-            utils.print_fraction(i, self.total_video_frames)
+            # utils.print_fraction(i, self.total_video_frames)
 
         video_out.release()
 

@@ -5,13 +5,19 @@ from config import INPUT_DIR, SAVED_DATA_DIR, actions, frame_sequences, test_seq
 from core import ActionVideo
 from utils import mp4_video_writer
 
+# test_sequence = [10, 2, 5, 7, 6, 8, 3]
+
+
+def get_longest_range(range_list):
+    sorted_ranges = sorted(range_list, key=lambda x: x[1] - x[0])
+    return sorted_ranges[-1]
 
 def get_action_video_objects():
     action_videos = []
 
     total = 0
 
-    len_final_video = 2.0
+    len_final_video = 1.0
 
     sequence = np.copy(test_sequence)
     np.random.seed(83)
