@@ -152,7 +152,7 @@ def compare_classifier_accuracy(show_confusion_matrix=False):
         filename = f"{OUTPUT_DIR}/confusion_matrix_naive_{SUFFIX}.png"
         f.savefig(filename)
         print(f"\n******* Saved image to {filename}")
-        plt.show() #TODO remove
+        # plt.show()
 
 
 def plot_roc_curve(x_train_norm,y_train_binarized,x_test_norm,y_test_binarized,n_classes,clf,title,ax):
@@ -312,7 +312,7 @@ def compare_backward_looking_tau_accuracy(generate_data=False, show_plot=False):
         filename = f"{OUTPUT_DIR}/confusion_matrix_lookback_tau_{SUFFIX}.png"
         f.savefig(filename)
         print(f"\n******* Saved image to {filename}")
-        plt.show() # TODO remove
+        # plt.show()
 
     start = time.time()
     fixed_tau_labels_predicted = clf.predict(frame_features)
@@ -358,7 +358,7 @@ def generate_plots_for_different_actions(person_num=10, background="d1"):
     filename = f"{OUTPUT_DIR}/hu_moments_by_action_{SUFFIX}.png"
     fig.savefig(filename)
     print(f"\n******* Saved image to {filename}")
-    plt.show() # TODO Remove.
+    # plt.show()
 
 
 def label_final_spliced_action_video(filename):

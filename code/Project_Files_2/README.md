@@ -1,10 +1,10 @@
 # CV_Spring2020 Final Project Submission:
 # Author: Andrew Parmar
-# GID: 
+# GID: 903389515
 
 ## Package Description
 This package is the final project deliverable for the Action Recognition topic of the
-CS6476 course. The package contains the final code pacakge containing all source files 
+CS6476 course. The package contains the final code package containing all source files 
 used to generate images and output shows in the final report.
 
 
@@ -20,7 +20,8 @@ used to generate images and output shows in the final report.
 ### Requirements and Installation
 
 Using this package requires additional files that are not included here due to file size restrictions.
-These additional files can be downloaded from [link]
+These additional files can be downloaded from:
+<https://drive.google.com/open?id=1ahTThAxqL_oJ12lbpfwzXryYld3tnRHP> 
 
 Once downloaded unzip the folder here. The final folder structure should be similar to 
 
@@ -29,21 +30,24 @@ Once downloaded unzip the folder here. The final folder structure should be simi
         ├── config.py
         ├── core.py
         ├── create_action_compilation_video.py
-        ├── cv_proj.yml
+        ├── download_video_files.sh
+        ├── environment.yml
         ├── experiment.py
         ├── input_files
+        ├── saved_objects   <-- this folder added
         └── utils.py
  
 
 ### Video Link
 
-The final output video can be viewed here [link]
+The final output video can be viewed here <https://youtu.be/293_idvQvFM>
 
 
 ## Execution of experiments
 
     # Activate the virutal enviroment
-    conda activate cv_proj
+    conda env create -f environment.yml
+    conda activate env
     
     # View help on experiments.py for experiment descriptions and runtimes.
     python experiment.py -h
@@ -51,9 +55,19 @@ The final output video can be viewed here [link]
     # Run experiment to generate video. 
     python experiment.py --exp 5
     
+    To change the video source file:
+        1. Copy the new video file under the `input_files` directory.
+        2. Change the filename in experiment.py line 455 under section to the new filename. 
+    Then run the experiment again:
+    python experiment.py --exp 5
+
+    
     # Run other expriments e.g.
     python experiment.py --exp 2
     python experiment.py --exp 3
     python experiment.py --exp 4
     
-Note: --exp 1 generates raw data and trains the classifier, this takes a long time to run.
+Note: --exp 0 generates raw data and trains the classifier, this takes a long time to run.
+It also requires all the raw video files from. To retrieve all video files from the video database run:
+
+    bash download_video_files.sh

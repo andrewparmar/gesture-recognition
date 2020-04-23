@@ -323,7 +323,7 @@ class ActionVideo:
             hu_mei = HuMoments(temporal_template.mei)
             hu_mhi = HuMoments(temporal_template.mhi / temporal_template.tau)
             hu_all = np.concatenate((hu_mei.values, hu_mhi.values))
-            feature_arr = np.log(np.abs(hu_all)) # TODO: try without np.log np.abs?
+            feature_arr = np.log(np.abs(hu_all))
 
             if np.any(np.isinf(feature_arr)):
                 self.frame_features[i] = np.zeros(feature_arr.shape)
