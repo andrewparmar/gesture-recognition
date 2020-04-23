@@ -47,7 +47,7 @@ The final output video can be viewed here <https://youtu.be/293_idvQvFM>
 
     # Activate the virutal enviroment
     conda env create -f environment.yml
-    conda activate env
+    conda activate parmar_cv_proj
     
     # View help on experiments.py for experiment descriptions and runtimes.
     python experiment.py -h
@@ -71,3 +71,4 @@ Note: --exp 0 generates raw data and trains the classifier, this takes a long ti
 It also requires all the raw video files from. To retrieve all video files from the video database run:
 
     bash download_video_files.sh
+
