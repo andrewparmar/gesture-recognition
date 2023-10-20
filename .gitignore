@@ -10,11 +10,11 @@ venv-cv/*
 **.snm
 **.synctex.gz
 **.toc
-**code/Project_Files_2/sample_dataset
-**code/Project_Files_2/saved_objects
-**code/Project_Files_2/input_files
-**code/Project_Files_2/all_input_files
+**sample_dataset
+**saved_objects
+**input_files
+**all_input_files
 **.mp4
-**code/Project_Files_2/archive
-**code/Project_Files_2/archive
+**archive
+**archive
 
