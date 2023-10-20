@@ -1,8 +1,0 @@
-% A line starting with a % character is a comment and wont be included in the report.
-% Always use two backslashes like \\ to insert a new line. Take a look at the example below.
-
-To start off, I noticed that the target being tracked moves slower in the x, y plane than in the z (scale) direction. I used a low sigma value for the dynamics to mimic this planar velocity.\\
-
-I also noticed that during occlusions, the similarity score dropped significantly. I used the similarity score as my occlusion metric. A mean score below 0.00001 was considered an occlusion, and re-weighting and resampling was omitted. This would continue until the occlusion scenario had passed., at which point the mean would rise above the occlusion threshold and resampling would be resumed. The dynamics sigma was large enough to match the target again and resume tracking within a few frames.\\
-
-This is just a test
