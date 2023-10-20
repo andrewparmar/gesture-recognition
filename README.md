@@ -35,9 +35,14 @@ Once downloaded unzip the folder here. The final folder structure should be simi
         └── utils.py
  
 
-### Video Link
+### Results
+![detection-wave](https://github.com/andrewparmar/gesture-recognition/blob/main/detection-waving.png?raw=true)
 
-The final output video can be viewed here <https://youtu.be/293_idvQvFM>
+##### Full Video Link
+
+The final output video can be viewed **HERE** <https://youtu.be/293_idvQvFM>
+[![YouTube Video](https://img.youtube.com/vi/293_idvQvFM/0.jpg)](https://youtu.be/293_idvQvFM)
+
 
 
 ## Execution of experiments
